@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "setiptah-pilesort-hard"
+dynamic = ["version"]
+authors = [
+    { name = "Kyle Treleaven", email = "ktreleav@gmail.com" }
+]
+readme = "README.md"
+dependencies = [
+    "setiptah-pilesort",
+]
+
+[project.optional-dependencies]
+dev = [
+    "matplotlib",
+    "ipython",
+    "notebook",
+    "ipywidgets",
+    "pandas",
+    "nbconvert",
+]
+test = [
+    "pytest",
+    "pytest-coverage",
+]

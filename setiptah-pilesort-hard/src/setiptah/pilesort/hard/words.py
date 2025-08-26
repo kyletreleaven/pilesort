@@ -1,0 +1,32 @@
+ALIGN = "QQQQSS"
+
+
+def path_from_string(word_):
+    return "".join(
+        "a" if ch == "R" else "d"
+        for ch in word_
+    )
+
+START_CLAUSE = path_from_string('LRRRRLLR')
+
+POS = path_from_string('RRLLLLRLRRRLRL')
+NEG = path_from_string('LRLLLLRLRRRLRL')
+DK = path_from_string('RLRLLLRLRRRLRL')
+
+ENDPOS = path_from_string('RRLLLLRLLLLRRRRLLRRRRLLLLR')
+ENDNEG = path_from_string('LRLLLLRLLLLRLRRRLRRRRLRRRRLLLLR')
+ENDDK = path_from_string('LRRLLLLRLLLLRRRRLLRRRRLLLLR')
+
+NEXT = path_from_string("R")
+
+FORCEQ = path_from_string("LRLRRRRLRRRRLLLLRRRR")
+
+PASS_CODE = path_from_string("LRRRRLRLRLRLLLLR")
+
+ALIGNMENT_CODE = path_from_string('RRRRRRRRRRRRRRRRRRRRRRRRLRRRRRRRRRRRRRRRRRRLRRRRRRRRRRRRRRRRRRLRRRRRRRRRRRRRRRRRRLLLLLLLLLLLLLLLLLLLLLRLLLLLRRRRRRRRRRRRRRRRRLRRRRRLLLLLLLLLLLRLLLLLRLLLLRLLLLRRRR')
+
+START_POS = 0
+CHAIN_DISQ = 1
+ACTD = 2
+NACTD = 3
+END_POS = CLAUSE_DISQ = 5
