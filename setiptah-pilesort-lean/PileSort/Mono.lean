@@ -36,16 +36,6 @@ theorem compile_step_mono (types : List PileType) (act : Action) (s₁ s₂ : Na
         _ ≤ s₂ := by omega
         _ ≤ (compile types).step act s₂ := compile_step_ge types act s₂ h₂
 
-/-- Compiled step keeps states within [0, n]. -/
-theorem compile_step_bounded (types : List PileType) (act : Action) (s : Nat)
-    (h : s ≤ types.length) :
-    (compile types).step act s ≤ types.length := by
-  calc (compile types).step act s
-      _ ≤ s + 1 := compile_step_le types act s h
-      _ ≤ types.length + 1 := by omega
-      _ = types.length + 1 := rfl
-  sorry
-
 /-- applyWord preserves ≤ and stays bounded for compiled machines. -/
 theorem applyWord_mono (word : List Action) (types : List PileType)
     {s₁ s₂ : Nat} (hs : s₁ ≤ s₂) (h₂ : s₂ ≤ types.length) :
