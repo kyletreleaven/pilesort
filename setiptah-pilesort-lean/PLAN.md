@@ -176,17 +176,24 @@ theorem activation_correct :
 
 ## Implementation Phases
 
-### Phase 1 (first iteration) — Core + 3 simple gadgets
-1. Set up Lean project (`lake init`, `lakefile.lean`, `lean-toolchain`)
-2. `Basic.lean` — types with `DecidableEq`, `Fintype`
-3. `Automata.lean` — `Machine`, `compile`, `applyWord`
-4. `VirtualPileTypes.lean` — `virtualPileTypes` and helpers
-5. `Words.lean` — all constants
-6. Smoke test: `#eval applyWord (compile (virtualPileTypes ALIGN [.Q])) 0 START_CLAUSE`
-   → should return `3` (= NACTD)
-7. `Gadgets/StartClause.lean` — prove `start_clause_correct`
-8. `Gadgets/Next.lean` — prove `next_correct` (2 cases)
-9. `Gadgets/ForceQ.lean` — prove `forceq_correct` (8 cases)
+### Phase 1 (first iteration) — Core + 3 simple gadgets ✅ DONE
+1. ✅ Set up Lean project (`lakefile.lean`, `lean-toolchain`)
+2. ✅ `Basic.lean` — types with `DecidableEq`, `Fintype`
+3. ✅ `Automata.lean` — `Machine`, `compile`, `applyWord`
+4. ✅ `VirtualPileTypes.lean` — `virtualPileTypes` and helpers
+5. ✅ `Words.lean` — all constants
+6. ⬜ Smoke test: `#eval applyWord (compile (virtualPileTypes ALIGN [.Q])) 0 START_CLAUSE`
+   → should return `3` (= NACTD). Requires Lean installed (`elan`).
+7. ✅ `Gadgets/StartClause.lean` — prove `start_clause_correct`
+8. ✅ `Gadgets/Next.lean` — prove `next_correct` (2 cases)
+9. ✅ `Gadgets/ForceQ.lean` — prove `forceq_correct` (8 cases, all next_types)
+
+**Status**: All files written. Not yet verified with `lake build` (Lean not installed).
+Install elan: `curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh`
+Then run: `cd setiptah-pilesort-lean && lake build`
+
+**Note**: `test_forceq` in Python has the assert outside the `for next_type` loop
+(only checks next_type="S"). The Lean theorem proves it for all next_types.
 
 ### Phase 2 — Activation gadgets
 10. `Gadgets/Activation.lean` — prove `activation_correct` (36 cases)
