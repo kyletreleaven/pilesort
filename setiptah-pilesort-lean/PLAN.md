@@ -199,12 +199,18 @@ theorem activation_correct :
 **Note**: `test_forceq` in Python has the assert outside the `for next_type` loop
 (only checks next_type="S"). The Lean theorem proves it for all next_types.
 
-### Phase 2 — Activation gadgets
-10. `Gadgets/Activation.lean` — prove `activation_correct` (36 cases)
-11. `Gadgets/EndActivation.lean` — prove `end_activation_correct` (72 cases)
+### Phase 2 — Activation gadgets ✅ DONE
+10. ✅ `Gadgets/Activation.lean` — prove `activation_correct` (36 cases, `decide`)
+11. ✅ `Gadgets/EndActivation.lean` — prove `end_activation_correct` (72 cases, `decide`)
+12. ✅ `lake build` passes (~1.5s)
+
+**Design pattern**: define a `Prop`-valued predicate (e.g. `activationProp`)
+encoding the if/elif/else logic from the Python test, provide a `Decidable`
+instance, then quantify over `PileType` and `Fin n` for start positions.
+Reordered `applyWord` signature to `applyWord word machine state`.
 
 ### Phase 3 — Alignment gadgets
-12. `Gadgets/Alignment.lean` — prove `align_aligned_correct` + `align_unaligned_correct`
+13. `Gadgets/Alignment.lean` — prove `align_aligned_correct` + `align_unaligned_correct`
     (~1360 cases, may need `native_decide`)
 
 ### Phase 4+ — Full reduction proof
