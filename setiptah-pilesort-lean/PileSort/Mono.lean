@@ -50,23 +50,14 @@ theorem compile_step_bounded (types : List PileType) (act : Action) (s : Nat)
 theorem applyWord_mono (word : List Action) (types : List PileType)
     {s₁ s₂ : Nat} (hs : s₁ ≤ s₂) (h₂ : s₂ ≤ types.length) :
     applyWord word (compile types) s₁ ≤ applyWord word (compile types) s₂ := by
-
--- revert s₁ s₂ hs h₂
-induction word with
-| nil =>
-    simp [applyWord]
+  revert s₁ s₂
+  induction word with
+  | nil =>
+    intro s₁ s₂ hs _
     exact hs
-
-| cons act rest ih =>
+  | cons act rest ih =>
+    intro s₁ s₂ hs h₂
     simp [applyWord]
-
-    have hstep :
-      (compile types).step act s₁ ≤
-      (compile types).step act s₂ :=
-      (compile_step_mono types) act s₁ s₂ hs h₂
-
-    have hBound :
-      (compile types).step act s₂ ≤ types.length := compile_step_bounded types act s₂ h₂
-      -- separate lemma about bounds
-
-    exact ih hstep hBound
+    exact ih
+      (compile_step_mono types act s₁ s₂ hs h₂)
+      (compile_step_bounded types act s₂ h₂)
