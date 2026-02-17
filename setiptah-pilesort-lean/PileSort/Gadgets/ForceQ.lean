@@ -30,4 +30,4 @@ instance (startType nextType : PileType) (startPos : Nat) :
 theorem forceq_correct :
     ∀ (startType nextType : PileType) (sp : Fin 2),
       forceqProp startType nextType ([START_POS, CHAIN_DISQ].get sp)
-  := by native_decide
+  := by decide

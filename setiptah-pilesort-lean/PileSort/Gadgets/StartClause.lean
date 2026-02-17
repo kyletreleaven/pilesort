@@ -19,4 +19,4 @@ theorem start_clause_correct :
     (applyWord (compile (virtualPileTypes ALIGN [PileType.S])) START_POS START_CLAUSE = NACTD) ∧
     -- pile_type = S, start_pos = CHAIN_DISQ → end_pos ≥ CLAUSE_DISQ
     (applyWord (compile (virtualPileTypes ALIGN [PileType.S])) CHAIN_DISQ START_CLAUSE ≥ CLAUSE_DISQ)
-  := by native_decide
+  := by decide

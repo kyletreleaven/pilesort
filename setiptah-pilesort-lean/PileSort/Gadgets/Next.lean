@@ -17,4 +17,4 @@ theorem next_correct :
     -- next_type = S
     (applyWord (compile (virtualPileTypes ALIGN [PileType.Q, PileType.S])) END_POS NEXT
       = START_POS + ALIGN.length)
-  := by native_decide
+  := by decide
