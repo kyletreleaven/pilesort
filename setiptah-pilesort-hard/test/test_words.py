@@ -126,8 +126,9 @@ def test_align_aligned(start_pos):
 def test_align_unaligned():
     n = len(words.ALIGN)
 
-    # ignore all aligned
     SEEN = set()
+
+    # ignore all aligned
     for types2 in powerspace("QS", 3):
         pile_types_ = virtual_pile_types(words.ALIGN, types2)
         if pile_types_ in SEEN:
@@ -139,6 +140,7 @@ def test_align_unaligned():
         types = "".join(types)
         align, types2 = types[:n], types[n:]
         pile_types_ = virtual_pile_types(align, types2)
+
         if pile_types_ in SEEN:
             continue
         SEEN.add(pile_types_)
