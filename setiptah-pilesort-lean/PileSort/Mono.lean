@@ -18,4 +18,7 @@ theorem applyWord_mono (word : List Action) {m : Machine} (hm : m.Monotone)
 
 /-- compile always produces monotone machines. -/
 theorem compile_monotone (types : List PileType) : (compile types).Monotone := by
-  sorry
+  intro act s₁ s₂ hs
+  by_cases heq : s₁ = s₂
+  · subst heq; exact Nat.le_refl _
+  · sorry -- s₁ < s₂: need to show step act s₁ ≤ step act s₂
