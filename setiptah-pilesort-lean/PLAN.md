@@ -45,8 +45,9 @@ inductive Action where | a | d
   deriving DecidableEq, Repr, Inhabited
 ```
 
-Both need `Fintype` instances so that `decide` can enumerate universal
-quantifiers over them.
+Both need custom `Decidable` instances for `∀`/`∃` quantifiers so that
+`decide` can enumerate all values. (We avoid Mathlib's `Fintype` to keep
+the project dependency-free.)
 
 ### Machine (Automata.lean)
 
@@ -65,7 +66,7 @@ of pile types. State `n` is the absorbing/sink state.
 |--------|------|-------|
 | `compile(pile_types)` | `compile : List PileType → Machine` | Use structural recursion, not `List.enum` |
 | `apply_word(machine, state, word)` | `applyWord : Machine → Nat → List Action → Nat` | `List.foldl` over word |
-| `virtual_pile_types(pt1, pt2)` | `virtualPileTypes : List PileType → List PileType → List PileType` | `pt2.bind (applyPile · pt1)` |
+| `virtual_pile_types(pt1, pt2)` | `virtualPileTypes : List PileType → List PileType → List PileType` | `pt2.flatMap (applyPile · pt1)` |
 
 ### compile implementation detail
 
@@ -115,14 +116,16 @@ State position constants: `START_POS := 0`, `CHAIN_DISQ := 1`,
 
 ## Proof Strategy
 
-Each Python test becomes a Lean theorem proved by `decide` or `native_decide`.
+Each Python test becomes a Lean theorem proved by `decide`.
 
-**`decide`** verifies by kernel reduction (pure, no trust issues).
-**`native_decide`** compiles to native code (fast, trusts the compiler).
+**`decide`** verifies by kernel reduction — fully trusted, no external
+compiler dependency. Phase 1 confirmed that `decide` handles these
+gadgets comfortably (full clean build under 1 second).
 
-Use `decide` where feasible; fall back to `native_decide` for large
-computations (especially ALIGNMENT_CODE with its 162-step evaluations
-over hundreds of configurations).
+**`native_decide`** is available as a fallback if `decide` becomes too
+slow for larger computations (e.g., ALIGNMENT_CODE with 162-step
+evaluations over hundreds of configurations). It compiles the decision
+procedure to native code, which is faster but trusts the compiler.
 
 ### Lemma patterns
 
@@ -141,7 +144,7 @@ theorem start_clause_correct :
     (applyWord (compile (virtualPileTypes ALIGN [.Q])) CHAIN_DISQ START_CLAUSE ≥ CLAUSE_DISQ) ∧
     (applyWord (compile (virtualPileTypes ALIGN [.S])) START_POS START_CLAUSE = NACTD) ∧
     (applyWord (compile (virtualPileTypes ALIGN [.S])) CHAIN_DISQ START_CLAUSE ≥ CLAUSE_DISQ)
-  := by native_decide
+  := by decide
 ```
 
 ### Example: activation using quantifiers
@@ -163,7 +166,7 @@ theorem activation_correct :
       activationProp NEG st nt ([NACTD, ACTD, CLAUSE_DISQ].get sp)) ∧
     (∀ st nt : PileType, ∀ sp : Fin 3,
       activationProp DK st nt ([NACTD, ACTD, CLAUSE_DISQ].get sp))
-  := by native_decide
+  := by decide
 ```
 
 ### Alignment (hardest case)
@@ -182,15 +185,16 @@ theorem activation_correct :
 3. ✅ `Automata.lean` — `Machine`, `compile`, `applyWord`
 4. ✅ `VirtualPileTypes.lean` — `virtualPileTypes` and helpers
 5. ✅ `Words.lean` — all constants
-6. ⬜ Smoke test: `#eval applyWord (compile (virtualPileTypes ALIGN [.Q])) 0 START_CLAUSE`
-   → should return `3` (= NACTD). Requires Lean installed (`elan`).
-7. ✅ `Gadgets/StartClause.lean` — prove `start_clause_correct`
-8. ✅ `Gadgets/Next.lean` — prove `next_correct` (2 cases)
-9. ✅ `Gadgets/ForceQ.lean` — prove `forceq_correct` (8 cases, all next_types)
+6. ✅ `Gadgets/StartClause.lean` — prove `start_clause_correct`
+7. ✅ `Gadgets/Next.lean` — prove `next_correct` (2 cases)
+8. ✅ `Gadgets/ForceQ.lean` — prove `forceq_correct` (8 cases, all next_types)
+9. ✅ `lake build` passes — all proofs verified by kernel reduction (`decide`)
 
-**Status**: All files written. Not yet verified with `lake build` (Lean not installed).
-Install elan: `curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh`
-Then run: `cd setiptah-pilesort-lean && lake build`
+**Resolved issues during Phase 1**:
+- `Fintype` is Mathlib-only; replaced with custom `Decidable` instances for `∀`/`∃` over `PileType`
+- `List.bind` deprecated in Lean 4.16; replaced with `List.flatMap`
+- `open Action in` only scopes to one definition; changed to section-level `open Action`
+- All three gadget proofs work with `decide` (no need for `native_decide`)
 
 **Note**: `test_forceq` in Python has the assert outside the `for next_type` loop
 (only checks next_type="S"). The Lean theorem proves it for all next_types.
@@ -201,7 +205,7 @@ Then run: `cd setiptah-pilesort-lean && lake build`
 
 ### Phase 3 — Alignment gadgets
 12. `Gadgets/Alignment.lean` — prove `align_aligned_correct` + `align_unaligned_correct`
-    (~1360 cases, `native_decide`)
+    (~1360 cases, may need `native_decide`)
 
 ### Phase 4+ — Full reduction proof
 Higher-level composition of gadgets into the NP-hardness reduction
