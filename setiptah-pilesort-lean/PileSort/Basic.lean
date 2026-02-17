@@ -15,12 +15,24 @@ inductive Action where
   | d : Action
   deriving DecidableEq, Repr, Inhabited
 
--- Fintype instances so `decide` can enumerate universal quantifiers
+-- Decidable instances for universal/existential quantifiers over PileType.
+-- This avoids depending on Mathlib's Fintype.
 
-instance : Fintype PileType where
-  elems := ⟨[.Q, .S], by simp⟩
-  complete := fun x => by cases x <;> simp
+instance {p : PileType → Prop} [Decidable (p .Q)] [Decidable (p .S)] :
+    Decidable (∀ x : PileType, p x) :=
+  if hQ : p .Q then
+    if hS : p .S then
+      isTrue (fun x => by cases x <;> assumption)
+    else
+      isFalse (fun h => hS (h .S))
+  else
+    isFalse (fun h => hQ (h .Q))
 
-instance : Fintype Action where
-  elems := ⟨[.a, .d], by simp⟩
-  complete := fun x => by cases x <;> simp
+instance {p : PileType → Prop} [Decidable (p .Q)] [Decidable (p .S)] :
+    Decidable (∃ x : PileType, p x) :=
+  if hQ : p .Q then
+    isTrue ⟨.Q, hQ⟩
+  else if hS : p .S then
+    isTrue ⟨.S, hS⟩
+  else
+    isFalse (fun ⟨x, hx⟩ => by cases x <;> contradiction)

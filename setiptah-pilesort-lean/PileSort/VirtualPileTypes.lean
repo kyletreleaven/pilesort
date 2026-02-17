@@ -27,4 +27,4 @@ def applyPile (pileType : PileType) (pileTypes : List PileType) : List PileType 
     For each type t in pt2, expand it via applyPile into a sub-sequence,
     then concatenate all sub-sequences. -/
 def virtualPileTypes (pt1 pt2 : List PileType) : List PileType :=
-  pt2.bind (fun typ => applyPile typ pt1)
+  pt2.flatMap (fun typ => applyPile typ pt1)

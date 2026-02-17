@@ -16,7 +16,7 @@ def toActions : List Char → List Action
   | 'R' :: rest => .a :: toActions rest
   | _ :: rest => .d :: toActions rest    -- L (and anything else) → d
 
-open Action in
+open Action
 
 -- START_CLAUSE = path_from_string('LRRRRLLR')
 -- L→d R→a R→a R→a R→a L→d L→d R→a
