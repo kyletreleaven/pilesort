@@ -12,9 +12,9 @@ import PileSort.Words
 
 theorem next_correct :
     -- next_type = Q
-    (applyWord (compile (virtualPileTypes ALIGN [PileType.Q, PileType.Q])) END_POS NEXT
+    (applyWord NEXT (compile (virtualPileTypes ALIGN [PileType.Q, PileType.Q])) END_POS
       = START_POS + ALIGN.length) ∧
     -- next_type = S
-    (applyWord (compile (virtualPileTypes ALIGN [PileType.Q, PileType.S])) END_POS NEXT
+    (applyWord NEXT (compile (virtualPileTypes ALIGN [PileType.Q, PileType.S])) END_POS
       = START_POS + ALIGN.length)
   := by decide

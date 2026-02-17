@@ -12,11 +12,11 @@ import PileSort.Words
 
 theorem start_clause_correct :
     -- pile_type = Q, start_pos = START_POS → end_pos = NACTD
-    (applyWord (compile (virtualPileTypes ALIGN [PileType.Q])) START_POS START_CLAUSE = NACTD) ∧
+    (applyWord START_CLAUSE (compile (virtualPileTypes ALIGN [PileType.Q])) START_POS = NACTD) ∧
     -- pile_type = Q, start_pos = CHAIN_DISQ → end_pos ≥ CLAUSE_DISQ
-    (applyWord (compile (virtualPileTypes ALIGN [PileType.Q])) CHAIN_DISQ START_CLAUSE ≥ CLAUSE_DISQ) ∧
+    (applyWord START_CLAUSE (compile (virtualPileTypes ALIGN [PileType.Q])) CHAIN_DISQ ≥ CLAUSE_DISQ) ∧
     -- pile_type = S, start_pos = START_POS → end_pos = NACTD
-    (applyWord (compile (virtualPileTypes ALIGN [PileType.S])) START_POS START_CLAUSE = NACTD) ∧
+    (applyWord START_CLAUSE (compile (virtualPileTypes ALIGN [PileType.S])) START_POS = NACTD) ∧
     -- pile_type = S, start_pos = CHAIN_DISQ → end_pos ≥ CLAUSE_DISQ
-    (applyWord (compile (virtualPileTypes ALIGN [PileType.S])) CHAIN_DISQ START_CLAUSE ≥ CLAUSE_DISQ)
+    (applyWord START_CLAUSE (compile (virtualPileTypes ALIGN [PileType.S])) CHAIN_DISQ ≥ CLAUSE_DISQ)
   := by decide

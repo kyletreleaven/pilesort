@@ -17,7 +17,7 @@ import PileSort.Words
     all other configurations incur a penalty. -/
 def forceqProp (startType nextType : PileType) (startPos : Nat) : Prop :=
   let m := compile (virtualPileTypes ALIGN [startType, nextType])
-  let endPos := applyWord m startPos FORCEQ
+  let endPos := applyWord FORCEQ m startPos
   if startPos = START_POS ∧ startType = PileType.Q
   then endPos = START_POS + ALIGN.length
   else endPos ≥ CHAIN_DISQ + ALIGN.length

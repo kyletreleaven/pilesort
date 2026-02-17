@@ -45,5 +45,5 @@ def compile (types : List PileType) : Machine :=
 
 /-- Apply a word (list of actions) to a machine starting from a given state.
     Mirrors apply_word in automata.py. -/
-def applyWord (m : Machine) (state : Nat) (word : List Action) : Nat :=
+def applyWord (word : List Action) (m : Machine) (state : Nat) : Nat :=
   word.foldl (fun s act => m.step act s) state

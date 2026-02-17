@@ -16,7 +16,7 @@ import PileSort.Words
 /-- The activation property for a given word, pile types, and start position. -/
 def activationProp (word : List Action) (startType nextType : PileType) (startPos : Nat) : Prop :=
   let m := compile (virtualPileTypes ALIGN [startType, nextType])
-  let endPos := applyWord m startPos word
+  let endPos := applyWord word m startPos
   let n := ALIGN.length
   if startPos = CLAUSE_DISQ then
     endPos ≥ CLAUSE_DISQ + n
