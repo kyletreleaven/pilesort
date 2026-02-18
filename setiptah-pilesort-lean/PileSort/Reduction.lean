@@ -69,3 +69,25 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
     applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
       CHAIN_DISQ + (k + n + 1) * m := by
   sorry
+
+/-- A compiled machine accepts a word if starting from state 0
+    it does not reach the sink state (types.length). -/
+def accepts (types : List PileType) (word : List Action) : Prop :=
+  applyWord word (compile types) 0 < types.length
+
+/-- A formula (conjunction of clauses) is satisfied if every clause is satisfied. -/
+def satisfiesFormula (vars : List Bool) (clauses : List Clause) : Prop :=
+  ∀ clause ∈ clauses, satisfiesClause vars clause
+
+/-- Formula-level correctness: a machine accepts formulaWord n clauses iff
+    its pile types are virtualPileTypes (virtualPileTypes ALIGN (embedVars(x) ++ [Q])) (Q^m)
+    for some assignment x satisfying the formula. -/
+theorem formulaWord_correct (n : Nat) (clauses : List Clause)
+    (types : List PileType) :
+    accepts types (formulaWord n clauses) ↔
+      ∃ vars : List Bool, vars.length = n
+        ∧ types = virtualPileTypes
+            (virtualPileTypes ALIGN (embedVars vars ++ [PileType.Q]))
+            (List.replicate clauses.length PileType.Q)
+        ∧ satisfiesFormula vars clauses := by
+  sorry
