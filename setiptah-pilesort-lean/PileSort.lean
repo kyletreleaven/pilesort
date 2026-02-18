@@ -9,3 +9,4 @@ import PileSort.Mono
 import PileSort.Gadgets.Activation
 import PileSort.Gadgets.EndActivation
 import PileSort.Gadgets.Alignment
+import PileSort.Reduction

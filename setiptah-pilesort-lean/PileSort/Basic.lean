@@ -15,6 +15,13 @@ inductive Action where
   | d : Action
   deriving DecidableEq, Repr, Inhabited
 
+def embedVar : Bool → PileType
+  | true  => .Q
+  | false => .S
+
+def embedVars (vars : List Bool) : List PileType :=
+  vars.map embedVar
+
 -- Decidable instances for universal/existential quantifiers over PileType.
 -- This avoids depending on Mathlib's Fintype.
 
