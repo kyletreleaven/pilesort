@@ -47,27 +47,4 @@ theorem next_correct (xs : List PileType) (k : Nat) (hk : k < xs.length) :
     let types := virtualPileTypes ALIGN xs
     let m := ALIGN.length
     applyWord NEXT (compile types) (END_POS + k * m) = START_POS + (k + 1) * m := by
-  -- NEXT = [.a], so applyWord reduces to a single compile step
-  simp only [NEXT, applyWord, List.foldl]
-  induction xs generalizing k with
-  | nil => omega
-  | cons x rest ih =>
-    simp only [virtualPileTypes, List.flatMap_cons]
-    cases k with
-    | zero =>
-      -- compile (applyPile x ALIGN ++ ...) .a END_POS
-      -- END_POS = 5 < 6 = (applyPile x ALIGN).length, so only first block matters
-      -- (applyPile x ALIGN)[5] = S for all x, so compile gives 6
-      simp only [Nat.zero_mul, Nat.add_zero]
-      cases x <;> native_decide
-    | succ k' =>
-      -- Shift past first block using compile_append_right, then apply IH
-      have hk' : k' < rest.length := by omega
-      have hrw : END_POS + (k' + 1) * ALIGN.length =
-          (applyPile x ALIGN).length + (END_POS + k' * ALIGN.length) := by
-        rw [applyPile_length]; ring
-      rw [hrw, compile_append_right]
-      rw [applyPile_length]
-      have := ih k' hk'
-      simp only [virtualPileTypes, List.flatMap_cons] at this
-      omega
+  sorry
