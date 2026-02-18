@@ -33,9 +33,10 @@ theorem compile_append_right (A B : List PileType) (act : Action) (s : Nat) :
     have h1 : A.length + s < (A ++ B).length := by simp; omega
     rw [dif_pos h1, dif_pos hs]
     have heq : (A ++ B)[A.length + s] = B[s] := by
-      simp [List.getElem_append_right (by omega : A.length ≤ A.length + s)]
+      rw [List.getElem_append_right (by omega : A.length ≤ A.length + s)]
+      congr 1; omega
     rw [heq]
-    cases B[s] <;> cases act <;> omega
+    split <;> omega
   · -- Both sides enter the "out of bounds" branch
     have h1 : ¬(A.length + s < (A ++ B).length) := by simp; omega
     rw [dif_neg h1, dif_neg hs]
