@@ -53,14 +53,17 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     let k := A0.length
     let m := ALIGN.length
-    -- From START_POS: if ∃ vars satisfying clause with A1 = embedVars(vars) ++ [Q],
-    --   then → END_POS; otherwise → penalty
-    (if ∃ vars : List Bool, vars.length = n ∧ A1 = embedVars vars ++ [PileType.Q]
-                            ∧ satisfiesClause vars clause
-     then applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
-            END_POS + (k + n) * m
-     else applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
-            CHAIN_DISQ + (k + n + 1) * m)
+    -- From START_POS with satisfying assignment: → END_POS
+    (∀ vars : List Bool, vars.length = n → A1 = embedVars vars ++ [PileType.Q] →
+      satisfiesClause vars clause →
+      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
+        END_POS + (k + n) * m)
+    ∧
+    -- From START_POS without satisfying assignment: → penalty
+    (∀ vars : List Bool, vars.length = n → A1 = embedVars vars ++ [PileType.Q] →
+      ¬ satisfiesClause vars clause →
+      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
+        CHAIN_DISQ + (k + n + 1) * m)
     ∧
     -- From CHAIN_DISQ: penalty propagates unconditionally
     applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
