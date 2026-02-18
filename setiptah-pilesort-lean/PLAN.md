@@ -20,17 +20,18 @@ setiptah-pilesort-lean/
   lean-toolchain
   PileSort.lean              -- root import
   PileSort/
-    Basic.lean               -- PileType, Action inductive types + Fintype
-    Automata.lean            -- Machine, compile, applyWord
+    Basic.lean               -- PileType, Action inductive types + Decidable instances
+    Automata.lean            -- compile (direct step function), applyWord
     VirtualPileTypes.lean    -- virtualPileTypes and helpers
     Words.lean               -- gadget word constants + state position constants
+    Mono.lean                -- monotonicity of applyWord for compiled machines
     Gadgets/
       StartClause.lean       -- theorem start_clause_correct
       Next.lean              -- theorem next_correct
       ForceQ.lean            -- theorem forceq_correct
       Activation.lean        -- theorem activation_correct
       EndActivation.lean     -- theorem end_activation_correct
-      Alignment.lean         -- theorems align_aligned + align_unaligned
+      Alignment.lean         -- theorems align_aligned_correct + align_unaligned_correct
 ```
 
 ## Type Representations
@@ -49,51 +50,41 @@ Both need custom `Decidable` instances for `∀`/`∃` quantifiers so that
 `decide` can enumerate all values. (We avoid Mathlib's `Fintype` to keep
 the project dependency-free.)
 
-### Machine (Automata.lean)
+### compile (Automata.lean)
+
+`compile` is a direct step function (no intermediate `Machine` structure):
 
 ```lean
-structure Machine where
-  on_a : List Nat    -- transition table for Action.a
-  on_d : List Nat    -- transition table for Action.d
+def compile (types : List PileType) (act : Action) (s : Nat) : Nat :=
+  if h : s < types.length then
+    match types[s], act with
+    | .Q, .a => s
+    | .Q, .d => s + 1
+    | .S, .a => s + 1
+    | .S, .d => s
+  else s
 ```
 
-Transition tables are `List Nat` of length `n+1` where `n` is the number
-of pile types. State `n` is the absorbing/sink state.
+This direct representation (replacing the earlier list-based `Machine`)
+makes structural proofs trivial — properties like monotonicity reduce
+to `unfold compile; split <;> omega`.
+
+### applyWord
+
+```lean
+def applyWord (word : List Action) (step : Action → Nat → Nat) (s : Nat) : Nat :=
+  word.foldl (fun s act => step act s) s
+```
+
+Generic over any step function. Gadget proofs use `applyWord word (compile types) s`.
 
 ### Key functions
 
 | Python | Lean | Notes |
 |--------|------|-------|
-| `compile(pile_types)` | `compile : List PileType → Machine` | Use structural recursion, not `List.enum` |
-| `apply_word(machine, state, word)` | `applyWord : Machine → Nat → List Action → Nat` | `List.foldl` over word |
+| `compile(pile_types)` | `compile : List PileType → Action → Nat → Nat` | Direct step function |
+| `apply_word(machine, state, word)` | `applyWord : List Action → (Action → Nat → Nat) → Nat → Nat` | `List.foldl` over word |
 | `virtual_pile_types(pt1, pt2)` | `virtualPileTypes : List PileType → List PileType → List PileType` | `pt2.flatMap (applyPile · pt1)` |
-
-### compile implementation detail
-
-Avoid `List.enum`; use a recursive helper for reliable kernel reduction:
-
-```lean
-def compileAux (types : List PileType) (k n : Nat) : List Nat × List Nat :=
-  match types with
-  | [] => ([], [])
-  | .Q :: rest => let (as_, ds_) := compileAux rest (k+1) n; (k :: as_, min (k+1) n :: ds_)
-  | .S :: rest => let (as_, ds_) := compileAux rest (k+1) n; (min (k+1) n :: as_, k :: ds_)
-
-def compile (types : List PileType) : Machine :=
-  let n := types.length
-  let (as_, ds_) := compileAux types 0 n
-  { on_a := as_ ++ [n], on_d := ds_ ++ [n] }
-```
-
-### Machine.step
-
-```lean
-def Machine.step (m : Machine) (act : Action) (state : Nat) : Nat :=
-  let table := match act with | .a => m.on_a | .d => m.on_d
-  (table.get? state).getD (table.length - 1)
-```
-
-Using `get?` + `getD` avoids proof obligations and stays total.
 
 ## Word Constants (Words.lean)
 
@@ -119,13 +110,11 @@ State position constants: `START_POS := 0`, `CHAIN_DISQ := 1`,
 Each Python test becomes a Lean theorem proved by `decide`.
 
 **`decide`** verifies by kernel reduction — fully trusted, no external
-compiler dependency. Phase 1 confirmed that `decide` handles these
-gadgets comfortably (full clean build under 1 second).
+compiler dependency.
 
-**`native_decide`** is available as a fallback if `decide` becomes too
-slow for larger computations (e.g., ALIGNMENT_CODE with 162-step
-evaluations over hundreds of configurations). It compiles the decision
-procedure to native code, which is faster but trusts the compiler.
+**`native_decide`** compiles the decision procedure to native code.
+Faster but trusts the compiler. Used for the unaligned alignment check
+(512 × 6 cases with 162-step evaluations — too slow for kernel reduction).
 
 ### Lemma patterns
 
@@ -136,53 +125,34 @@ both `P .Q` and `P .S`. Similarly `∀ (i : Fin 3), P i` checks 3 cases.
 reduces to a conjunction like `applyWord (compile ...) k w = v ∧ ...`
 which is decidable via `Nat.decEq` and `Nat.decLe`.
 
-### Example: start_clause_correct
+**Bool-valued checks**: For large case checks (alignment unaligned),
+define a `Bool` function that mirrors the Python test loop directly,
+then prove `checkFoo = true` by `native_decide`. Avoids `Decidable`
+synthesis issues with many quantifiers.
+
+### Monotonicity (Mono.lean)
+
+Structural proof (not decidable) that `compile` preserves ≤:
 
 ```lean
-theorem start_clause_correct :
-    (applyWord (compile (virtualPileTypes ALIGN [.Q])) START_POS START_CLAUSE = NACTD) ∧
-    (applyWord (compile (virtualPileTypes ALIGN [.Q])) CHAIN_DISQ START_CLAUSE ≥ CLAUSE_DISQ) ∧
-    (applyWord (compile (virtualPileTypes ALIGN [.S])) START_POS START_CLAUSE = NACTD) ∧
-    (applyWord (compile (virtualPileTypes ALIGN [.S])) CHAIN_DISQ START_CLAUSE ≥ CLAUSE_DISQ)
-  := by decide
+theorem applyWord_mono (word : List Action) (types : List PileType)
+    {s₁ s₂ : Nat} (hs : s₁ ≤ s₂) :
+    applyWord word (compile types) s₁ ≤ applyWord word (compile types) s₂
 ```
 
-### Example: activation using quantifiers
+Proved by induction on `word`, using two helper lemmas about `compile`:
+- `compile_step_ge`: `s ≤ compile types act s` (never goes backward)
+- `compile_step_le`: `compile types act s ≤ s + 1` (advances by at most 1)
 
-```lean
-def activationProp (word : List Action) (st nt : PileType) (sp : Nat) : Prop :=
-  let m := compile (virtualPileTypes ALIGN [st, nt])
-  let ep := applyWord m sp word
-  let n := ALIGN.length
-  if sp = CLAUSE_DISQ then ep ≥ CLAUSE_DISQ + n
-  else if sp = ACTD ∨ (word = POS ∧ st = .Q) ∨ (word = NEG ∧ st = .S)
-  then ep = ACTD + n
-  else ep = NACTD + n
-
-theorem activation_correct :
-    (∀ st nt : PileType, ∀ sp : Fin 3,
-      activationProp POS st nt ([NACTD, ACTD, CLAUSE_DISQ].get sp)) ∧
-    (∀ st nt : PileType, ∀ sp : Fin 3,
-      activationProp NEG st nt ([NACTD, ACTD, CLAUSE_DISQ].get sp)) ∧
-    (∀ st nt : PileType, ∀ sp : Fin 3,
-      activationProp DK st nt ([NACTD, ACTD, CLAUSE_DISQ].get sp))
-  := by decide
-```
-
-### Alignment (hardest case)
-
-- **Aligned**: `∀ types2 : Fin 8, ...` (8 = 2^3 configurations of 3 types)
-  checks that `"QS..."` prefix → exact position, otherwise penalty.
-- **Unaligned**: enumerate all 2^9 = 512 nine-char pile type strings,
-  filter to ~224 distinct non-aligned virtual pile types, check penalty
-  for each starting position 0..5. Use `native_decide`.
+Both proved by `unfold compile; split; split <;> omega`. No boundedness
+hypotheses needed — these hold for all `s`, not just `s ≤ types.length`.
 
 ## Implementation Phases
 
-### Phase 1 (first iteration) — Core + 3 simple gadgets ✅ DONE
+### Phase 1 — Core + 3 simple gadgets ✅ DONE
 1. ✅ Set up Lean project (`lakefile.lean`, `lean-toolchain`)
-2. ✅ `Basic.lean` — types with `DecidableEq`, `Fintype`
-3. ✅ `Automata.lean` — `Machine`, `compile`, `applyWord`
+2. ✅ `Basic.lean` — types with `DecidableEq`, custom `Decidable` instances
+3. ✅ `Automata.lean` — `compile`, `applyWord`
 4. ✅ `VirtualPileTypes.lean` — `virtualPileTypes` and helpers
 5. ✅ `Words.lean` — all constants
 6. ✅ `Gadgets/StartClause.lean` — prove `start_clause_correct`
@@ -190,33 +160,28 @@ theorem activation_correct :
 8. ✅ `Gadgets/ForceQ.lean` — prove `forceq_correct` (8 cases, all next_types)
 9. ✅ `lake build` passes — all proofs verified by kernel reduction (`decide`)
 
-**Resolved issues during Phase 1**:
-- `Fintype` is Mathlib-only; replaced with custom `Decidable` instances for `∀`/`∃` over `PileType`
-- `List.bind` deprecated in Lean 4.16; replaced with `List.flatMap`
-- `open Action in` only scopes to one definition; changed to section-level `open Action`
-- All three gadget proofs work with `decide` (no need for `native_decide`)
-
-**Note**: `test_forceq` in Python has the assert outside the `for next_type` loop
-(only checks next_type="S"). The Lean theorem proves it for all next_types.
-
 ### Phase 2 — Activation gadgets ✅ DONE
 10. ✅ `Gadgets/Activation.lean` — prove `activation_correct` (36 cases, `decide`)
 11. ✅ `Gadgets/EndActivation.lean` — prove `end_activation_correct` (72 cases, `decide`)
-12. ✅ `lake build` passes (~1.5s)
+12. ✅ `lake build` passes
 
-**Design pattern**: define a `Prop`-valued predicate (e.g. `activationProp`)
-encoding the if/elif/else logic from the Python test, provide a `Decidable`
-instance, then quantify over `PileType` and `Fin n` for start positions.
-Reordered `applyWord` signature to `applyWord word machine state`.
+### Phase 3 — Alignment gadgets + Monotonicity ✅ DONE
+13. ✅ `Gadgets/Alignment.lean` — `align_aligned_correct` (`decide`) + `align_unaligned_correct` (`native_decide`)
+14. ✅ `Mono.lean` — `applyWord_mono` and helper lemmas (structural proofs)
+15. ✅ Refactored `compile` from list-based `Machine` to direct step function
+16. ✅ `lake build` passes — all 7 Python tests formalized as verified theorems
 
-### Phase 3 — Alignment gadgets
-13. `Gadgets/Alignment.lean` — prove `align_aligned_correct` + `align_unaligned_correct`
-    (~1360 cases, may need `native_decide`)
+**Resolved issues during Phases 1–3**:
+- `Fintype` is Mathlib-only; replaced with custom `Decidable` instances for `∀`/`∃` over `PileType`
+- `List.bind` deprecated in Lean 4.16; replaced with `List.flatMap`
+- `open Action in` only scopes to one definition; changed to section-level `open Action`
+- List-based `Machine` made structural proofs hard; replaced with direct step function
+- Alignment unaligned: too many quantifiers for `Decidable` synthesis; used `Bool` check + `native_decide`
+- Alignment unaligned: `decide` too slow for 3072 × 162-step evaluations; `native_decide` handles it
 
 ### Phase 4+ — Full reduction proof
 Higher-level composition of gadgets into the NP-hardness reduction
-(clause chains, round structure, cost analysis). To be designed after
-Phase 3 is complete.
+(clause chains, round structure, cost analysis). To be designed.
 
 ## Verification
 
