@@ -2,48 +2,31 @@
   Finite state automaton for pile shuffle sort.
 
   Mirrors automata.py:
-    compile(pile_types) -> machine with transition tables on_a, on_d
-    apply_word(machine, state, word) -> final state
+    compile(pile_types) -> step function (Action → Nat → Nat)
+    applyWord(word, step, state) -> final state
+
+  For pile_types of length n, states range over {0, ..., n}.
+  State n is the absorbing/sink state.
+
+  The rule: action `a` stays at position k if pile k is Q (queue);
+  action `d` stays at position k if pile k is S (stack);
+  otherwise advance to k+1.
 -/
 import PileSort.Basic
 
-/-- A compiled pile-shuffle automaton with transition tables for each action. -/
-structure Machine where
-  on_a : List Nat
-  on_d : List Nat
-  deriving DecidableEq, Repr
+/-- Compiled step function from a list of pile types.
+    For state s < types.length, looks up types[s] and either stays or advances.
+    For state s ≥ types.length (sink state), stays. -/
+def compile (types : List PileType) (act : Action) (s : Nat) : Nat :=
+  if h : s < types.length then
+    match types[s], act with
+    | .Q, .a => s
+    | .Q, .d => s + 1
+    | .S, .a => s + 1
+    | .S, .d => s
+  else s
 
-/-- Look up the next state for a given action.
-    Uses List.get? with a default to stay total without proof obligations. -/
-def Machine.step (m : Machine) (act : Action) (state : Nat) : Nat :=
-  let table := match act with
-    | .a => m.on_a
-    | .d => m.on_d
-  (table.get? state).getD (table.length - 1)
-
-/-- Build transition tables from a list of pile types.
-
-    For pile_types of length n, each table has length n+1.
-    State n is the absorbing/sink state.
-
-    The rule: action `a` stays at position k if pile k is Q (queue);
-    action `d` stays at position k if pile k is S (stack);
-    otherwise advance to min(k+1, n). -/
-def compileAux (types : List PileType) (k n : Nat) : List Nat × List Nat :=
-  match types with
-  | [] => ([], [])
-  | typ :: rest =>
-    let (as_tail, ds_tail) := compileAux rest (k + 1) n
-    match typ with
-    | .Q => (k :: as_tail, min (k + 1) n :: ds_tail)
-    | .S => (min (k + 1) n :: as_tail, k :: ds_tail)
-
-def compile (types : List PileType) : Machine :=
-  let n := types.length
-  let (as_, ds_) := compileAux types 0 n
-  { on_a := as_ ++ [n], on_d := ds_ ++ [n] }
-
-/-- Apply a word (list of actions) to a machine starting from a given state.
+/-- Apply a word (list of actions) using a step function starting from a given state.
     Mirrors apply_word in automata.py. -/
-def applyWord (word : List Action) (m : Machine) (state : Nat) : Nat :=
-  word.foldl (fun s act => m.step act s) state
+def applyWord (word : List Action) (step : Action → Nat → Nat) (s : Nat) : Nat :=
+  word.foldl (fun s act => step act s) s
