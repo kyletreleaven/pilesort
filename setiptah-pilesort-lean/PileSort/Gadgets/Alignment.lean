@@ -52,5 +52,4 @@ def checkAlignUnaligned : Bool :=
       (List.range n).all fun sp =>
         decide (applyWord ALIGNMENT_CODE (compile vpt) sp ≥ (sp + 1) + 2 * n)
 
-set_option maxHeartbeats 4000000 in
-theorem align_unaligned_correct : checkAlignUnaligned = true := by decide
+theorem align_unaligned_correct : checkAlignUnaligned = true := by native_decide
