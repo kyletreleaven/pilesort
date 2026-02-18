@@ -1,11 +1,11 @@
 /-
   Monotonicity of applyWord for compiled machines.
 
-  Key result: for s₁ ≤ s₂ ≤ types.length,
+  Key result: for s₁ ≤ s₂,
     applyWord word (compile types) s₁ ≤ applyWord word (compile types) s₂
 
   Proof strategy:
-    Two facts about compiled step (for s ≤ n):
+    Two facts about compiled step:
       1. s ≤ step act s         (step never goes backward)
       2. step act s ≤ s + 1     (step advances by at most 1)
     From s₁ < s₂: step s₁ ≤ s₁ + 1 ≤ s₂ ≤ step s₂
@@ -13,51 +13,43 @@
 import PileSort.Automata
 import PileSort.Basic
 
-/-- For s ≤ n, compiled step never goes backward. -/
-theorem compile_step_ge (types : List PileType) (act : Action) (s : Nat)
-    (h : s ≤ types.length) :
-    s ≤ (compile types).step act s := by
-  sorry
+/-- Compiled step never goes backward. -/
+theorem compile_step_ge (types : List PileType) (act : Action) (s : Nat) :
+    s ≤ compile types act s := by
+  unfold compile
+  split
+  · split <;> omega
+  · omega
 
-/-- For s ≤ n, compiled step advances by at most 1. -/
-theorem compile_step_le (types : List PileType) (act : Action) (s : Nat)
-    (h : s ≤ types.length) :
-    (compile types).step act s ≤ s + 1 := by
-  sorry
+/-- Compiled step advances by at most 1. -/
+theorem compile_step_le (types : List PileType) (act : Action) (s : Nat) :
+    compile types act s ≤ s + 1 := by
+  unfold compile
+  split
+  · split <;> omega
+  · omega
 
-/-- Compiled step preserves ≤ for states ≤ n. -/
+/-- Compiled step preserves ≤. -/
 theorem compile_step_mono (types : List PileType) (act : Action) (s₁ s₂ : Nat)
-    (hs : s₁ ≤ s₂) (h₂ : s₂ ≤ types.length) :
-    (compile types).step act s₁ ≤ (compile types).step act s₂ := by
+    (hs : s₁ ≤ s₂) :
+    compile types act s₁ ≤ compile types act s₂ := by
   by_cases heq : s₁ = s₂
   · subst heq; exact Nat.le_refl _
-  · calc (compile types).step act s₁
-        _ ≤ s₁ + 1 := compile_step_le types act s₁ (by omega)
+  · calc compile types act s₁
+        _ ≤ s₁ + 1 := compile_step_le types act s₁
         _ ≤ s₂ := by omega
-        _ ≤ (compile types).step act s₂ := compile_step_ge types act s₂ h₂
+        _ ≤ compile types act s₂ := compile_step_ge types act s₂
 
-/-- Compiled step keeps states within [0, n]. -/
-theorem compile_step_bounded (types : List PileType) (act : Action) (s : Nat)
-    (h : s ≤ types.length) :
-    (compile types).step act s ≤ types.length := by
-  calc (compile types).step act s
-      _ ≤ s + 1 := compile_step_le types act s h
-      _ ≤ types.length + 1 := by omega
-      _ = types.length + 1 := rfl
-  sorry
-
-/-- applyWord preserves ≤ and stays bounded for compiled machines. -/
+/-- applyWord preserves ≤ for compiled machines. -/
 theorem applyWord_mono (word : List Action) (types : List PileType)
-    {s₁ s₂ : Nat} (hs : s₁ ≤ s₂) (h₂ : s₂ ≤ types.length) :
+    {s₁ s₂ : Nat} (hs : s₁ ≤ s₂) :
     applyWord word (compile types) s₁ ≤ applyWord word (compile types) s₂ := by
   revert s₁ s₂
   induction word with
   | nil =>
-    intro s₁ s₂ hs _
+    intro s₁ s₂ hs
     exact hs
   | cons act rest ih =>
-    intro s₁ s₂ hs h₂
+    intro s₁ s₂ hs
     simp [applyWord]
-    exact ih
-      (compile_step_mono types act s₁ s₂ hs h₂)
-      (compile_step_bounded types act s₂ h₂)
+    exact ih (compile_step_mono types act s₁ s₂ hs)
