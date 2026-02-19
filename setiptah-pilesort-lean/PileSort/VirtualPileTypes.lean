@@ -28,3 +28,8 @@ def applyPile (pileType : PileType) (pileTypes : List PileType) : List PileType 
     then concatenate all sub-sequences. -/
 def virtualPileTypes (pt1 pt2 : List PileType) : List PileType :=
   pt2.flatMap (fun typ => applyPile typ pt1)
+
+/-- applyPile preserves the length of the pile type list. -/
+theorem applyPile_length (t : PileType) (pt : List PileType) :
+    (applyPile t pt).length = pt.length := by
+  cases t <;> simp [applyPile, applyStack]
