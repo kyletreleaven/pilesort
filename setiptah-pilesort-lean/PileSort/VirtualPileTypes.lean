@@ -49,6 +49,30 @@ theorem virtualPileTypes_append (pt1 A B : List PileType) :
     virtualPileTypes pt1 (A ++ B) = virtualPileTypes pt1 A ++ virtualPileTypes pt1 B := by
   simp [virtualPileTypes, List.flatMap_append]
 
+/-- Replicating with all-Q outer types just repeats the inner list. -/
+theorem virtualPileTypes_replicate_Q (pt : List PileType) (m : Nat) :
+    virtualPileTypes pt (List.replicate m .Q) = (List.replicate m pt).flatten := by
+  induction m with
+  | zero => simp [virtualPileTypes]
+  | succ m ih =>
+    show applyPile .Q pt ++ virtualPileTypes pt (List.replicate m .Q) = _
+    simp [applyPile, ih, List.replicate_succ, List.flatten_cons]
+
+/-- virtualPileTypes distributes over flatten of replicated lists. -/
+theorem virtualPileTypes_flatten_replicate (pt1 pt2 : List PileType) (m : Nat) :
+    virtualPileTypes pt1 (List.replicate m pt2).flatten =
+    (List.replicate m (virtualPileTypes pt1 pt2)).flatten := by
+  induction m with
+  | zero => simp [virtualPileTypes]
+  | succ m ih =>
+    simp only [List.replicate_succ, List.flatten_cons, virtualPileTypes_append, ih]
+
+/-- Two-level virtualPileTypes with all-Q outer types equals single-level on flattened replicates. -/
+theorem virtualPileTypes_replicate_Q_comp (pt1 pt2 : List PileType) (m : Nat) :
+    virtualPileTypes (virtualPileTypes pt1 pt2) (List.replicate m .Q) =
+    virtualPileTypes pt1 (List.replicate m pt2).flatten := by
+  rw [virtualPileTypes_replicate_Q, virtualPileTypes_flatten_replicate]
+
 theorem virtualPileTypes_length (pt1 pt2 : List PileType) :
     (virtualPileTypes pt1 pt2).length = pt2.length * pt1.length := by
   induction pt2 with
