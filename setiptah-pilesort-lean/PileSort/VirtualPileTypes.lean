@@ -44,6 +44,11 @@ theorem block_index_bound {k j n m : Nat} (hk : k < n) (hj : j < m) :
     _ = (k + 1) * m := by rw [Nat.succ_mul]
     _ ≤ n * m := Nat.mul_le_mul_right _ (by omega)
 
+/-- virtualPileTypes distributes over concatenation in the second argument. -/
+theorem virtualPileTypes_append (pt1 A B : List PileType) :
+    virtualPileTypes pt1 (A ++ B) = virtualPileTypes pt1 A ++ virtualPileTypes pt1 B := by
+  simp [virtualPileTypes, List.flatMap_append]
+
 theorem virtualPileTypes_length (pt1 pt2 : List PileType) :
     (virtualPileTypes pt1 pt2).length = pt2.length * pt1.length := by
   induction pt2 with

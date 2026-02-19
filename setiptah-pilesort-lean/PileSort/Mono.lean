@@ -47,6 +47,11 @@ theorem applyWord_mono (word : List Action) (types : List PileType)
     simp [applyWord]
     exact ih (compile_step_mono types act s₁ s₂ hs)
 
+/-- applyWord decomposes over word concatenation. -/
+theorem applyWord_append (w₁ w₂ : List Action) (step : Action → Nat → Nat) (s : Nat) :
+    applyWord (w₁ ++ w₂) step s = applyWord w₂ step (applyWord w₁ step s) := by
+  simp [applyWord, List.foldl_append]
+
 /-- compile at a position beyond the type list (sink state) is identity. -/
 theorem compile_sink (types : List PileType) (act : Action) (s : Nat)
     (hs : types.length ≤ s) :
