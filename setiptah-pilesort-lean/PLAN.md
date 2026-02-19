@@ -205,59 +205,70 @@ Compose the gadget theorems into the full NP-hardness reduction.
 
 #### Strategy for `formulaWord_correct`
 
+**Theorem statement.** Given `xs : List PileType`, let
+`types = virtualPileTypes (virtualPileTypes ALIGN xs) (Q^m)` where `m = clauses.length`.
+Then `accepts types (formulaWord n clauses)` iff there exist `vars : List Bool`
+with `vars.length = n`, `xs = embedVars vars ++ [Q]`, and `satisfiesFormula vars clauses`.
+
+The ALIGN structure is assumed (not deduced from acceptance). The outer
+`virtualPileTypes ... (Q^m)` replicates the inner pattern `m` times
+(since `applyPile Q = id`). So `types` is `inner` repeated `m` times where
+`inner = virtualPileTypes ALIGN xs`.
+
 The formula word for clauses [φ₀, ..., φ_{m-1}] is:
 ```
 clauseWord(φ₀) ++ NEXT ++ clauseWord(φ₁) ++ NEXT ++ ... ++ clauseWord(φ_{m-1})
 ```
 (the `dropLast` removes the trailing NEXT).
 
-The types are `virtualPileTypes inner (Q^m)` where
-`inner = virtualPileTypes ALIGN (embedVars vars ++ [Q])`.
-Since all outer types are Q (`applyPile Q = id`), `types` is `inner` repeated
-`m` times. By `virtualPileTypes_append`, this equals
-`virtualPileTypes ALIGN ((embedVars vars ++ [Q])^m)`.
+By `virtualPileTypes_append`, `types` can also be viewed as
+`virtualPileTypes ALIGN (xs^m)`, which is `virtualPileTypes ALIGN (A0 ++ A1 ++ A2)`
+with the right decomposition for each clause's application of `clauseWord_correct`.
 
 Let `block = n + 1` (length of `embedVars vars ++ [Q]`) and `m_a = ALIGN.length = 6`.
 
 **Forward direction (⇐): satisfying assignment → accepts.**
 
+Given `xs = embedVars vars ++ [Q]` and `satisfiesFormula vars clauses`.
+
 Induction on clauses. Invariant: after processing clauses 0..j-1 and their
 NEXTs, the state is `START_POS + j * block * m_a`.
 
 At each clause j:
-- `clauseWord_correct` (satisfied case, with A0 = first j blocks, A1 = j-th block,
-  A2 = remaining blocks):
+- `clauseWord_correct` (satisfied case, with A0 = first j copies of xs,
+  A1 = j-th copy = embedVars vars ++ [Q], A2 = remaining copies):
   `START_POS + j*block*m_a → END_POS + (j*block + n)*m_a`
 - `next_correct` (with k = j*block + n in the ALIGN-level virtual type list):
-  `END_POS + (j*block+n)*m_a → START_POS + (j*block+n+1)*m_a = START_POS + (j+1)*block*m_a`
+  `END_POS + (j*block+n)*m_a → START_POS + (j+1)*block*m_a`
 
 For the last clause (j = m-1), there is no NEXT (it was `dropLast`-ed), so we
 stop at `END_POS + (m*block - 1)*m_a`, which is `< m*block*m_a = types.length`.
 Hence `accepts` holds.
 
-**Backward direction (⇒): accepts → satisfying assignment with matching types.**
+**Backward direction (⇒): accepts → xs encodes a satisfying assignment.**
 
-Contrapositive on clause satisfaction:
-- If any clause φ_j is unsatisfied, `clauseWord_correct` part 2 says the state
-  jumps to `≥ CHAIN_DISQ + (k+n+1)*m_a` after that clause word.
-- `clauseWord_correct` part 3 says that starting from a `CHAIN_DISQ` position,
-  the penalty propagates through subsequent clauses.
-- By `applyWord_mono` and `applyWord_ge`, once the state exceeds the acceptance
-  threshold it never comes back down, eventually reaching `≥ types.length`.
-- This contradicts `accepts` (which requires final state `< types.length`).
+Two parts:
 
-For the types structure part: needs additional argument that the formula word
-constrains the pile type at each position — may require results from FORCEQ,
-ALIGNMENT_CODE, or PASS_CODE gadgets showing that only the
-`virtualPileTypes ALIGN (embedVars vars ++ [Q])` structure can stay below
-the sink. **This part needs further design.**
+Contrapositive: if there is no satisfying `vars` such that
+`xs = embedVars vars ++ [Q]`, then some clause has no matching satisfying
+assignment. `clauseWord_correct` part 2 (reformulated) says: if there is no
+`vars` with `A1 = embedVars vars ++ [Q]` AND `satisfiesClause vars clause`,
+then the clause word sends the state to `≥ CHAIN_DISQ + (k+n+1)*m_a`.
+This covers both "wrong xs structure" and "right structure but unsatisfied"
+in one shot — no need for separate low-level gadget reasoning at the
+formula level.
+
+Once the state reaches a CHAIN_DISQ position:
+- `clauseWord_correct` part 3: penalty propagates through subsequent clauses
+  unconditionally.
+- By `applyWord_mono` and `applyWord_ge`, the state never comes back down,
+  eventually reaching `≥ types.length` — contradicting `accepts`.
 
 #### Proof order
 1. Prove `applyWord_append` and `virtualPileTypes_append` (small lemmas).
-2. Prove `clauseWord_correct` (assuming gadget theorems).
+2. Prove `clauseWord_correct` (composing gadget theorems).
 3. Prove forward direction of `formulaWord_correct` (induction on clauses).
-4. Prove backward direction — clause satisfaction (contrapositive + monotonicity).
-5. Prove backward direction — types structure (requires further design).
+4. Prove backward direction of `formulaWord_correct` (contrapositive + monotonicity).
 
 ## Verification
 
