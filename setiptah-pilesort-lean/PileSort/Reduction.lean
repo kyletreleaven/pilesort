@@ -79,16 +79,43 @@ def accepts (types : List PileType) (word : List Action) : Prop :=
 def satisfiesFormula (vars : List Bool) (clauses : List Clause) : Prop :=
   ∀ clause ∈ clauses, satisfiesClause vars clause
 
+/-- Forward direction: a satisfying assignment implies acceptance. -/
+theorem formulaWord_forward (n : Nat) (clauses : List Clause)
+    (xs : List PileType) (vars : List Bool)
+    (hn : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesFormula vars clauses)
+    (hne : clauses ≠ []) :
+    let types := virtualPileTypes
+        (virtualPileTypes ALIGN xs)
+        (List.replicate clauses.length PileType.Q)
+    accepts types (formulaWord n clauses) := by
+  sorry
+
+/-- Backward direction: acceptance implies a satisfying assignment. -/
+theorem formulaWord_backward (n : Nat) (clauses : List Clause)
+    (xs : List PileType) :
+    let types := virtualPileTypes
+        (virtualPileTypes ALIGN xs)
+        (List.replicate clauses.length PileType.Q)
+    accepts types (formulaWord n clauses) →
+      ∃ vars : List Bool, vars.length = n
+        ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesFormula vars clauses := by
+  sorry
+
 /-- Formula-level correctness: a machine compiled from virtualPileTypes ALIGN xs,
     replicated over m clauses, accepts formulaWord n clauses iff
     xs = embedVars(vars) ++ [Q] for some assignment vars satisfying the formula. -/
 theorem formulaWord_correct (n : Nat) (clauses : List Clause)
-    (xs : List PileType) :
+    (xs : List PileType)
+    (hne : clauses ≠ []) :
     let types := virtualPileTypes
         (virtualPileTypes ALIGN xs)
         (List.replicate clauses.length PileType.Q)
     accepts types (formulaWord n clauses) ↔
       ∃ vars : List Bool, vars.length = n
         ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars clauses := by
-  sorry
+        ∧ satisfiesFormula vars clauses :=
+  ⟨formulaWord_backward n clauses xs,
+   fun ⟨vars, hn, hxs, hsat⟩ => formulaWord_forward n clauses xs vars hn hxs hsat hne⟩
