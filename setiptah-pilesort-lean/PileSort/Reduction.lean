@@ -59,9 +59,9 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
       applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
         END_POS + (k + n) * m)
     ∧
-    -- From START_POS without satisfying assignment: → penalty
-    (∀ vars : List Bool, vars.length = n → A1 = embedVars vars ++ [PileType.Q] →
-      ¬ satisfiesClause vars clause →
+    -- From START_POS without any satisfying assignment matching A1: → penalty
+    (¬ (∃ vars : List Bool, vars.length = n ∧ A1 = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesClause vars clause) →
       applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
         CHAIN_DISQ + (k + n + 1) * m)
     ∧
