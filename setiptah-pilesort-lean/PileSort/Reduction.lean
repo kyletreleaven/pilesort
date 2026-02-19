@@ -79,15 +79,16 @@ def accepts (types : List PileType) (word : List Action) : Prop :=
 def satisfiesFormula (vars : List Bool) (clauses : List Clause) : Prop :=
   ∀ clause ∈ clauses, satisfiesClause vars clause
 
-/-- Formula-level correctness: a machine accepts formulaWord n clauses iff
-    its pile types are virtualPileTypes (virtualPileTypes ALIGN (embedVars(x) ++ [Q])) (Q^m)
-    for some assignment x satisfying the formula. -/
+/-- Formula-level correctness: a machine compiled from virtualPileTypes ALIGN xs,
+    replicated over m clauses, accepts formulaWord n clauses iff
+    xs = embedVars(vars) ++ [Q] for some assignment vars satisfying the formula. -/
 theorem formulaWord_correct (n : Nat) (clauses : List Clause)
-    (types : List PileType) :
+    (xs : List PileType) :
+    let types := virtualPileTypes
+        (virtualPileTypes ALIGN xs)
+        (List.replicate clauses.length PileType.Q)
     accepts types (formulaWord n clauses) ↔
       ∃ vars : List Bool, vars.length = n
-        ∧ types = virtualPileTypes
-            (virtualPileTypes ALIGN (embedVars vars ++ [PileType.Q]))
-            (List.replicate clauses.length PileType.Q)
+        ∧ xs = embedVars vars ++ [PileType.Q]
         ∧ satisfiesFormula vars clauses := by
   sorry
