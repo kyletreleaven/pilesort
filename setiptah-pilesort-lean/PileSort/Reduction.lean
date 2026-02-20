@@ -3,6 +3,7 @@
 -/
 import PileSort.Automata
 import PileSort.Basic
+import PileSort.Mono
 import PileSort.VirtualPileTypes
 import PileSort.Words
 
@@ -82,6 +83,7 @@ def satisfiesFormula (vars : List Bool) (clauses : List Clause) : Prop :=
 /-- Forward direction: a satisfying assignment implies acceptance. -/
 theorem formulaWord_forward (n : Nat) (clauses : List Clause)
     (xs : List PileType) (vars : List Bool)
+    (hxs_len : xs.length = n + 1)
     (hn : vars.length = n)
     (hxs : xs = embedVars vars ++ [PileType.Q])
     (hsat : satisfiesFormula vars clauses)
@@ -92,16 +94,19 @@ theorem formulaWord_forward (n : Nat) (clauses : List Clause)
     accepts types (formulaWord n clauses) := by
   sorry
 
-/-- Backward direction: acceptance implies a satisfying assignment. -/
-theorem formulaWord_backward (n : Nat) (clauses : List Clause)
-    (xs : List PileType) :
-    let types := virtualPileTypes
-        (virtualPileTypes ALIGN xs)
-        (List.replicate clauses.length PileType.Q)
-    accepts types (formulaWord n clauses) →
-      ∃ vars : List Bool, vars.length = n
+/-- On extended types (one extra block), if no satisfying assignment exists,
+    the formulaWord sends state 0 past the original types boundary.
+    The vestigial block ensures clauseWord_correct part 3 always has room. -/
+theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
+    (xs : List PileType)
+    (hxs_len : xs.length = n + 1)
+    (hno : ¬ (∃ vars : List Bool, vars.length = n
         ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars clauses := by
+        ∧ satisfiesFormula vars clauses)) :
+    let types_ext := virtualPileTypes ALIGN
+        (List.replicate (clauses.length + 1) xs).flatten
+    applyWord (formulaWord n clauses) (compile types_ext) 0 ≥
+      CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
 /-- Formula-level correctness: a machine compiled from virtualPileTypes ALIGN xs,
@@ -109,6 +114,7 @@ theorem formulaWord_backward (n : Nat) (clauses : List Clause)
     xs = embedVars(vars) ++ [Q] for some assignment vars satisfying the formula. -/
 theorem formulaWord_correct (n : Nat) (clauses : List Clause)
     (xs : List PileType)
+    (hxs_len : xs.length = n + 1)
     (hne : clauses ≠ []) :
     let types := virtualPileTypes
         (virtualPileTypes ALIGN xs)
@@ -116,6 +122,14 @@ theorem formulaWord_correct (n : Nat) (clauses : List Clause)
     accepts types (formulaWord n clauses) ↔
       ∃ vars : List Bool, vars.length = n
         ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars clauses :=
-  ⟨formulaWord_backward n clauses xs,
-   fun ⟨vars, hn, hxs, hsat⟩ => formulaWord_forward n clauses xs vars hn hxs hsat hne⟩
+        ∧ satisfiesFormula vars clauses := by
+  intro types
+  constructor
+  · -- Backward: accepts → ∃ satisfying vars
+    -- Contrapositive: apply formulaWord_penalty_ext on extended types,
+    -- then applyWord_append_truncate to get result on original types = types.length,
+    -- contradicting accepts < types.length.
+    sorry
+  · -- Forward: ∃ satisfying vars → accepts
+    intro ⟨vars, hn, hxs, hsat⟩
+    exact formulaWord_forward n clauses xs vars hxs_len hn hxs hsat hne
