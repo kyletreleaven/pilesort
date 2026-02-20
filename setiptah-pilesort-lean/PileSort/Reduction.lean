@@ -109,6 +109,18 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
       CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
+theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
+    formulaWord n (init ++ [last]) =
+    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last := by
+  unfold formulaWord
+  rw [List.flatMap_append]
+  simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
+  rw [← List.append_assoc]
+  show ((init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last ++ NEXT).dropLast =
+    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last
+  unfold NEXT
+  rw [List.dropLast_concat]
+
 private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
     List.replicate (m + 1) x = List.replicate m x ++ [x] := by
   induction m with
