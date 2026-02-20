@@ -150,7 +150,18 @@ theorem formulaState_eq (n : Nat) (xs : List PileType)
       applyWord (formulaWord n (init ++ [last]))
         (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
           (List.replicate (init.length + 2) .Q))) start := by
-  sorry
+  induction init generalizing start with
+  | nil =>
+    simp [formulaState, formulaWord_split]
+  | cons c rest ih =>
+    -- Unfold formulaState and apply IH
+    unfold formulaState; simp only []
+    rw [ih]
+    -- Now work from the RHS toward the LHS
+    symm
+    rw [formulaWord_cons, applyWord_append]
+    -- Goal: applyWord fw (compile types_outer) mid = block + applyWord fw (compile types_inner) (mid - block)
+    sorry
 
 theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
     formulaWord n (init ++ [last]) =
@@ -163,6 +174,19 @@ theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
     (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last
   unfold NEXT
   rw [List.dropLast_concat]
+
+/-- Peeling one Q from the front of a replicated virtualPileTypes. -/
+private theorem virtualPileTypes_replicate_Q_cons (inner : List PileType) (m : Nat) :
+    virtualPileTypes inner (List.replicate (m + 1) .Q) =
+    inner ++ virtualPileTypes inner (List.replicate m .Q) := by
+  simp [virtualPileTypes, List.replicate_succ, List.flatMap_cons, applyPile]
+
+/-- Peeling the first clause off a formulaWord. -/
+private theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (last : Clause) :
+    formulaWord n ((c :: rest) ++ [last]) =
+    (clauseWord n c ++ NEXT) ++ formulaWord n (rest ++ [last]) := by
+  rw [formulaWord_split, formulaWord_split]
+  simp [List.flatMap_cons, List.append_assoc]
 
 private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
     List.replicate (m + 1) x = List.replicate m x ++ [x] := by
