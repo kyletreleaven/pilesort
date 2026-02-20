@@ -109,6 +109,12 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
       CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
+private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
+    List.replicate (m + 1) x = List.replicate m x ++ [x] := by
+  induction m with
+  | zero => rfl
+  | succ m ih => exact congrArg (x :: ·) ih
+
 /-- Formula-level correctness: a machine compiled from virtualPileTypes ALIGN xs,
     replicated over m clauses, accepts formulaWord n clauses iff
     xs = embedVars(vars) ++ [Q] for some assignment vars satisfying the formula. -/
@@ -125,11 +131,36 @@ theorem formulaWord_correct (n : Nat) (clauses : List Clause)
         ∧ satisfiesFormula vars clauses := by
   intro types
   constructor
-  · -- Backward: accepts → ∃ satisfying vars
-    -- Contrapositive: apply formulaWord_penalty_ext on extended types,
-    -- then applyWord_append_truncate to get result on original types = types.length,
-    -- contradicting accepts < types.length.
-    sorry
+  · -- Backward: accepts → ∃ satisfying vars (contrapositive via penalty_ext + truncation)
+    intro hacc
+    exact Classical.byContradiction fun hno => by
+      have hpen := formulaWord_penalty_ext n clauses xs hxs_len hno
+      -- Rewrite types as virtualPileTypes ALIGN (replicate m xs).flatten
+      have htypes : types = virtualPileTypes ALIGN (List.replicate clauses.length xs).flatten :=
+        virtualPileTypes_replicate_Q_comp ALIGN xs clauses.length
+      -- types_ext = types ++ extra
+      have hext : virtualPileTypes ALIGN (List.replicate (clauses.length + 1) xs).flatten =
+          virtualPileTypes ALIGN (List.replicate clauses.length xs).flatten ++
+          virtualPileTypes ALIGN xs := by
+        rw [replicate_succ_append, List.flatten_append, virtualPileTypes_append,
+            List.flatten_cons, List.flatten_nil, List.append_nil]
+      rw [htypes] at hacc; rw [hext] at hpen
+      unfold accepts at hacc
+      -- Truncation: result on types = min(result on ext, types.length)
+      have htrunc := applyWord_append_truncate (formulaWord n clauses)
+          (virtualPileTypes ALIGN (List.replicate clauses.length xs).flatten)
+          (virtualPileTypes ALIGN xs) 0 (Nat.zero_le _)
+      -- types.length ≤ result on ext (since CHAIN_DISQ ≥ 1)
+      have hge : (virtualPileTypes ALIGN (List.replicate clauses.length xs).flatten).length ≤
+          applyWord (formulaWord n clauses) (compile
+            (virtualPileTypes ALIGN (List.replicate clauses.length xs).flatten ++
+             virtualPileTypes ALIGN xs)) 0 := by
+        have hlen : (virtualPileTypes ALIGN (List.replicate clauses.length xs).flatten).length =
+            clauses.length * xs.length * ALIGN.length := by
+          rw [virtualPileTypes_length, flatten_replicate_length, Nat.mul_assoc]
+        unfold CHAIN_DISQ at hpen; omega
+      rw [htrunc, Nat.min_eq_right hge] at hacc
+      omega
   · -- Forward: ∃ satisfying vars → accepts
     intro ⟨vars, hn, hxs, hsat⟩
     exact formulaWord_forward n clauses xs vars hxs_len hn hxs hsat hne

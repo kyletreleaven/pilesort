@@ -73,6 +73,12 @@ theorem virtualPileTypes_replicate_Q_comp (pt1 pt2 : List PileType) (m : Nat) :
     virtualPileTypes pt1 (List.replicate m pt2).flatten := by
   rw [virtualPileTypes_replicate_Q, virtualPileTypes_flatten_replicate]
 
+theorem flatten_replicate_length {α : Type} (l : List α) (m : Nat) :
+    (List.replicate m l).flatten.length = m * l.length := by
+  induction m with
+  | zero => simp
+  | succ m ih => simp [List.replicate_succ, List.flatten_cons, ih, Nat.succ_mul, Nat.add_comm]
+
 theorem virtualPileTypes_length (pt1 pt2 : List PileType) :
     (virtualPileTypes pt1 pt2).length = pt2.length * pt1.length := by
   induction pt2 with
