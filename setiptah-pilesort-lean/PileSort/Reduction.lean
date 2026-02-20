@@ -139,7 +139,18 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
     The shift lemma bridges these views: after clauseWord c ++ NEXT
     advances past the first block (h_advance), we peel off that block
     and recurse on inner types with the remaining formula word. -/
-theorem formulaState_eq : sorry := sorry
+theorem formulaState_eq (n : Nat) (xs : List PileType)
+    (init : List Clause) (last : Clause) (start : Nat)
+    (h_advance : ∀ (c : Clause) (m : Nat) (s : Nat), m ≥ 2 →
+      xs.length * ALIGN.length ≤
+        applyWord (clauseWord n c ++ NEXT)
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+            (List.replicate m .Q))) s) :
+    formulaState n xs init last start =
+      applyWord (formulaWord n (init ++ [last]))
+        (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+          (List.replicate (init.length + 2) .Q))) start := by
+  sorry
 
 theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
     formulaWord n (init ++ [last]) =
