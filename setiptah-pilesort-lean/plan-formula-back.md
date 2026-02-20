@@ -5,12 +5,14 @@
 ### Already proved
 - `formulaWord_correct` backward body: uses `formulaWord_penalty_ext` (sorry) +
   `applyWord_append_truncate` + arithmetic to show `¬∃ vars → ¬accepts`. ✅
-- `formulaWord_split`: `formulaWord n (init ++ [last]) = (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last`. ✅
+- `formulaWord_split`: decomposes `formulaWord n (init ++ [last])` into
+  prefix clause+NEXT pairs followed by the last clauseWord. ✅
 - `replicate_succ_append`: `List.replicate (m + 1) x = List.replicate m x ++ [x]`. ✅
+- `canAccept`: recursive acceptance predicate defined in Reduction.lean. ✅
 - VirtualPileTypes helpers: `virtualPileTypes_replicate_Q_comp`, `virtualPileTypes_append`,
   `flatten_replicate_length`, `virtualPileTypes_length`. ✅
 - Mono helpers: `applyWord_append`, `applyWord_mono`, `applyWord_ge`,
-  `applyWord_append_truncate`. ✅
+  `applyWord_append_truncate`, `compile_append_left`. ✅
 
 ### Remaining sorry
 - `formulaWord_penalty_ext` — the main lemma (this plan)
@@ -27,132 +29,139 @@
 
 where `types_ext = virtualPileTypes ALIGN (replicate (clauses.length + 1) xs).flatten`.
 
-## Strategy: split into prefix + last clauseWord
+## Organizing principle: `canAccept`
 
-Using `formulaWord_split`, decompose `formulaWord n clauses` into:
-```
-(init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last
-```
-where `clauses = init ++ [last]`.
+### Definition (already in Reduction.lean)
 
-By `applyWord_append`, the result splits: process the prefix from state 0,
-then process the last clauseWord from the resulting state.
-
-This avoids the off-by-1 problem: working with the full word (all clauses with
-trailing NEXT) would give `fullWord_result ≥ CHAIN_DISQ + m*block`, but
-`formulaWord_result ≥ fullWord_result - 1` (from `compile_step_le`), losing
-exactly `CHAIN_DISQ = 1`. By ending with a bare clauseWord instead, parts 2/3
-of `clauseWord_correct` give the bound directly.
-
-## Helper lemmas needed
-
-### 1. `list_split_last` (list manipulation)
-
-```
-clauses ≠ [] → ∃ init last, clauses = init ++ [last] ∧ init.length + 1 = clauses.length
+```lean
+def canAccept (n : Nat) (xs : List PileType) (vars : List Bool)
+    (prefix_sat : Prop) (clauses_ : List Clause) (last : Clause)
+    (start : Nat) : Prop :=
+  let types := virtualPileTypes (virtualPileTypes ALIGN xs)
+      (List.replicate (clauses_.length + 2) .Q)
+  match clauses_ with
+  | [] =>
+    prefix_sat ∧ satisfiesClause vars last ∧
+    applyWord (clauseWord n last) (compile types) start < types.length
+  | c :: rest =>
+    canAccept n xs vars (prefix_sat ∧ satisfiesClause vars c) rest last
+      (applyWord (clauseWord n c ++ NEXT) (compile types) start)
 ```
 
-Standard list fact. Proof by cases on `clauses.reverse` or induction.
+Takes `vars` as an explicit parameter — no quantifiers inside the definition.
+At each level, types have `clauses_.length + 2` Q-replications (one per
+remaining clause in `clauses_`, one for `last`, one vestigial block).
 
-### 2. `satisfiesFormula_append` (definition unfolding)
+### Unrolling
+
+`canAccept(vars, True, [c₀, ..., c_k], last, 0)` unfolds to:
+```
+sat(c₀) ∧ sat(c₁) ∧ ... ∧ sat(c_k) ∧ sat(last) ∧ (result < types.length)
+```
+i.e., `satisfiesFormula vars (clauses_ ++ [last]) ∧ accepted`.
+
+### Key property: changing types at each level
+
+The types shrink by one Q-replication at each recursive step. This means:
+- The `mid_state` passed to the recursive call was computed on the outer types
+  (with one more block), not the inner types.
+- `compile_append_left` bridges this: when the state stays within the smaller
+  types' range, the computation on larger types agrees with the smaller types.
+- The state always stays within range because:
+  - START_POS track: state = j*block < (remaining + 2)*block = types.length ✓
+  - CHAIN_DISQ track: state = 1 + j*block < (remaining + 2)*block ✓
+    (since block ≥ 6, so 1 < block)
+
+## Two lemmas about `canAccept`
+
+### Lemma 1: `canAccept_of_sat`
 
 ```
-satisfiesFormula vars (init ++ [last]) ↔
-  satisfiesFormula vars init ∧ satisfiesClause vars last
+vars.length = n → xs = embedVars vars ++ [Q] →
+  satisfiesFormula vars (clauses_ ++ [last]) →
+  start = START_POS + j * block →
+  canAccept n xs vars True clauses_ last start
 ```
 
-Needed to decompose the `¬∃` hypothesis: if ¬(∃ vars satisfying all clauses),
-and all init clauses are satisfied, then the last clause must fail.
+**Proof by induction on `clauses_`.**
 
-### 3. `prefix_invariant` (main inductive lemma)
+Each step: `clauseWord_correct` part 1 (clause satisfied) gives
+`END_POS + (k+n)*ALIGN.length`, then `next_correct` advances to
+`START_POS + (j+1)*block`. The satisfaction conjunction accumulates
+via `satisfiesFormula` distributing over the list.
 
-After processing `j` clause+NEXT pairs on `types_ext` starting from state 0:
+Base case: `clauseWord_correct` part 1 gives result = `END_POS + (k+n)*ALIGN.length`,
+which is `< types.length` (types has 2 copies, result is within the first copy).
+
+### Lemma 2: `not_canAccept_bound`
 
 ```
-let s := applyWord (cs.flatMap (fun c => clauseWord n c ++ NEXT)) (compile types_ext) 0
-let block := xs.length * ALIGN.length
-(s = START_POS + j * block
-  ∧ ∃ vars, vars.length = n ∧ xs = embedVars vars ++ [Q] ∧ satisfiesFormula vars cs)
-∨ (s ≥ CHAIN_DISQ + j * block)
+(¬prefix_sat ∨ start ≥ CHAIN_DISQ + j * block) →
+  applyWord (remaining_formula_word) (compile types) start ≥
+    CHAIN_DISQ + (j + clauses_.length + 1) * block
 ```
 
-where `j = cs.length` and types_ext has enough blocks (≥ j + 2 copies of xs).
+This implies `¬canAccept` (since `result ≥ types.length > boundary`) but
+also gives the specific numerical bound needed for `formulaWord_penalty_ext`.
 
-**Proof by induction on cs.**
+**Proof by induction on `clauses_`.**
 
-**Base case (cs = []):** s = 0 = START_POS. Left disjunct holds with
-`satisfiesFormula vars []` vacuously true (if ∃ matching vars) or right
-disjunct holds vacuously (0 ≥ CHAIN_DISQ + 0? No, 0 < 1). So we need the
-left disjunct. The ∃ vars condition: either some vars matches xs, in which
-case left holds, or no vars matches, in which case... hmm.
+At each step, two cases:
+- **¬prefix_sat or start ≥ CHAIN_DISQ:** By `clauseWord_correct` part 3 +
+  `applyWord_mono`, penalty propagates. NEXT preserves via `applyWord_ge`.
+  Recurse with `start ≥ CHAIN_DISQ + (j+1)*block`.
+- **prefix_sat but clause c unsatisfied (will be handled at assembly):**
+  `clauseWord_correct` part 2 triggers penalty. Then recurse as above.
 
-**Revised base case:** Actually, the left disjunct requires ∃ vars with
-`xs = embedVars vars ++ [Q]`. If xs has no such form, neither disjunct
-holds at j=0 since s=0 < CHAIN_DISQ=1. So the invariant needs adjustment.
+Note: the `¬prefix_sat` case covers both "some previous clause was unsatisfied"
+and "xs doesn't encode any valid vars" — `canAccept` doesn't distinguish these.
 
-**Better formulation:**
-```
-(s = START_POS + j * block)
-∨ (s ≥ CHAIN_DISQ + j * block)
-```
+## Assembly of `formulaWord_penalty_ext`
 
-Drop the satisfaction condition from the disjunction. The satisfaction
-information is only needed at the final step (to know which case applies
-to the last clause). Handle it there using the global ¬∃ hypothesis.
+1. **Split clauses.** `clauses ≠ []` → `∃ init last, clauses = init ++ [last]`
+   (via `list_split_last`).
 
-**Base case:** s = 0 = START_POS + 0*block. Left disjunct. ✓
+2. **Case analysis on vars.** Since `¬(∃ vars, ... ∧ satisfiesFormula vars clauses)`,
+   for any fixed `vars` matching xs, some clause is unsatisfied. In particular,
+   either no vars matches xs at all, or the unique matching vars fails some clause.
 
-**Inductive step (cs = cs' ++ [c]):** Given invariant for cs', prove for cs.
-Process clauseWord(c) + NEXT:
+3. **Apply lemma 2.** Starting from state 0 = START_POS with `prefix_sat = True`:
+   - If the first clause is unsatisfied: `prefix_sat ∧ sat(c₀)` becomes
+     `True ∧ False = False`, so `¬prefix_sat` at the next level. Lemma 2 applies.
+   - If the first clause is satisfied but a later one isn't: `prefix_sat` stays
+     true through early clauses (like lemma 1), until the failing clause makes
+     it false. Then lemma 2 applies for the remainder.
+   - If start ≥ CHAIN_DISQ at any point: lemma 2 applies directly.
 
-- **From left (s = START_POS + j*block):**
-  Apply `clauseWord_correct` with A0 = (replicate j xs).flatten, A1 = xs,
-  A2 = remaining copies. k = j*xs.length.
-  - Part 1 (∃ satisfying vars for c): → END_POS + (k+n)*align_len.
-    Then `next_correct`: → START_POS + (k+n+1)*align_len = START_POS + (j+1)*block.
-    Left disjunct for j+1. ✓
-  - Part 2 (no satisfying vars for c): → ≥ CHAIN_DISQ + (k+n+1)*align_len
-    = CHAIN_DISQ + (j+1)*block. Then `applyWord_ge` for NEXT preserves bound.
-    Right disjunct for j+1. ✓
+   In all cases, `result ≥ CHAIN_DISQ + m * block` on the level-local types.
 
-- **From right (s ≥ CHAIN_DISQ + j*block):**
-  By `applyWord_mono`, result ≥ result starting from CHAIN_DISQ + j*block.
-  `clauseWord_correct` part 3: → ≥ CHAIN_DISQ + (k+n+1)*align_len = CHAIN_DISQ + (j+1)*block.
-  Then `applyWord_ge` for NEXT preserves bound.
-  Right disjunct for j+1. ✓
+4. **Connect to full types.** The level-local types at the top level have
+   `init.length + 2 = clauses.length + 1` Q copies, matching `types_ext`.
+   The computation at the top level IS the computation on `types_ext`.
+   So the bound transfers directly.
 
-### 4. Assembly of `formulaWord_penalty_ext`
-
-Given `clauses ≠ []` (implied by the types having `clauses.length + 1` blocks):
-
-1. Split `clauses = init ++ [last]` using `list_split_last`.
-2. Rewrite with `formulaWord_split`: word = prefix ++ clauseWord(last).
-3. Apply `applyWord_append` to get intermediate state `s_mid`.
-4. Apply `prefix_invariant` to get `s_mid` is either START_POS or ≥ CHAIN_DISQ
-   at offset `init.length * block`.
-5. Apply `clauseWord_correct` to the last clause:
-   - **From right (s_mid ≥ CHAIN_DISQ + init.length*block):**
-     Part 3 → ≥ CHAIN_DISQ + m*block. Done.
-   - **From left (s_mid = START_POS + init.length*block):**
-     Need to show part 2's condition holds for `last`. From `¬(∃ vars, ... ∧
-     satisfiesFormula vars clauses)` and `satisfiesFormula_append`, if there
-     were vars satisfying all init clauses AND `last`, that would contradict
-     the hypothesis. But we need the stronger statement: there's no vars
-     matching xs that satisfies `last` (part 2's exact condition).
-
-     Two sub-cases:
-     - xs has no matching vars at all: part 2 holds trivially.
-     - xs = embedVars(vars) ++ [Q] for unique vars: if vars satisfied all
-       init clauses but not last, part 2 holds. If vars didn't satisfy some
-       init clause, we'd be in the right disjunct already (contradiction
-       with being in the left). So vars must have satisfied all init clauses,
-       hence must fail on last.
-
-     Either way, part 2 → ≥ CHAIN_DISQ + m*block. Done.
+   For inner levels (smaller types), `applyWord_append_truncate` shows the
+   computation on larger types ≥ computation on smaller types (when the
+   smaller types' result hits the sink). Since we're proving a lower bound,
+   the larger-types result is at least as large.
 
 ## Proof order
 
-1. `list_split_last` — small list lemma
-2. `satisfiesFormula_append` — definition unfolding
-3. `prefix_invariant` — main inductive argument (most work)
-4. `formulaWord_penalty_ext` — assembly using 1-3 + `formulaWord_split`
+1. `list_split_last` — split non-empty list into init ++ [last]
+2. `satisfiesFormula_append` — `satisfiesFormula vars (A ++ [c]) ↔ satisfiesFormula vars A ∧ satisfiesClause vars c`
+3. `canAccept_of_sat` — satisfaction → canAccept (uses clauseWord_correct part 1 + next_correct)
+4. `not_canAccept_bound` — penalty conditions → numerical bound (uses clauseWord_correct parts 2/3 + mono)
+5. `formulaWord_penalty_ext` — assembly using 1–4 + `formulaWord_split`
+
+## Open question
+
+The exact interaction between changing types and `not_canAccept_bound` needs care.
+The bound at each recursive level is stated for that level's types. Connecting
+across levels to get the bound on the full `types_ext` requires either:
+- Showing the top-level computation directly gives the bound (since the top-level
+  types ARE `types_ext`), or
+- Using `applyWord_append_truncate` to relate inner-level results to outer-level
+  results.
+
+The first option is simpler if the induction is structured so that the top-level
+call to `not_canAccept_bound` directly gives the result on `types_ext`.
