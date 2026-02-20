@@ -125,6 +125,22 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
       CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
+/-- formulaState_eq: The tail-recursive formulaState computation equals
+    the direct application of formulaWord to the compiled machine.
+
+    Given clauses = init ++ [last], the types have (init.length + 2)
+    Q-replications of the inner block (virtualPileTypes ALIGN xs):
+    - init.length blocks for the remaining clauses in init,
+    - 1 block for last,
+    - 1 vestigial block (so clauseWord_correct part 3 has room).
+
+    The RHS applies the full formulaWord to a single type list.
+    The LHS (formulaState) uses shrinking types at each recursive level.
+    The shift lemma bridges these views: after clauseWord c ++ NEXT
+    advances past the first block (h_advance), we peel off that block
+    and recurse on inner types with the remaining formula word. -/
+theorem formulaState_eq : sorry := sorry
+
 theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
     formulaWord n (init ++ [last]) =
     (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last := by
