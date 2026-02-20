@@ -104,6 +104,17 @@ theorem compile_append_right (A B : List PileType) (act : Action) (s : Nat) :
     have h1 : ¬(A.length + s < (A ++ B).length) := by simp; omega
     rw [dif_neg h1, dif_neg hs]
 
+/-- applyWord on a concatenation at a position in the right part
+    equals the left length plus applyWord on the right part alone. -/
+theorem applyWord_compile_append_shift (word : List Action) (A B : List PileType) (s : Nat) :
+    applyWord word (compile (A ++ B)) (A.length + s) =
+    A.length + applyWord word (compile B) s := by
+  induction word generalizing s with
+  | nil => simp [applyWord]
+  | cons act rest ih =>
+    simp [applyWord, compile_append_right]
+    exact ih _
+
 /-- Word applied to a truncated machine: result is min of full result and prefix length.
     If the word on A ++ B ends within A, the word on A alone reaches the same state.
     If the word on A ++ B crosses into B, the word on A alone reaches the sink A.length. -/
