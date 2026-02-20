@@ -8,11 +8,11 @@
 - `formulaWord_split`: decomposes `formulaWord n (init ++ [last])` into
   prefix clause+NEXT pairs followed by the last clauseWord. ✅
 - `replicate_succ_append`: `List.replicate (m + 1) x = List.replicate m x ++ [x]`. ✅
-- `canAccept`: recursive acceptance predicate defined in Reduction.lean. ✅
+- `formulaState`: tail-recursive endpoint computation defined in Reduction.lean. ✅
 - VirtualPileTypes helpers: `virtualPileTypes_replicate_Q_comp`, `virtualPileTypes_append`,
   `flatten_replicate_length`, `virtualPileTypes_length`. ✅
 - Mono helpers: `applyWord_append`, `applyWord_mono`, `applyWord_ge`,
-  `applyWord_append_truncate`, `compile_append_left`. ✅
+  `applyWord_append_truncate`, `compile_append_left`, `compile_append_right`. ✅
 
 ### Remaining sorry
 - `formulaWord_penalty_ext` — the main lemma (this plan)
@@ -29,139 +29,145 @@
 
 where `types_ext = virtualPileTypes ALIGN (replicate (clauses.length + 1) xs).flatten`.
 
-## Organizing principle: `canAccept`
+## Organizing principle: `formulaState`
 
-### Definition (already in Reduction.lean)
+### Definition (in Reduction.lean)
 
 ```lean
-def canAccept (n : Nat) (xs : List PileType) (vars : List Bool)
-    (prefix_sat : Prop) (clauses_ : List Clause) (last : Clause)
-    (start : Nat) : Prop :=
+def formulaState (n : Nat) (xs : List PileType)
+    (clauses_ : List Clause) (last : Clause) (start : Nat) : Nat :=
   let types := virtualPileTypes (virtualPileTypes ALIGN xs)
       (List.replicate (clauses_.length + 2) .Q)
+  let block := xs.length * ALIGN.length
   match clauses_ with
-  | [] =>
-    prefix_sat ∧ satisfiesClause vars last ∧
-    applyWord (clauseWord n last) (compile types) start < types.length
+  | [] => applyWord (clauseWord n last) (compile types) start
   | c :: rest =>
-    canAccept n xs vars (prefix_sat ∧ satisfiesClause vars c) rest last
-      (applyWord (clauseWord n c ++ NEXT) (compile types) start)
+    block + formulaState n xs rest last
+      (applyWord (clauseWord n c ++ NEXT) (compile types) start - block)
 ```
 
-Takes `vars` as an explicit parameter — no quantifiers inside the definition.
-At each level, types have `clauses_.length + 2` Q-replications (one per
-remaining clause in `clauses_`, one for `last`, one vestigial block).
+Tail-recursive computation of the formulaWord endpoint. At each level,
+types have `clauses_.length + 2` Q-replications (remaining + last + vestigial).
 
-### Unrolling
+The recursive case peels off one clause and adds one block to the result.
+The `- block` adjusts the mid state from outer-types coordinates to
+inner-types coordinates (justified by `compile_append_right`: outer types =
+one block ++ inner types, so positions shift by exactly one block).
 
-`canAccept(vars, True, [c₀, ..., c_k], last, 0)` unfolds to:
+### Key state transitions per clause
+
+Let `block = xs.length * ALIGN.length`, `mid = applyWord(clauseWord c ++ NEXT)(compile types)(start)`.
+
+- `start = START_POS`, clause satisfied: `mid = block + START_POS`
+  → inner start = `START_POS` (good track preserved)
+- `start = START_POS`, clause unsatisfied: `mid ≥ block + CHAIN_DISQ`
+  → inner start `≥ CHAIN_DISQ` (shifts to penalty track)
+- `start ≥ CHAIN_DISQ`: part 3 + mono → `mid ≥ block + CHAIN_DISQ`
+  → inner start `≥ CHAIN_DISQ` (penalty propagates)
+
+### Total result
+
+`formulaState(init, last, 0)` accumulates `init.length * block + base_result`:
+
+- **All satisfied:** base at `START_POS`, result = `END_POS + n*ALIGN.length < block`
+  → total `< m * block` (accepted)
+- **Some clause failed:** base at `≥ CHAIN_DISQ`, result `≥ CHAIN_DISQ + block`
+  → total `≥ m * block + CHAIN_DISQ` (penalty) ✓
+
+## Lemmas to prove
+
+### 1. `applyWord_compile_append_shift`
+
 ```
-sat(c₀) ∧ sat(c₁) ∧ ... ∧ sat(c_k) ∧ sat(last) ∧ (result < types.length)
+applyWord word (compile (A ++ B)) (A.length + s) = A.length + applyWord word (compile B) s
 ```
-i.e., `satisfiesFormula vars (clauses_ ++ [last]) ∧ accepted`.
 
-### Key property: changing types at each level
+Follows from `compile_append_right` by induction on `word`. This is the
+shift lemma that justifies `formulaState`'s recursive structure.
 
-The types shrink by one Q-replication at each recursive step. This means:
-- The `mid_state` passed to the recursive call was computed on the outer types
-  (with one more block), not the inner types.
-- `compile_append_left` bridges this: when the state stays within the smaller
-  types' range, the computation on larger types agrees with the smaller types.
-- The state always stays within range because:
-  - START_POS track: state = j*block < (remaining + 2)*block = types.length ✓
-  - CHAIN_DISQ track: state = 1 + j*block < (remaining + 2)*block ✓
-    (since block ≥ 6, so 1 < block)
+### 2. `formulaState_eq` (equivalence)
 
-## Two lemmas about `canAccept`
+```
+formulaState n xs init last 0 = applyWord (formulaWord n (init ++ [last])) (compile types_ext) 0
+```
 
-### Lemma 1: `canAccept_of_sat`
+where `types_ext` has `init.length + 2` Q-replications (matching the top level).
+Proof by induction on `init`, using `formulaWord_split`, `applyWord_append`,
+and the shift lemma.
+
+### 3. `formulaState_forward`
 
 ```
 vars.length = n → xs = embedVars vars ++ [Q] →
   satisfiesFormula vars (clauses_ ++ [last]) →
-  start = START_POS + j * block →
-  canAccept n xs vars True clauses_ last start
+  start = START_POS →
+  formulaState n xs clauses_ last start < xs.length * ALIGN.length
 ```
 
-**Proof by induction on `clauses_`.**
+i.e., when all clauses satisfied and starting from START_POS, the base-level
+result (before block accumulation) is < block, so the total is
+`init.length * block + (something < block)`.
 
-Each step: `clauseWord_correct` part 1 (clause satisfied) gives
-`END_POS + (k+n)*ALIGN.length`, then `next_correct` advances to
-`START_POS + (j+1)*block`. The satisfaction conjunction accumulates
-via `satisfiesFormula` distributing over the list.
+Proof by induction on `clauses_`. Each step: `clauseWord_correct` part 1
+gives `END_POS + (k+n)*ALIGN.length`, then `next_correct` advances to
+`START_POS + block`, so inner start = `START_POS`. Recurse.
 
-Base case: `clauseWord_correct` part 1 gives result = `END_POS + (k+n)*ALIGN.length`,
-which is `< types.length` (types has 2 copies, result is within the first copy).
-
-### Lemma 2: `not_canAccept_bound`
+### 4. `formulaState_penalty`
 
 ```
-(¬prefix_sat ∨ start ≥ CHAIN_DISQ + j * block) →
-  applyWord (remaining_formula_word) (compile types) start ≥
-    CHAIN_DISQ + (j + clauses_.length + 1) * block
+start ≥ CHAIN_DISQ →
+  formulaState n xs clauses_ last start ≥
+    clauses_.length * block + CHAIN_DISQ + block
 ```
 
-This implies `¬canAccept` (since `result ≥ types.length > boundary`) but
-also gives the specific numerical bound needed for `formulaWord_penalty_ext`.
+i.e., once on the penalty track, the base-level result is ≥ CHAIN_DISQ + block,
+and each peeled clause adds a block. Total ≥ `(clauses_.length + 1) * block + CHAIN_DISQ`.
 
-**Proof by induction on `clauses_`.**
+Proof by induction on `clauses_`. Each step: `clauseWord_correct` part 3 +
+`applyWord_mono` gives `mid ≥ block + CHAIN_DISQ`, so inner start `≥ CHAIN_DISQ`.
+Recurse.
 
-At each step, two cases:
-- **¬prefix_sat or start ≥ CHAIN_DISQ:** By `clauseWord_correct` part 3 +
-  `applyWord_mono`, penalty propagates. NEXT preserves via `applyWord_ge`.
-  Recurse with `start ≥ CHAIN_DISQ + (j+1)*block`.
-- **prefix_sat but clause c unsatisfied (will be handled at assembly):**
-  `clauseWord_correct` part 2 triggers penalty. Then recurse as above.
+### 5. `satisfiesFormula_append`
 
-Note: the `¬prefix_sat` case covers both "some previous clause was unsatisfied"
-and "xs doesn't encode any valid vars" — `canAccept` doesn't distinguish these.
+```
+satisfiesFormula vars (A ++ [c]) ↔ satisfiesFormula vars A ∧ satisfiesClause vars c
+```
+
+Small lemma, `simp [satisfiesFormula, List.mem_append]` or similar.
+
+### 6. `list_split_last`
+
+```
+clauses ≠ [] → ∃ init last, clauses = init ++ [last] ∧ init.length + 1 = clauses.length
+```
 
 ## Assembly of `formulaWord_penalty_ext`
 
-1. **Split clauses.** `clauses ≠ []` → `∃ init last, clauses = init ++ [last]`
-   (via `list_split_last`).
+1. **Split** `clauses = init ++ [last]` via `list_split_last`.
 
-2. **Case analysis on vars.** Since `¬(∃ vars, ... ∧ satisfiesFormula vars clauses)`,
-   for any fixed `vars` matching xs, some clause is unsatisfied. In particular,
-   either no vars matches xs at all, or the unique matching vars fails some clause.
+2. **Rewrite** via `formulaState_eq`:
+   `applyWord (formulaWord n clauses) (compile types_ext) 0 = formulaState n xs init last 0`
 
-3. **Apply lemma 2.** Starting from state 0 = START_POS with `prefix_sat = True`:
-   - If the first clause is unsatisfied: `prefix_sat ∧ sat(c₀)` becomes
-     `True ∧ False = False`, so `¬prefix_sat` at the next level. Lemma 2 applies.
-   - If the first clause is satisfied but a later one isn't: `prefix_sat` stays
-     true through early clauses (like lemma 1), until the failing clause makes
-     it false. Then lemma 2 applies for the remainder.
-   - If start ≥ CHAIN_DISQ at any point: lemma 2 applies directly.
+3. **Case analysis.** Since `¬(∃ vars, ... ∧ satisfiesFormula vars clauses)`:
+   - If no vars matches xs: every clause triggers part 2. The first clause
+     shifts inner start to `≥ CHAIN_DISQ`. Apply `formulaState_penalty` to
+     the remaining clauses.
+   - If unique vars matches xs but fails some clause j: clauses before j
+     are satisfied (inner start stays `START_POS`). Clause j shifts to
+     `≥ CHAIN_DISQ`. Apply `formulaState_penalty` to the rest.
+   In both cases: `formulaState ≥ m * block + CHAIN_DISQ`. ✓
 
-   In all cases, `result ≥ CHAIN_DISQ + m * block` on the level-local types.
-
-4. **Connect to full types.** The level-local types at the top level have
-   `init.length + 2 = clauses.length + 1` Q copies, matching `types_ext`.
-   The computation at the top level IS the computation on `types_ext`.
-   So the bound transfers directly.
-
-   For inner levels (smaller types), `applyWord_append_truncate` shows the
-   computation on larger types ≥ computation on smaller types (when the
-   smaller types' result hits the sink). Since we're proving a lower bound,
-   the larger-types result is at least as large.
+   More precisely: the first unsatisfied clause gives a `formulaState` that
+   decomposes as `j * block + formulaState(remaining, last, ≥ CHAIN_DISQ)`.
+   By `formulaState_penalty`: `formulaState(remaining, ...) ≥ (m - j) * block + CHAIN_DISQ`.
+   Total: `j * block + (m - j) * block + CHAIN_DISQ = m * block + CHAIN_DISQ`. ✓
 
 ## Proof order
 
-1. `list_split_last` — split non-empty list into init ++ [last]
-2. `satisfiesFormula_append` — `satisfiesFormula vars (A ++ [c]) ↔ satisfiesFormula vars A ∧ satisfiesClause vars c`
-3. `canAccept_of_sat` — satisfaction → canAccept (uses clauseWord_correct part 1 + next_correct)
-4. `not_canAccept_bound` — penalty conditions → numerical bound (uses clauseWord_correct parts 2/3 + mono)
-5. `formulaWord_penalty_ext` — assembly using 1–4 + `formulaWord_split`
-
-## Open question
-
-The exact interaction between changing types and `not_canAccept_bound` needs care.
-The bound at each recursive level is stated for that level's types. Connecting
-across levels to get the bound on the full `types_ext` requires either:
-- Showing the top-level computation directly gives the bound (since the top-level
-  types ARE `types_ext`), or
-- Using `applyWord_append_truncate` to relate inner-level results to outer-level
-  results.
-
-The first option is simpler if the induction is structured so that the top-level
-call to `not_canAccept_bound` directly gives the result on `types_ext`.
+1. `applyWord_compile_append_shift` — shift lemma (in Mono.lean)
+2. `formulaState_eq` — equivalence to applyWord
+3. `satisfiesFormula_append` — small helper
+4. `list_split_last` — small helper
+5. `formulaState_forward` — forward case (by induction, uses clauseWord_correct part 1)
+6. `formulaState_penalty` — penalty case (by induction, uses clauseWord_correct part 3)
+7. `formulaWord_penalty_ext` — assembly

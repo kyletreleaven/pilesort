@@ -80,22 +80,21 @@ def accepts (types : List PileType) (word : List Action) : Prop :=
 def satisfiesFormula (vars : List Bool) (clauses : List Clause) : Prop :=
   ∀ clause ∈ clauses, satisfiesClause vars clause
 
-/-- Recursive acceptance predicate. Unfolds the clause list one at a time,
-    accumulating clause satisfactions into `prefix_sat`. At each level,
-    the types have `clauses_.length + 2` Q-replications: one per remaining
-    clause (including `last`), plus one vestigial block. -/
-def canAccept (n : Nat) (xs : List PileType) (vars : List Bool)
-    (prefix_sat : Prop) (clauses_ : List Clause) (last : Clause)
-    (start : Nat) : Prop :=
+/-- Tail-recursive computation of the formulaWord endpoint, specialized for
+    the clause-by-clause structure. At each level, the types have
+    `clauses_.length + 2` Q-replications (remaining + last + vestigial).
+    The recursive case peels off one clause, accumulating one block's worth
+    of offset via the shift property of `compile_append_right`. -/
+def formulaState (n : Nat) (xs : List PileType)
+    (clauses_ : List Clause) (last : Clause) (start : Nat) : Nat :=
   let types := virtualPileTypes (virtualPileTypes ALIGN xs)
       (List.replicate (clauses_.length + 2) .Q)
+  let block := xs.length * ALIGN.length
   match clauses_ with
-  | [] =>
-    prefix_sat ∧ satisfiesClause vars last ∧
-    applyWord (clauseWord n last) (compile types) start < types.length
+  | [] => applyWord (clauseWord n last) (compile types) start
   | c :: rest =>
-    canAccept n xs vars (prefix_sat ∧ satisfiesClause vars c) rest last
-      (applyWord (clauseWord n c ++ NEXT) (compile types) start)
+    block + formulaState n xs rest last
+      (applyWord (clauseWord n c ++ NEXT) (compile types) start - block)
 
 /-- Forward direction: a satisfying assignment implies acceptance. -/
 theorem formulaWord_forward (n : Nat) (clauses : List Clause)
