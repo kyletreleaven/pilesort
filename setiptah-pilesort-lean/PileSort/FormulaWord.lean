@@ -89,16 +89,38 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
       CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
-/-- If the starting state is at or above CHAIN_DISQ, then formulaState
-    accumulates at least (clauses_.length + 1) full blocks plus CHAIN_DISQ.
-    Each clause's clauseWord keeps the state above CHAIN_DISQ (part 3),
-    and the block accumulation adds one block per clause in init. -/
 -- If clauseWord_correct needs to be assumed rather than used directly:
 -- (h_penalty : ∀ (c : Clause) (m : Nat) (s : Nat), m ≥ 2 → CHAIN_DISQ ≤ s →
 --   CHAIN_DISQ + xs.length * ALIGN.length ≤
 --     applyWord (clauseWord n c)
 --       (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
 --         (List.replicate m .Q))) s)
+
+/-- If start = START_POS and all init clauses are satisfied, the last clause
+    runs from START_POS (accumulated blocks pass through cleanly).
+    If some init clause is unsatisfied, the penalty bound applies. -/
+theorem formulaState_sat (n : Nat) (xs : List PileType)
+    (clauses_ : List Clause) (last : Clause)
+    (vars : List Bool)
+    (hxs_len : xs.length = n + 1)
+    (hn : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q]) :
+    -- All init clauses satisfied: last clause runs from START_POS
+    (satisfiesFormula vars clauses_ →
+      formulaState n xs clauses_ last START_POS =
+        clauses_.length * (xs.length * ALIGN.length) +
+        formulaState n xs [] last START_POS)
+    ∧
+    -- Some init clause unsatisfied: penalty bound
+    (¬ satisfiesFormula vars clauses_ →
+      formulaState n xs clauses_ last START_POS ≥
+        (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ) := by
+  sorry
+
+/-- If the starting state is at or above CHAIN_DISQ, then formulaState
+    accumulates at least (clauses_.length + 1) full blocks plus CHAIN_DISQ.
+    Each clause's clauseWord keeps the state above CHAIN_DISQ (part 3),
+    and the block accumulation adds one block per clause in init. -/
 theorem formulaState_penalty (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause) (start : Nat)
     (hstart : CHAIN_DISQ ≤ start) :
