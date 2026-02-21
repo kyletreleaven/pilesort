@@ -125,6 +125,31 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
       CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
+theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
+    formulaWord n (init ++ [last]) =
+    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last := by
+  unfold formulaWord
+  rw [List.flatMap_append]
+  simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
+  rw [← List.append_assoc]
+  show ((init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last ++ NEXT).dropLast =
+    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last
+  unfold NEXT
+  rw [List.dropLast_concat]
+
+/-- Peeling one Q from the front of a replicated virtualPileTypes. -/
+private theorem virtualPileTypes_replicate_Q_cons (inner : List PileType) (m : Nat) :
+    virtualPileTypes inner (List.replicate (m + 1) .Q) =
+    inner ++ virtualPileTypes inner (List.replicate m .Q) := by
+  simp [virtualPileTypes, List.replicate_succ, List.flatMap_cons, applyPile]
+
+/-- Peeling the first clause off a formulaWord. -/
+private theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (last : Clause) :
+    formulaWord n ((c :: rest) ++ [last]) =
+    (clauseWord n c ++ NEXT) ++ formulaWord n (rest ++ [last]) := by
+  rw [formulaWord_split, formulaWord_split]
+  simp [List.flatMap_cons, List.append_assoc]
+
 /-- formulaState_eq: The tail-recursive formulaState computation equals
     the direct application of formulaWord to the compiled machine.
 
@@ -152,7 +177,12 @@ theorem formulaState_eq (n : Nat) (xs : List PileType)
           (List.replicate (init.length + 2) .Q))) start := by
   induction init generalizing start with
   | nil =>
-    simp [formulaState, formulaWord_split]
+    -- formulaState unfolds to applyWord (clauseWord n last) (compile types₂) start
+    -- formulaWord n [last] = clauseWord n last
+    simp only [formulaState]
+    have hfw : formulaWord n ([] ++ [last]) = clauseWord n last := by
+      rw [formulaWord_split]; simp
+    rw [hfw]
   | cons c rest ih =>
     -- Unfold formulaState and apply IH
     unfold formulaState; simp only []
@@ -161,32 +191,37 @@ theorem formulaState_eq (n : Nat) (xs : List PileType)
     symm
     rw [formulaWord_cons, applyWord_append]
     -- Goal: applyWord fw (compile types_outer) mid = block + applyWord fw (compile types_inner) (mid - block)
-    sorry
-
-theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
-    formulaWord n (init ++ [last]) =
-    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last := by
-  unfold formulaWord
-  rw [List.flatMap_append]
-  simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
-  rw [← List.append_assoc]
-  show ((init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last ++ NEXT).dropLast =
-    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last
-  unfold NEXT
-  rw [List.dropLast_concat]
-
-/-- Peeling one Q from the front of a replicated virtualPileTypes. -/
-private theorem virtualPileTypes_replicate_Q_cons (inner : List PileType) (m : Nat) :
-    virtualPileTypes inner (List.replicate (m + 1) .Q) =
-    inner ++ virtualPileTypes inner (List.replicate m .Q) := by
-  simp [virtualPileTypes, List.replicate_succ, List.flatMap_cons, applyPile]
-
-/-- Peeling the first clause off a formulaWord. -/
-private theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (last : Clause) :
-    formulaWord n ((c :: rest) ++ [last]) =
-    (clauseWord n c ++ NEXT) ++ formulaWord n (rest ++ [last]) := by
-  rw [formulaWord_split, formulaWord_split]
-  simp [List.flatMap_cons, List.append_assoc]
+    -- Decompose types_outer = vpt ++ types_inner
+    have h_types : virtualPileTypes (virtualPileTypes ALIGN xs)
+        (List.replicate ((c :: rest).length + 2) .Q) =
+      virtualPileTypes ALIGN xs ++
+        virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (rest.length + 2) .Q) := by
+      show virtualPileTypes _ (List.replicate (rest.length + 2 + 1) .Q) = _
+      rw [virtualPileTypes_replicate_Q_cons]
+    rw [h_types]
+    -- h_advance: mid ≥ block
+    have hmid : xs.length * ALIGN.length ≤
+        applyWord (clauseWord n c ++ NEXT)
+          (compile (virtualPileTypes ALIGN xs ++
+            virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (rest.length + 2) .Q)))
+          start := by
+      rw [← h_types]
+      exact h_advance c ((c :: rest).length + 2) start (by omega)
+    -- Use shift lemma backwards: rewrite RHS to match LHS
+    have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
+      virtualPileTypes_length ALIGN xs
+    have h_shift := applyWord_compile_append_shift
+        (formulaWord n (rest ++ [last]))
+        (virtualPileTypes ALIGN xs)
+        (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (rest.length + 2) .Q))
+        (applyWord (clauseWord n c ++ NEXT)
+          (compile (virtualPileTypes ALIGN xs ++
+            virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (rest.length + 2) .Q)))
+          start - xs.length * ALIGN.length)
+    rw [h_len] at h_shift
+    rw [← h_shift]
+    congr 1
+    omega
 
 private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
     List.replicate (m + 1) x = List.replicate m x ++ [x] := by
