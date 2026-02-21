@@ -98,21 +98,22 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
 
 /-- If start = START_POS and all init clauses are satisfied, the last clause
     runs from START_POS (accumulated blocks pass through cleanly).
-    If some init clause is unsatisfied, the penalty bound applies. -/
+    If no satisfying assignment exists for all init clauses, the penalty
+    bound applies. This covers both "xs is not an assignment embedding"
+    and "xs is an assignment embedding but some clause is unsatisfied." -/
 theorem formulaState_sat (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
-    (vars : List Bool)
-    (hxs_len : xs.length = n + 1)
-    (hn : vars.length = n)
-    (hxs : xs = embedVars vars ++ [PileType.Q]) :
-    -- All init clauses satisfied: last clause runs from START_POS
-    (satisfiesFormula vars clauses_ →
+    (hxs_len : xs.length = n + 1) :
+    -- For any matching vars, all init clauses satisfied → last clause runs from START_POS
+    (∀ vars : List Bool, vars.length = n → xs = embedVars vars ++ [PileType.Q] →
+      satisfiesFormula vars clauses_ →
       formulaState n xs clauses_ last START_POS =
         clauses_.length * (xs.length * ALIGN.length) +
         formulaState n xs [] last START_POS)
     ∧
-    -- Some init clause unsatisfied: penalty bound
-    (¬ satisfiesFormula vars clauses_ →
+    -- No matching satisfying assignment → penalty bound
+    (¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesFormula vars clauses_) →
       formulaState n xs clauses_ last START_POS ≥
         (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ) := by
   sorry
