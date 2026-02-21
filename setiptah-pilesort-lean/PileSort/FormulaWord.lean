@@ -191,7 +191,13 @@ theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
         applyWord_mono (clauseWord n c) _ hs
 
 /-- If all init clauses are satisfied by a matching assignment, formulaState
-    accumulates blocks cleanly and the last clause runs from START_POS. -/
+    accumulates blocks cleanly and the last clause runs from START_POS.
+
+    By induction on clauses_.
+    Base: trivial (0 * block + ...).
+    Cons (c :: rest): satisfiesFormula gives satisfiesClause vars c and
+    satisfiesFormula vars rest. clauseNext_sat part 1 gives mid = block,
+    so mid - block = 0 = START_POS. IH gives the rest. -/
 theorem formulaState_forward (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (vars : List Bool)
@@ -202,7 +208,24 @@ theorem formulaState_forward (n : Nat) (xs : List PileType)
     formulaState n xs clauses_ last START_POS =
       clauses_.length * (xs.length * ALIGN.length) +
       formulaState n xs [] last START_POS := by
-  sorry
+  induction clauses_ with
+  | nil => simp [formulaState]
+  | cons c rest ih =>
+    have hsat_c : satisfiesClause vars c := hsat c (List.mem_cons_self c rest)
+    have hsat_rest : satisfiesFormula vars rest :=
+      fun cl hmem => hsat cl (List.mem_cons_of_mem c hmem)
+    have h_mid := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega)).1
+      vars hvars hxs hsat_c
+    show xs.length * ALIGN.length + formulaState n xs rest last
+        (applyWord (clauseWord n c ++ NEXT)
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+            (List.replicate ((c :: rest).length + 2) .Q))) START_POS
+         - xs.length * ALIGN.length) =
+      (c :: rest).length * (xs.length * ALIGN.length) + formulaState n xs [] last START_POS
+    rw [h_mid, show xs.length * ALIGN.length - xs.length * ALIGN.length = START_POS from by
+      unfold START_POS; omega]
+    rw [ih hsat_rest]
+    simp [List.length_cons, Nat.succ_mul]; omega
 
 /-- If no matching assignment satisfies all init clauses, formulaState
     reaches the penalty bound. Uses embedVars_injective in the cons case
