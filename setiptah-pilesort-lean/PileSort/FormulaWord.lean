@@ -190,68 +190,30 @@ theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
     _ ≤ applyWord (clauseWord n c) _ s :=
         applyWord_mono (clauseWord n c) _ hs
 
-/-- If start = START_POS and all init clauses are satisfied, the last clause
-    runs from START_POS (accumulated blocks pass through cleanly).
-    If no satisfying assignment exists for all init clauses, the penalty
-    bound applies. This covers both "xs is not an assignment embedding"
-    and "xs is an assignment embedding but some clause is unsatisfied."
-
-    Proof by induction on clauses_. Both parts proved simultaneously.
-
-    **Part 1 (forward):**
-
-    Base case (clauses_ = []): Goal is formulaState([], last, START_POS) =
-    0 * block + formulaState([], last, START_POS). Trivial.
-
-    Cons case (clauses_ = c :: rest): We have vars with
-    satisfiesFormula vars (c :: rest), giving satisfiesClause vars c
-    and satisfiesFormula vars rest.
-    - clauseNext_sat part 1: mid = block.
-    - mid - block = 0 = START_POS.
-    - IH part 1 (with same vars): formulaState(rest, last, START_POS) =
-      rest.length * block + formulaState([], last, START_POS).
-    - Arithmetic: block + rest.length * block + ... = (c::rest).length * block + ... ✓
-
-    **Part 2 (penalty):**
-
-    Base case (clauses_ = []): satisfiesFormula vars [] is vacuously true,
-    so ¬∃ means no vars matches xs at all. In particular, no vars matches
-    xs and satisfies last. clauseWord_sat part 2 gives
-    result ≥ CHAIN_DISQ + block = (0+1) * block + CHAIN_DISQ. ✓
-
-    Cons case (clauses_ = c :: rest): We have ¬(∃ vars matching xs
-    satisfying c :: rest). Case split on ∃ vars₀ matching xs satisfying c:
-
-    - ¬∃ vars satisfying c: clauseNext_sat part 2 gives mid ≥ CHAIN_DISQ + block.
-      mid - block ≥ CHAIN_DISQ. Apply formulaState_penalty to the rest.
-      Total: block + (rest.length+1) * block + CHAIN_DISQ
-           = ((c::rest).length+1) * block + CHAIN_DISQ. ✓
-
-    - ∃ vars₀ satisfying c: clauseNext_sat part 1 gives mid = block.
-      mid - block = 0 = START_POS.
-      Need IH part 2, which requires ¬(∃ vars matching xs satisfying rest).
-      Proof: suppose vars' matches xs and satisfies rest. Then
-      vars' = vars₀ by embedVars_injective (both embed to xs.dropLast).
-      So vars₀ satisfies rest, and combined with satisfying c, satisfies
-      c :: rest — contradicting the outer ¬∃.
-      IH part 2 gives: formulaState ≥ (rest.length+1) * block + CHAIN_DISQ.
-      Total: block + (rest.length+1) * block + CHAIN_DISQ
-           = ((c::rest).length+1) * block + CHAIN_DISQ. ✓ -/
-theorem formulaState_sat (n : Nat) (xs : List PileType)
+/-- If all init clauses are satisfied by a matching assignment, formulaState
+    accumulates blocks cleanly and the last clause runs from START_POS. -/
+theorem formulaState_forward (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
-    (hxs_len : xs.length = n + 1) :
-    -- For any matching vars, all init clauses satisfied → last clause runs from START_POS
-    (∀ vars : List Bool, vars.length = n → xs = embedVars vars ++ [PileType.Q] →
-      satisfiesFormula vars clauses_ →
-      formulaState n xs clauses_ last START_POS =
-        clauses_.length * (xs.length * ALIGN.length) +
-        formulaState n xs [] last START_POS)
-    ∧
-    -- No matching satisfying assignment → penalty bound
-    (¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars clauses_) →
-      formulaState n xs clauses_ last START_POS ≥
-        (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ) := by
+    (vars : List Bool)
+    (hxs_len : xs.length = n + 1)
+    (hvars : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesFormula vars clauses_) :
+    formulaState n xs clauses_ last START_POS =
+      clauses_.length * (xs.length * ALIGN.length) +
+      formulaState n xs [] last START_POS := by
+  sorry
+
+/-- If no matching assignment satisfies all init clauses, formulaState
+    reaches the penalty bound. Uses embedVars_injective in the cons case
+    to show that the unique matching vars must fail some clause. -/
+theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
+    (clauses_ : List Clause) (last : Clause)
+    (hxs_len : xs.length = n + 1)
+    (hno : ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesFormula vars clauses_)) :
+    formulaState n xs clauses_ last START_POS ≥
+      (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
   sorry
 
 /-- If the starting state is at or above CHAIN_DISQ, then formulaState
