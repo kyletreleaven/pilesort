@@ -375,6 +375,42 @@ theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
       simp [List.length_cons, Nat.succ_mul]; omega
     omega
 
+/-- If no matching assignment satisfies all of clauses_ ++ [last], then
+    formulaState reaches the penalty bound.
+    Case splits on whether init (clauses_) is satisfiable:
+    - No: formulaState_penalty_start.
+    - Yes (some vars₀ satisfies init but not last): formulaState_forward
+      gives init.length * block + formulaState([], last, START_POS),
+      and clauseWord_sat part 2 bounds the last clause. -/
+theorem formulaState_penalty_all (n : Nat) (xs : List PileType)
+    (clauses_ : List Clause) (last : Clause)
+    (hxs_len : xs.length = n + 1)
+    (hno : ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesFormula vars (clauses_ ++ [last]))) :
+    formulaState n xs clauses_ last START_POS ≥
+      (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
+  rcases Classical.em (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+      ∧ satisfiesFormula vars clauses_) with ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ | hno_init
+  · -- vars₀ satisfies init but not last
+    have hno_last : ¬ (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesClause vars last) := by
+      intro ⟨vars', hvars', hxs', hsat'⟩
+      have : vars' = vars₀ := embedVars_injective vars' vars₀ (by
+        have := hxs₀ ▸ hxs'; simp at this; exact this.symm)
+      subst this
+      exact hno ⟨vars', hvars', hxs', fun cl hmem => by
+        rcases List.mem_append.mp hmem with h | h
+        · exact hsat₀ cl h
+        · exact (List.mem_singleton.mp h) ▸ hsat'⟩
+    rw [formulaState_forward n xs clauses_ last vars₀ hxs_len hvars₀ hxs₀ hsat₀]
+    simp only [formulaState, List.length_nil, Nat.zero_add]
+    have := (clauseWord_sat n last xs 2 hxs_len (by omega)).2 hno_last
+    have : clauses_.length * (xs.length * ALIGN.length) + (xs.length * ALIGN.length + CHAIN_DISQ) =
+        (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
+      simp [Nat.succ_mul]; omega
+    omega
+  · exact formulaState_penalty_start n xs clauses_ last hxs_len hno_init
+
 theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
     formulaWord n (init ++ [last]) =
     (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last := by
