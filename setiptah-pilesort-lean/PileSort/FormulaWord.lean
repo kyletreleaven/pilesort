@@ -89,6 +89,39 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
       CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
+/-- clauseWord from START_POS on replicated types: if a matching assignment satisfies the
+    clause, reaches END_POS + n * ALIGN.length; otherwise reaches ≥ CHAIN_DISQ + block.
+    Repackages clauseWord_correct parts 1 and 2 for the List.replicate m .Q form. -/
+theorem clauseWord_sat (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat)
+    (hxs_len : xs.length = n + 1)
+    (hm : m ≥ 2) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    (∀ vars : List Bool, vars.length = n → xs = embedVars vars ++ [PileType.Q] →
+      satisfiesClause vars c →
+      applyWord (clauseWord n c) (compile types) START_POS =
+        END_POS + n * ALIGN.length)
+    ∧
+    (¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesClause vars c) →
+      CHAIN_DISQ + xs.length * ALIGN.length ≤
+        applyWord (clauseWord n c) (compile types) START_POS) := by
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp]; congr 1
+    have : m = (m - 1) + 1 := by omega
+    rw [this, List.replicate_succ, List.flatten_cons]; simp
+  rw [h_eq]
+  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hxs_len
+  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
+  constructor
+  · exact hcw.1
+  · intro hno
+    have := hcw.2.1 hno
+    calc CHAIN_DISQ + xs.length * ALIGN.length
+        = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
+      _ ≤ _ := this
+
 /-- clauseWord from ≥ CHAIN_DISQ on replicated types always reaches ≥ CHAIN_DISQ + block.
     Repackages clauseWord_correct part 3 for the List.replicate m .Q form. -/
 theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
