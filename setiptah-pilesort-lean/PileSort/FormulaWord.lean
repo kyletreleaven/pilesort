@@ -89,6 +89,23 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
       CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
+/-- If the starting state is at or above CHAIN_DISQ, then formulaState
+    accumulates at least (clauses_.length + 1) full blocks plus CHAIN_DISQ.
+    Each clause's clauseWord keeps the state above CHAIN_DISQ (part 3),
+    and the block accumulation adds one block per clause in init. -/
+-- If clauseWord_correct needs to be assumed rather than used directly:
+-- (h_penalty : ∀ (c : Clause) (m : Nat) (s : Nat), m ≥ 2 → CHAIN_DISQ ≤ s →
+--   CHAIN_DISQ + xs.length * ALIGN.length ≤
+--     applyWord (clauseWord n c)
+--       (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+--         (List.replicate m .Q))) s)
+theorem formulaState_penalty (n : Nat) (xs : List PileType)
+    (clauses_ : List Clause) (last : Clause) (start : Nat)
+    (hstart : CHAIN_DISQ ≤ start) :
+    formulaState n xs clauses_ last start ≥
+      (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
+  sorry
+
 theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
     formulaWord n (init ++ [last]) =
     (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last := by
