@@ -228,8 +228,32 @@ theorem formulaState_forward (n : Nat) (xs : List PileType)
     simp [List.length_cons, Nat.succ_mul]; omega
 
 /-- If no matching assignment satisfies all init clauses, formulaState
-    reaches the penalty bound. Uses embedVars_injective in the cons case
-    to show that the unique matching vars must fail some clause. -/
+    reaches the penalty bound.
+
+    By induction on clauses_.
+
+    Base case (clauses_ = []): satisfiesFormula vars [] is vacuously true,
+    so ¬∃ means no vars matches xs at all. In particular, no vars matches
+    xs and satisfies last. clauseWord_sat part 2 gives
+    result ≥ CHAIN_DISQ + block = (0+1) * block + CHAIN_DISQ. ✓
+
+    Cons case (clauses_ = c :: rest): Case split (Classical.em) on
+    ∃ vars₀ matching xs satisfying c.
+
+    - ¬∃ vars satisfying c: clauseNext_sat part 2 gives
+      mid ≥ CHAIN_DISQ + block, so mid - block ≥ CHAIN_DISQ.
+      Apply formulaState_penalty (the already-proved theorem).
+      Total: block + (rest.length+1) * block + CHAIN_DISQ
+           = ((c::rest).length+1) * block + CHAIN_DISQ. ✓
+
+    - ∃ vars₀ satisfying c: clauseNext_sat part 1 gives mid = block,
+      so mid - block = 0 = START_POS.
+      Derive ¬(∃ vars matching xs satisfying rest): if vars' matched xs
+      and satisfied rest, then vars' = vars₀ by embedVars_injective,
+      so vars₀ would satisfy c :: rest, contradicting the outer ¬∃.
+      Apply IH with this ¬∃.
+      Total: block + (rest.length+1) * block + CHAIN_DISQ
+           = ((c::rest).length+1) * block + CHAIN_DISQ. ✓ -/
 theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (hxs_len : xs.length = n + 1)
