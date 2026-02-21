@@ -194,7 +194,49 @@ theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
     runs from START_POS (accumulated blocks pass through cleanly).
     If no satisfying assignment exists for all init clauses, the penalty
     bound applies. This covers both "xs is not an assignment embedding"
-    and "xs is an assignment embedding but some clause is unsatisfied." -/
+    and "xs is an assignment embedding but some clause is unsatisfied."
+
+    Proof by induction on clauses_. Both parts proved simultaneously.
+
+    **Part 1 (forward):**
+
+    Base case (clauses_ = []): Goal is formulaState([], last, START_POS) =
+    0 * block + formulaState([], last, START_POS). Trivial.
+
+    Cons case (clauses_ = c :: rest): We have vars with
+    satisfiesFormula vars (c :: rest), giving satisfiesClause vars c
+    and satisfiesFormula vars rest.
+    - clauseNext_sat part 1: mid = block.
+    - mid - block = 0 = START_POS.
+    - IH part 1 (with same vars): formulaState(rest, last, START_POS) =
+      rest.length * block + formulaState([], last, START_POS).
+    - Arithmetic: block + rest.length * block + ... = (c::rest).length * block + ... ✓
+
+    **Part 2 (penalty):**
+
+    Base case (clauses_ = []): satisfiesFormula vars [] is vacuously true,
+    so ¬∃ means no vars matches xs at all. In particular, no vars matches
+    xs and satisfies last. clauseWord_sat part 2 gives
+    result ≥ CHAIN_DISQ + block = (0+1) * block + CHAIN_DISQ. ✓
+
+    Cons case (clauses_ = c :: rest): We have ¬(∃ vars matching xs
+    satisfying c :: rest). Case split on ∃ vars₀ matching xs satisfying c:
+
+    - ¬∃ vars satisfying c: clauseNext_sat part 2 gives mid ≥ CHAIN_DISQ + block.
+      mid - block ≥ CHAIN_DISQ. Apply formulaState_penalty to the rest.
+      Total: block + (rest.length+1) * block + CHAIN_DISQ
+           = ((c::rest).length+1) * block + CHAIN_DISQ. ✓
+
+    - ∃ vars₀ satisfying c: clauseNext_sat part 1 gives mid = block.
+      mid - block = 0 = START_POS.
+      Need IH part 2, which requires ¬(∃ vars matching xs satisfying rest).
+      Proof: suppose vars' matches xs and satisfies rest. Then
+      vars' = vars₀ by embedVars_injective (both embed to xs.dropLast).
+      So vars₀ satisfies rest, and combined with satisfying c, satisfies
+      c :: rest — contradicting the outer ¬∃.
+      IH part 2 gives: formulaState ≥ (rest.length+1) * block + CHAIN_DISQ.
+      Total: block + (rest.length+1) * block + CHAIN_DISQ
+           = ((c::rest).length+1) * block + CHAIN_DISQ. ✓ -/
 theorem formulaState_sat (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (hxs_len : xs.length = n + 1) :
