@@ -250,22 +250,6 @@ theorem not_satisfiesFormula_rest (n : Nat) (xs : List PileType)
     | inl h => exact h ▸ hsat₀
     | inr h => exact hsat' cl h⟩
 
-/-- If no matching assignment satisfies all init clauses, formulaState
-    reaches the penalty bound.
-
-    By induction on clauses_. Base case: clauseWord_sat part 2.
-    Cons case: clauseNext_sat gives mid, then either
-    formulaState_penalty (if ¬∃ satisfying c) or
-    IH via not_satisfiesFormula_rest (if ∃ satisfying c). -/
-theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
-    (clauses_ : List Clause) (last : Clause)
-    (hxs_len : xs.length = n + 1)
-    (hno : ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars clauses_)) :
-    formulaState n xs clauses_ last START_POS ≥
-      (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
-  sorry
-
 /-- If the starting state is at or above CHAIN_DISQ, then formulaState
     accumulates at least (clauses_.length + 1) full blocks plus CHAIN_DISQ.
 
@@ -317,6 +301,51 @@ theorem formulaState_penalty (n : Nat) (xs : List PileType)
         xs.length * ALIGN.length + (rest.length + 1) * (xs.length * ALIGN.length) := by
       simp [List.length_cons, Nat.succ_mul]; omega
     rw [h_arith]
+    omega
+
+/-- If no matching assignment satisfies all init clauses, formulaState
+    reaches the penalty bound.
+
+    By induction on clauses_. Base case: clauseWord_sat part 2.
+    Cons case: clauseNext_sat gives mid, then either
+    formulaState_penalty (if ¬∃ satisfying c) or
+    IH via not_satisfiesFormula_rest (if ∃ satisfying c). -/
+theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
+    (clauses_ : List Clause) (last : Clause)
+    (hxs_len : xs.length = n + 1)
+    (hno : ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesFormula vars clauses_)) :
+    formulaState n xs clauses_ last START_POS ≥
+      (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
+  induction clauses_ with
+  | nil =>
+    simp only [formulaState, List.length_nil, Nat.zero_add, Nat.one_mul]
+    have hno' : ¬ (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesClause vars last) :=
+      fun ⟨vars, hvars, hxs, _⟩ => hno ⟨vars, hvars, hxs, fun _ h => absurd h (List.not_mem_nil _)⟩
+    have := (clauseWord_sat n last xs 2 hxs_len (by omega)).2 hno'
+    omega
+  | cons c rest ih =>
+    let mid := applyWord (clauseWord n c ++ NEXT)
+        (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+          (List.replicate ((c :: rest).length + 2) .Q))) START_POS
+    show xs.length * ALIGN.length + formulaState n xs rest last
+        (mid - xs.length * ALIGN.length) ≥ _
+    have h_inner : formulaState n xs rest last (mid - xs.length * ALIGN.length) ≥
+        (rest.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
+      rcases Classical.em (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+          ∧ satisfiesClause vars c) with ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ | hnc
+      · have h_mid := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega)).1
+          vars₀ hvars₀ hxs₀ hsat₀
+        rw [show mid = xs.length * ALIGN.length from h_mid,
+            show xs.length * ALIGN.length - xs.length * ALIGN.length = START_POS from by
+              unfold START_POS; omega]
+        exact ih (not_satisfiesFormula_rest n xs c rest hno ⟨vars₀, hvars₀, hxs₀, hsat₀⟩)
+      · have := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega)).2 hnc
+        exact formulaState_penalty n xs rest last _ hxs_len (by omega)
+    have : ((c :: rest).length + 1) * (xs.length * ALIGN.length) =
+        xs.length * ALIGN.length + (rest.length + 1) * (xs.length * ALIGN.length) := by
+      simp [List.length_cons, Nat.succ_mul]; omega
     omega
 
 theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
