@@ -250,6 +250,33 @@ theorem not_satisfiesFormula_rest (n : Nat) (xs : List PileType)
     | inl h => exact h ▸ hsat₀
     | inr h => exact hsat' cl h⟩
 
+/-- clauseWord ++ NEXT always advances at least one block from any starting state.
+    If s = 0 = START_POS: clauseNext_sat gives ≥ block.
+    If s ≥ 1 = CHAIN_DISQ: clauseWord_penalty + applyWord_ge gives ≥ CHAIN_DISQ + block > block. -/
+theorem clauseNext_advance (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (s : Nat)
+    (hxs_len : xs.length = n + 1)
+    (hm : m ≥ 2) :
+    xs.length * ALIGN.length ≤
+      applyWord (clauseWord n c ++ NEXT)
+        (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) s := by
+  by_cases hs : s = 0
+  · -- s = 0 = START_POS
+    subst hs
+    have h := clauseNext_sat n c xs m hxs_len hm
+    rcases Classical.em (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesClause vars c) with ⟨vars, hvars, hxs, hsat⟩ | hnc
+    · have := h.1 vars hvars hxs hsat; unfold START_POS at this; omega
+    · have := h.2 hnc; unfold START_POS at this; omega
+  · -- s ≥ 1 = CHAIN_DISQ
+    have : CHAIN_DISQ ≤ s := by unfold CHAIN_DISQ; omega
+    have h_cw := clauseWord_penalty n c xs m s hxs_len hm this
+    rw [applyWord_append]
+    calc xs.length * ALIGN.length
+        ≤ CHAIN_DISQ + xs.length * ALIGN.length := by omega
+      _ ≤ applyWord (clauseWord n c) _ s := h_cw
+      _ ≤ applyWord NEXT _ _ := applyWord_ge NEXT _ _
+
 /-- If the starting state is at or above CHAIN_DISQ, then formulaState
     accumulates at least (clauses_.length + 1) full blocks plus CHAIN_DISQ.
 
