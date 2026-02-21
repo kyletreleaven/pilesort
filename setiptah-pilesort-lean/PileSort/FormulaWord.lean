@@ -89,12 +89,31 @@ theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
       CHAIN_DISQ + clauses.length * xs.length * ALIGN.length := by
   sorry
 
--- If clauseWord_correct needs to be assumed rather than used directly:
--- (h_penalty : ∀ (c : Clause) (m : Nat) (s : Nat), m ≥ 2 → CHAIN_DISQ ≤ s →
---   CHAIN_DISQ + xs.length * ALIGN.length ≤
---     applyWord (clauseWord n c)
---       (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
---         (List.replicate m .Q))) s)
+/-- clauseWord from ≥ CHAIN_DISQ on replicated types always reaches ≥ CHAIN_DISQ + block.
+    Repackages clauseWord_correct part 3 for the List.replicate m .Q form. -/
+theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (s : Nat)
+    (hxs_len : xs.length = n + 1)
+    (hm : m ≥ 2) (hs : CHAIN_DISQ ≤ s) :
+    CHAIN_DISQ + xs.length * ALIGN.length ≤
+      applyWord (clauseWord n c)
+        (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) s := by
+  -- Rewrite types to clauseWord_correct form
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp]; congr 1
+    have : m = (m - 1) + 1 := by omega
+    rw [this, List.replicate_succ, List.flatten_cons]; simp
+  rw [h_eq]
+  -- clauseWord_correct part 3 with A0=[], A1=xs, A2=remaining
+  have hcw := (clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hxs_len).2.2
+  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
+  -- mono: result(s) ≥ result(CHAIN_DISQ) ≥ bound
+  calc CHAIN_DISQ + xs.length * ALIGN.length
+      = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
+    _ ≤ applyWord (clauseWord n c) _ CHAIN_DISQ := hcw
+    _ ≤ applyWord (clauseWord n c) _ s :=
+        applyWord_mono (clauseWord n c) _ hs
 
 /-- If start = START_POS and all init clauses are satisfied, the last clause
     runs from START_POS (accumulated blocks pass through cleanly).
@@ -142,40 +161,15 @@ theorem formulaState_penalty (n : Nat) (xs : List PileType)
     (hstart : CHAIN_DISQ ≤ start) :
     formulaState n xs clauses_ last start ≥
       (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
-  -- Helper: clauseWord from ≥ CHAIN_DISQ always reaches ≥ CHAIN_DISQ + block
-  have h_cw_pen : ∀ (c : Clause) (m : Nat), m ≥ 2 → ∀ (s : Nat), CHAIN_DISQ ≤ s →
-      CHAIN_DISQ + xs.length * ALIGN.length ≤
-        applyWord (clauseWord n c)
-          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) s := by
-    intro c m hm s hs
-    -- Rewrite types to clauseWord_correct form
-    have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
-        virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
-      rw [virtualPileTypes_replicate_Q_comp]; congr 1
-      have : m = (m - 1) + 1 := by omega
-      rw [this, List.replicate_succ, List.flatten_cons]; simp
-    rw [h_eq]
-    -- clauseWord_correct part 3 with A0=[], A1=xs, A2=remaining
-    have hcw := (clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hxs_len).2.2
-    simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
-    -- mono: result(s) ≥ result(CHAIN_DISQ) ≥ bound
-    calc CHAIN_DISQ + xs.length * ALIGN.length
-        = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
-      _ ≤ applyWord (clauseWord n c) _ CHAIN_DISQ := hcw
-      _ ≤ applyWord (clauseWord n c) _ s :=
-          applyWord_mono (clauseWord n c) _ hs
-  -- Main induction
   induction clauses_ generalizing start with
   | nil =>
-    -- formulaState = applyWord(clauseWord last)(types₂)(start) ≥ CHAIN_DISQ + block
     simp only [formulaState, List.length_nil, Nat.zero_add, Nat.one_mul]
-    have := h_cw_pen last 2 (by omega) start hstart
+    have := clauseWord_penalty n last xs 2 start hxs_len (by omega) hstart
     omega
   | cons c rest ih =>
-    -- formulaState = block + formulaState(rest, last, mid - block)
     unfold formulaState; simp only []
     -- clauseWord c from start ≥ CHAIN_DISQ gives result ≥ CHAIN_DISQ + block
-    have h_cw := h_cw_pen c ((c :: rest).length + 2) (by omega) start hstart
+    have h_cw := clauseWord_penalty n c xs ((c :: rest).length + 2) start hxs_len (by omega) hstart
     -- NEXT doesn't decrease, so mid ≥ CHAIN_DISQ + block
     have h_mid : CHAIN_DISQ + xs.length * ALIGN.length ≤
         applyWord (clauseWord n c ++ NEXT)
@@ -189,9 +183,7 @@ theorem formulaState_penalty (n : Nat) (xs : List PileType)
           (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
             (List.replicate ((c :: rest).length + 2) .Q))) start
         - xs.length * ALIGN.length := by omega
-    -- IH gives bound on formulaState(rest, last, mid - block)
     have h_ih := ih _ h_sub
-    -- Decompose ((c :: rest).length + 1) * block = block + (rest.length + 1) * block
     have h_arith : ((c :: rest).length + 1) * (xs.length * ALIGN.length) =
         xs.length * ALIGN.length + (rest.length + 1) * (xs.length * ALIGN.length) := by
       simp [List.length_cons, Nat.succ_mul]; omega
