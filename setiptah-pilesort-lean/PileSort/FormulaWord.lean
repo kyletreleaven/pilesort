@@ -227,33 +227,36 @@ theorem formulaState_forward (n : Nat) (xs : List PileType)
     rw [ih hsat_rest]
     simp [List.length_cons, Nat.succ_mul]; omega
 
+/-- If no assignment satisfies c :: rest but some assignment satisfies c,
+    then no assignment satisfies rest (since xs determines vars uniquely
+    via embedVars_injective). -/
+theorem not_satisfiesFormula_rest (n : Nat) (xs : List PileType)
+    (c : Clause) (rest : List Clause)
+    (hno : ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesFormula vars (c :: rest)))
+    (hc : ∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesClause vars c) :
+    ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
+        ∧ satisfiesFormula vars rest) := by
+  obtain ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ := hc
+  intro ⟨vars', hvars', hxs', hsat'⟩
+  have heq : vars' = vars₀ := by
+    have : embedVars vars' = embedVars vars₀ := by
+      have := hxs₀ ▸ hxs'; simp at this; exact this.symm
+    exact embedVars_injective vars' vars₀ this
+  subst heq
+  exact hno ⟨vars', hvars', hxs', fun cl hmem => by
+    cases List.mem_cons.mp hmem with
+    | inl h => exact h ▸ hsat₀
+    | inr h => exact hsat' cl h⟩
+
 /-- If no matching assignment satisfies all init clauses, formulaState
     reaches the penalty bound.
 
-    By induction on clauses_.
-
-    Base case (clauses_ = []): satisfiesFormula vars [] is vacuously true,
-    so ¬∃ means no vars matches xs at all. In particular, no vars matches
-    xs and satisfies last. clauseWord_sat part 2 gives
-    result ≥ CHAIN_DISQ + block = (0+1) * block + CHAIN_DISQ. ✓
-
-    Cons case (clauses_ = c :: rest): Case split (Classical.em) on
-    ∃ vars₀ matching xs satisfying c.
-
-    - ¬∃ vars satisfying c: clauseNext_sat part 2 gives
-      mid ≥ CHAIN_DISQ + block, so mid - block ≥ CHAIN_DISQ.
-      Apply formulaState_penalty (the already-proved theorem).
-      Total: block + (rest.length+1) * block + CHAIN_DISQ
-           = ((c::rest).length+1) * block + CHAIN_DISQ. ✓
-
-    - ∃ vars₀ satisfying c: clauseNext_sat part 1 gives mid = block,
-      so mid - block = 0 = START_POS.
-      Derive ¬(∃ vars matching xs satisfying rest): if vars' matched xs
-      and satisfied rest, then vars' = vars₀ by embedVars_injective,
-      so vars₀ would satisfy c :: rest, contradicting the outer ¬∃.
-      Apply IH with this ¬∃.
-      Total: block + (rest.length+1) * block + CHAIN_DISQ
-           = ((c::rest).length+1) * block + CHAIN_DISQ. ✓ -/
+    By induction on clauses_. Base case: clauseWord_sat part 2.
+    Cons case: clauseNext_sat gives mid, then either
+    formulaState_penalty (if ¬∃ satisfying c) or
+    IH via not_satisfiesFormula_rest (if ∃ satisfying c). -/
 theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (hxs_len : xs.length = n + 1)
