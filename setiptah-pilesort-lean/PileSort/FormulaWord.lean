@@ -3,6 +3,34 @@
 
   Composes gadget theorems (clauseWord_correct) into the full
   formulaWord_correct: acceptance ↔ satisfying assignment.
+
+  ## Proof strategy
+
+  The proof is organized around `formulaState`, a tail-recursive computation
+  that mirrors the clause-by-clause structure of `formulaWord`. The key
+  connection is `formulaState_eq`: formulaState equals applyWord(formulaWord)
+  on types with one vestigial block (clauses_.length + 2 Q-replications).
+
+  Two lemmas about formulaState capture the full behavior:
+
+  1. **formulaState_penalty**: If `start ≥ CHAIN_DISQ`, then formulaState
+     ends at `≥ CHAIN_DISQ` (plus accumulated blocks). Each clause's
+     clauseWord_correct part 3 keeps the state above CHAIN_DISQ, and
+     the block accumulation adds init.length * block on top.
+
+  2. **formulaState_sat**: If `start = START_POS`, then:
+     - If all clauses in init are satisfied, the inner start stays at
+       START_POS after each clause (clauseWord_correct part 1 + NEXT).
+       The last clause then runs from START_POS.
+     - If some clause in init is unsatisfied, clauseWord_correct part 2
+       bumps the inner start to ≥ CHAIN_DISQ, and formulaState_penalty
+       handles the remaining clauses.
+
+  These give formulaWord_correct via formulaState_eq + truncation:
+  - Forward: all satisfied → formulaState ends at END_POS + n*ALIGN.length
+    in the last block, which is < block, so total < types.length → accepted.
+  - Backward: some unsatisfied → formulaState ≥ CHAIN_DISQ + all blocks
+    ≥ types.length → truncation gives sink → not accepted.
 -/
 import PileSort.Mono
 import PileSort.Reduction
