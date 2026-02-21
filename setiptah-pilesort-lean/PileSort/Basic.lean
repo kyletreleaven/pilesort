@@ -22,6 +22,15 @@ def embedVar : Bool → PileType
 def embedVars (vars : List Bool) : List PileType :=
   vars.map embedVar
 
+theorem embedVars_injective : ∀ (a b : List Bool), embedVars a = embedVars b → a = b
+  | [], [], _ => rfl
+  | [], _::_, h => by simp [embedVars, List.map] at h
+  | _::_, [], h => by simp [embedVars, List.map] at h
+  | x::xs, y::ys, h => by
+    simp [embedVars, List.map] at h
+    have hxy : x = y := by cases x <;> cases y <;> simp_all [embedVar]
+    subst hxy; exact congrArg (x :: ·) (embedVars_injective xs ys h.2)
+
 -- Decidable instances for universal/existential quantifiers over PileType.
 -- This avoids depending on Mathlib's Fintype.
 
