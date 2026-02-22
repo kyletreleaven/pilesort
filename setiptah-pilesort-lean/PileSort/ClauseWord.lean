@@ -3,6 +3,11 @@ import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Gadgets.Next
 
+/-- There exists a Boolean assignment of length n whose embedding matches xs
+    and that satisfies predicate P (typically satisfiesClause or satisfiesFormula). -/
+def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop) : Prop :=
+  ∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q] ∧ P vars
+
 /-- Clause word correctness for machine compiled from virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     where A1 has length n+1. -/
 theorem clauseWord_correct (n : Nat) (clause : Clause)
@@ -18,8 +23,7 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
         END_POS + (k + n) * m)
     ∧
     -- From START_POS without any satisfying assignment matching A1: → penalty
-    (¬ (∃ vars : List Bool, vars.length = n ∧ A1 = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesClause vars clause) →
+    (¬ HasMatchingAssignment n A1 (satisfiesClause · clause) →
       applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
         CHAIN_DISQ + (k + n + 1) * m)
     ∧
@@ -48,8 +52,7 @@ theorem clauseWord_sat (n : Nat) (c : Clause) (xs : List PileType)
       applyWord (clauseWord n c) (compile types) START_POS =
         END_POS + n * ALIGN.length)
     ∧
-    (¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesClause vars c) →
+    (¬ HasMatchingAssignment n xs (satisfiesClause · c) →
       CHAIN_DISQ + xs.length * ALIGN.length ≤
         applyWord (clauseWord n c) (compile types) START_POS) := by
   have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
@@ -81,8 +84,7 @@ theorem clauseNext_sat (n : Nat) (c : Clause) (xs : List PileType)
       applyWord (clauseWord n c ++ NEXT) (compile types) START_POS =
         xs.length * ALIGN.length)
     ∧
-    (¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesClause vars c) →
+    (¬ HasMatchingAssignment n xs (satisfiesClause · c) →
       CHAIN_DISQ + xs.length * ALIGN.length ≤
         applyWord (clauseWord n c ++ NEXT) (compile types) START_POS) := by
   have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
