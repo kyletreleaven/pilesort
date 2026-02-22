@@ -332,8 +332,7 @@ theorem formulaWord_sat_pos (n : Nat) (clauses : List Clause)
   sorry
 
 /-- Non-satisfying case: on extended types, applying formulaWord from START_POS
-    reaches at least clauses.length * block + CHAIN_DISQ.
-    Proof: formulaState_eq + formulaState_penalty_all. -/
+    reaches at least clauses.length * block + CHAIN_DISQ. -/
 theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
     (xs : List PileType)
     (hxs_len : xs.length = n + 1)
@@ -343,7 +342,18 @@ theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
         (List.replicate (clauses.length + 1) .Q)
     applyWord (formulaWord n clauses) (compile types_ext) START_POS ≥
       clauses.length * (xs.length * ALIGN.length) + CHAIN_DISQ := by
-  sorry
+  intro types_ext
+  -- 1. Split clauses = init ++ [last]
+  obtain ⟨init, last, rfl, hlen⟩ := list_split_last clauses hne
+  -- 2. formulaState_eq (types_ext has init.length + 2 Q-reps)
+  have h_eq := formulaState_eq n xs init last START_POS hxs_len
+  have : init.length + 2 = (init ++ [last]).length + 1 := by omega
+  rw [this] at h_eq
+  rw [← h_eq]
+  -- 3. formulaState_penalty_all
+  have h_pen := formulaState_penalty_all n xs init last hxs_len hno
+  -- 4. Combine
+  simp [List.length_append] at h_pen ⊢; omega
 
 /-- Formula-level correctness: a machine compiled from virtualPileTypes ALIGN xs,
     replicated over m clauses, accepts formulaWord n clauses iff
