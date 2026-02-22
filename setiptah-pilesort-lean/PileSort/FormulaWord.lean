@@ -295,36 +295,26 @@ private theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (la
     The RHS applies the full formulaWord to a single type list.
     The LHS (formulaState) uses shrinking types at each recursive level.
     The shift lemma bridges these views: after clauseWord c ++ NEXT
-    advances past the first block (h_advance), we peel off that block
-    and recurse on inner types with the remaining formula word. -/
+    advances past the first block (via clauseNext_advance), we peel off
+    that block and recurse on inner types with the remaining formula word. -/
 theorem formulaState_eq (n : Nat) (xs : List PileType)
     (init : List Clause) (last : Clause) (start : Nat)
-    (h_advance : ∀ (c : Clause) (m : Nat) (s : Nat), m ≥ 2 →
-      xs.length * ALIGN.length ≤
-        applyWord (clauseWord n c ++ NEXT)
-          (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
-            (List.replicate m .Q))) s) :
+    (hxs_len : xs.length = n + 1) :
     formulaState n xs init last start =
       applyWord (formulaWord n (init ++ [last]))
         (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
           (List.replicate (init.length + 2) .Q))) start := by
   induction init generalizing start with
   | nil =>
-    -- formulaState unfolds to applyWord (clauseWord n last) (compile types₂) start
-    -- formulaWord n [last] = clauseWord n last
     simp only [formulaState]
     have hfw : formulaWord n ([] ++ [last]) = clauseWord n last := by
       rw [formulaWord_split]; simp
     rw [hfw]
   | cons c rest ih =>
-    -- Unfold formulaState and apply IH
     unfold formulaState; simp only []
     rw [ih]
-    -- Now work from the RHS toward the LHS
     symm
     rw [formulaWord_cons, applyWord_append]
-    -- Goal: applyWord fw (compile types_outer) mid = block + applyWord fw (compile types_inner) (mid - block)
-    -- Decompose types_outer = vpt ++ types_inner
     have h_types : virtualPileTypes (virtualPileTypes ALIGN xs)
         (List.replicate ((c :: rest).length + 2) .Q) =
       virtualPileTypes ALIGN xs ++
@@ -332,15 +322,13 @@ theorem formulaState_eq (n : Nat) (xs : List PileType)
       show virtualPileTypes _ (List.replicate (rest.length + 2 + 1) .Q) = _
       rw [virtualPileTypes_replicate_Q_cons]
     rw [h_types]
-    -- h_advance: mid ≥ block
     have hmid : xs.length * ALIGN.length ≤
         applyWord (clauseWord n c ++ NEXT)
           (compile (virtualPileTypes ALIGN xs ++
             virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (rest.length + 2) .Q)))
           start := by
       rw [← h_types]
-      exact h_advance c ((c :: rest).length + 2) start (by omega)
-    -- Use shift lemma backwards: rewrite RHS to match LHS
+      exact clauseNext_advance n c xs _ start hxs_len (by omega)
     have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
       virtualPileTypes_length ALIGN xs
     have h_shift := applyWord_compile_append_shift
@@ -369,7 +357,7 @@ private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
 
     1. Split clauses = init ++ [last].
     2. types_ext := types with init.length + 2 Q-reps = types ++ one block.
-    3. formulaState_eq (h_advance from clauseNext_advance):
+    3. formulaState_eq (uses clauseNext_advance internally):
        formulaState(init, last, 0) = applyWord(formulaWord)(compile types_ext)(0).
     4. formulaState_forward: formulaState = init.length * block + formulaState([], last, 0).
        formulaState([], last, 0) = applyWord(clauseWord last)(types₂)(0).
@@ -404,8 +392,7 @@ theorem formulaWord_forward (n : Nat) (clauses : List Clause)
         replicate_succ_append, virtualPileTypes_append]
     simp [virtualPileTypes, List.flatMap_cons, List.flatMap_nil, applyPile]
   -- 3. formulaState_eq
-  have h_eq := formulaState_eq n xs init last START_POS
-    (fun c m s hm => clauseNext_advance n c xs m s hxs_len hm)
+  have h_eq := formulaState_eq n xs init last START_POS hxs_len
   -- 4. formulaState_forward
   have h_fwd := formulaState_forward n xs init last vars hxs_len hn hxs
     (fun cl hmem => hsat cl (List.mem_append_left _ hmem))
