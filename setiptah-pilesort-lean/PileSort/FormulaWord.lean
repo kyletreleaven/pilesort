@@ -261,19 +261,7 @@ private theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (la
   simp [List.flatMap_cons, List.append_assoc]
 
 /-- formulaState_eq: The tail-recursive formulaState computation equals
-    the direct application of formulaWord to the compiled machine.
-
-    Given clauses = init ++ [last], the types have (init.length + 2)
-    Q-replications of the inner block (virtualPileTypes ALIGN xs):
-    - init.length blocks for the remaining clauses in init,
-    - 1 block for last,
-    - 1 vestigial block (so clauseWord_correct part 3 has room).
-
-    The RHS applies the full formulaWord to a single type list.
-    The LHS (formulaState) uses shrinking types at each recursive level.
-    The shift lemma bridges these views: after clauseWord c ++ NEXT
-    advances past the first block (via clauseNext_advance), we peel off
-    that block and recurse on inner types with the remaining formula word. -/
+    the direct application of formulaWord to the compiled machine. -/
 theorem formulaState_eq (n : Nat) (xs : List PileType)
     (init : List Clause) (last : Clause) (start : Nat)
     (hxs_len : xs.length = n + 1) :
