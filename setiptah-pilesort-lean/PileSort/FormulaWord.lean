@@ -315,6 +315,36 @@ private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
   | zero => rfl
   | succ m ih => exact congrArg (x :: ·) ih
 
+/-- Satisfying case: on extended types (one vestigial block), applying formulaWord
+    from START_POS lands at init.length * block + END_POS + n * ALIGN.length.
+    Proof: formulaState_eq + formulaState_forward + clauseWord_sat part 1. -/
+theorem formulaWord_sat_pos (n : Nat) (clauses : List Clause)
+    (xs : List PileType) (vars : List Bool)
+    (hxs_len : xs.length = n + 1)
+    (hn : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesFormula vars clauses)
+    (hne : clauses ≠ []) :
+    let types_ext := virtualPileTypes (virtualPileTypes ALIGN xs)
+        (List.replicate (clauses.length + 1) .Q)
+    applyWord (formulaWord n clauses) (compile types_ext) START_POS =
+      (clauses.length - 1) * (xs.length * ALIGN.length) + END_POS + n * ALIGN.length := by
+  sorry
+
+/-- Non-satisfying case: on extended types, applying formulaWord from START_POS
+    reaches at least clauses.length * block + CHAIN_DISQ.
+    Proof: formulaState_eq + formulaState_penalty_all. -/
+theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
+    (xs : List PileType)
+    (hxs_len : xs.length = n + 1)
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · clauses))
+    (hne : clauses ≠ []) :
+    let types_ext := virtualPileTypes (virtualPileTypes ALIGN xs)
+        (List.replicate (clauses.length + 1) .Q)
+    applyWord (formulaWord n clauses) (compile types_ext) START_POS ≥
+      clauses.length * (xs.length * ALIGN.length) + CHAIN_DISQ := by
+  sorry
+
 /-- Formula-level correctness: a machine compiled from virtualPileTypes ALIGN xs,
     replicated over m clauses, accepts formulaWord n clauses iff
     xs = embedVars(vars) ++ [Q] for some assignment vars satisfying the formula. -/
