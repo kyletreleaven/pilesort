@@ -66,7 +66,7 @@ private theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
   | [x], _ => ⟨[], x, rfl, rfl⟩
   | x :: y :: rest, _ => by
     have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
-    exact ⟨x :: init, last, by rw [h]; simp, by simp [h]; omega⟩
+    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
 
 /-- clauseWord from START_POS on replicated types: if a matching assignment satisfies the
     clause, reaches END_POS + n * ALIGN.length; otherwise reaches ≥ CHAIN_DISQ + block.
@@ -493,7 +493,24 @@ private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
   | zero => rfl
   | succ m ih => exact congrArg (x :: ·) ih
 
-/-- Forward direction: a satisfying assignment implies acceptance. -/
+/-- Forward direction: a satisfying assignment implies acceptance.
+
+    Goal: applyWord(formulaWord)(compile types)(0) < types.length,
+    where types has clauses.length Q-reps (= init.length + 1 blocks).
+
+    1. Split clauses = init ++ [last].
+    2. types_ext := types with init.length + 2 Q-reps = types ++ one block.
+    3. formulaState_eq (h_advance from clauseNext_advance):
+       formulaState(init, last, 0) = applyWord(formulaWord)(compile types_ext)(0).
+    4. formulaState_forward: formulaState = init.length * block + formulaState([], last, 0).
+       formulaState([], last, 0) = applyWord(clauseWord last)(types₂)(0).
+    5. clauseWord_sat part 1: that = END_POS + n * ALIGN.length = 5 + 6n.
+    6. Total = init.length * block + 5 + 6n < init.length * block + 6(n+1)
+             = (init.length + 1) * block = clauses.length * block = types.length.
+       So result on ext < types.length.
+    7. applyWord_append_truncate: result on types = min(result on ext, types.length).
+       Since result on ext < types.length, result on types = result on ext < types.length.
+       Hence accepts. -/
 theorem formulaWord_forward (n : Nat) (clauses : List Clause)
     (xs : List PileType) (vars : List Bool)
     (hxs_len : xs.length = n + 1)
@@ -505,42 +522,43 @@ theorem formulaWord_forward (n : Nat) (clauses : List Clause)
         (virtualPileTypes ALIGN xs)
         (List.replicate clauses.length PileType.Q)
     accepts types (formulaWord n clauses) := by
-  -- Split clauses = init ++ [last]
+  intro types
+  -- 1. Split clauses = init ++ [last]
   obtain ⟨init, last, rfl, hlen⟩ := list_split_last clauses hne
-  -- Connect to formulaState via formulaState_eq
-  have h_adv := clauseNext_advance n · xs · · hxs_len
-  have h_eq := formulaState_eq n xs init last (START_POS) (fun c m s hm => h_adv c m s hm)
-  -- formulaState_forward: formulaState = init.length * block + formulaState([], last, START_POS)
+  -- 2. types_ext = types ++ one block
+  have h_ext : virtualPileTypes (virtualPileTypes ALIGN xs)
+      (List.replicate (init.length + 2) .Q) =
+    virtualPileTypes (virtualPileTypes ALIGN xs)
+      (List.replicate (init.length + 1) .Q) ++
+    virtualPileTypes ALIGN xs := by
+    rw [show init.length + 2 = init.length + 1 + 1 from by omega,
+        replicate_succ_append, virtualPileTypes_append]
+    simp [virtualPileTypes, List.flatMap_cons, List.flatMap_nil, applyPile]
+  -- 3. formulaState_eq
+  have h_eq := formulaState_eq n xs init last START_POS
+    (fun c m s hm => clauseNext_advance n c xs m s hxs_len hm)
+  -- 4. formulaState_forward
   have h_fwd := formulaState_forward n xs init last vars hxs_len hn hxs
     (fun cl hmem => hsat cl (List.mem_append_left _ hmem))
-  -- clauseWord_sat part 1 for last clause
-  have hsat_last : satisfiesClause vars last := hsat last (List.mem_append_right _ (List.mem_singleton.mpr rfl))
+  -- 5. clauseWord_sat part 1 for last
+  have hsat_last : satisfiesClause vars last :=
+    hsat last (List.mem_append_right _ (List.mem_singleton.mpr rfl))
   have h_cw := (clauseWord_sat n last xs 2 hxs_len (by omega)).1 vars hn hxs hsat_last
-  -- Combine: result < types.length
+  -- 6. Compute total: init.length * block + END_POS + n * ALIGN.length < types.length
   unfold accepts
-  rw [show (0 : Nat) = START_POS from rfl]
-  -- types = vpt (vpt ALIGN xs) (replicate (init.length + 1) .Q)
-  -- types_ext = vpt (vpt ALIGN xs) (replicate (init.length + 2) .Q) = types ++ one block
-  have h_types_ext : virtualPileTypes (virtualPileTypes ALIGN xs)
-      (List.replicate (init.length + 2) .Q) =
-    virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (init.length + 1) .Q) ++
-    virtualPileTypes ALIGN xs := by
-    rw [show init.length + 2 = (init.length + 1) + 1 from by omega,
-        virtualPileTypes_replicate_Q_cons]
-  -- Truncation
+  -- 7. Truncation: result on types = min(result on ext, types.length)
   have h_trunc := applyWord_append_truncate (formulaWord n (init ++ [last]))
     (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (init.length + 1) .Q))
-    (virtualPileTypes ALIGN xs) START_POS (Nat.zero_le _)
-  rw [← h_types_ext, ← h_eq] at h_trunc
-  rw [h_fwd, show formulaState n xs [] last START_POS =
-    applyWord (clauseWord n last)
-      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate 2 .Q))) START_POS
-    from rfl] at h_trunc
-  unfold START_POS at h_cw
+    (virtualPileTypes ALIGN xs) 0 (Nat.zero_le _)
+  rw [show (0 : Nat) = START_POS from rfl] at h_trunc
+  rw [← h_ext, ← h_eq] at h_trunc
+  rw [h_fwd] at h_trunc
+  simp only [formulaState, List.length_nil, Nat.zero_add] at h_trunc
   rw [h_cw] at h_trunc
-  rw [h_trunc]
-  simp [virtualPileTypes_length, Nat.min_def]
-  sorry
+  rw [show (0 : Nat) = START_POS from rfl, h_trunc]
+  simp [virtualPileTypes_length, Nat.min_def, hlen]
+  unfold END_POS ALIGN; simp
+  omega
 
 /-- On extended types (one extra block), if no satisfying assignment exists,
     the formulaWord sends state 0 past the original types boundary.
