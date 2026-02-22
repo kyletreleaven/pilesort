@@ -125,23 +125,7 @@ theorem clauseNext_advance (n : Nat) (c : Clause) (xs : List PileType)
       _ ≤ applyWord NEXT _ _ := applyWord_ge NEXT _ _
 
 /-- If the starting state is at or above CHAIN_DISQ, then formulaState
-    accumulates at least (clauses_.length + 1) full blocks plus CHAIN_DISQ.
-
-    Proof by induction on clauses_.
-
-    Base case (clauses_ = []): formulaState = applyWord(clauseWord last)(types)(start).
-    By clauseWord_correct part 3 (via mono from start ≥ CHAIN_DISQ),
-    result ≥ CHAIN_DISQ + block. This is (0 + 1) * block + CHAIN_DISQ. ✓
-
-    Cons case (clauses_ = c :: rest):
-    formulaState = block + formulaState(rest, last, mid - block)
-    where mid = applyWord(clauseWord c ++ NEXT)(types)(start).
-    By clauseWord_correct part 3 + applyWord_ge (NEXT doesn't decrease),
-    mid ≥ CHAIN_DISQ + block, so mid - block ≥ CHAIN_DISQ.
-    By IH: formulaState(rest, last, mid - block) ≥ (rest.length + 1) * block + CHAIN_DISQ.
-    Total: block + (rest.length + 1) * block + CHAIN_DISQ
-         = (rest.length + 2) * block + CHAIN_DISQ
-         = ((c :: rest).length + 1) * block + CHAIN_DISQ. ✓ -/
+    accumulates at least (clauses_.length + 1) full blocks plus CHAIN_DISQ. -/
 theorem formulaState_penalty (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause) (start : Nat)
     (hxs_len : xs.length = n + 1)
