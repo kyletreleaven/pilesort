@@ -79,12 +79,9 @@ theorem formulaState_forward (n : Nat) (xs : List PileType)
     via embedVars_injective). -/
 theorem not_satisfiesFormula_rest (n : Nat) (xs : List PileType)
     (c : Clause) (rest : List Clause)
-    (hno : ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars (c :: rest)))
-    (hc : ∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesClause vars c) :
-    ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars rest) := by
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · (c :: rest)))
+    (hc : HasMatchingAssignment n xs (satisfiesClause · c)) :
+    ¬ HasMatchingAssignment n xs (satisfiesFormula · rest) := by
   obtain ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ := hc
   intro ⟨vars', hvars', hxs', hsat'⟩
   have heq : vars' = vars₀ := by
@@ -111,8 +108,8 @@ theorem clauseNext_advance (n : Nat) (c : Clause) (xs : List PileType)
   · -- s = 0 = START_POS
     subst hs
     have h := clauseNext_sat n c xs m hxs_len hm
-    rcases Classical.em (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesClause vars c) with ⟨vars, hvars, hxs, hsat⟩ | hnc
+    rcases Classical.em (HasMatchingAssignment n xs (satisfiesClause · c))
+        with ⟨vars, hvars, hxs, hsat⟩ | hnc
     · have := h.1 vars hvars hxs hsat; unfold START_POS at this; omega
     · have := h.2 hnc; unfold START_POS at this; omega
   · -- s ≥ 1 = CHAIN_DISQ
@@ -171,15 +168,13 @@ theorem formulaState_penalty (n : Nat) (xs : List PileType)
 theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (hxs_len : xs.length = n + 1)
-    (hno : ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars clauses_)) :
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · clauses_)) :
     formulaState n xs clauses_ last START_POS ≥
       (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
   induction clauses_ with
   | nil =>
     simp only [formulaState, List.length_nil, Nat.zero_add, Nat.one_mul]
-    have hno' : ¬ (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesClause vars last) :=
+    have hno' : ¬ HasMatchingAssignment n xs (satisfiesClause · last) :=
       fun ⟨vars, hvars, hxs, _⟩ => hno ⟨vars, hvars, hxs, fun _ h => absurd h (List.not_mem_nil _)⟩
     have := (clauseWord_sat n last xs 2 hxs_len (by omega)).2 hno'
     omega
@@ -191,8 +186,8 @@ theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
         (mid - xs.length * ALIGN.length) ≥ _
     have h_inner : formulaState n xs rest last (mid - xs.length * ALIGN.length) ≥
         (rest.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
-      rcases Classical.em (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-          ∧ satisfiesClause vars c) with ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ | hnc
+      rcases Classical.em (HasMatchingAssignment n xs (satisfiesClause · c))
+          with ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ | hnc
       · have h_mid := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega)).1
           vars₀ hvars₀ hxs₀ hsat₀
         rw [show mid = xs.length * ALIGN.length from h_mid,
@@ -216,15 +211,13 @@ theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
 theorem formulaState_penalty_all (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (hxs_len : xs.length = n + 1)
-    (hno : ¬ (∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars (clauses_ ++ [last]))) :
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · (clauses_ ++ [last]))) :
     formulaState n xs clauses_ last START_POS ≥
       (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
-  rcases Classical.em (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-      ∧ satisfiesFormula vars clauses_) with ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ | hno_init
+  rcases Classical.em (HasMatchingAssignment n xs (satisfiesFormula · clauses_))
+      with ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ | hno_init
   · -- vars₀ satisfies init but not last
-    have hno_last : ¬ (∃ vars, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesClause vars last) := by
+    have hno_last : ¬ HasMatchingAssignment n xs (satisfiesClause · last) := by
       intro ⟨vars', hvars', hxs', hsat'⟩
       have : vars' = vars₀ := embedVars_injective vars' vars₀ (by
         have := hxs₀ ▸ hxs'; simp at this; exact this.symm)
@@ -406,9 +399,7 @@ theorem formulaWord_forward (n : Nat) (clauses : List Clause)
 theorem formulaWord_penalty_ext (n : Nat) (clauses : List Clause)
     (xs : List PileType)
     (hxs_len : xs.length = n + 1)
-    (hno : ¬ (∃ vars : List Bool, vars.length = n
-        ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars clauses)) :
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · clauses)) :
     let types_ext := virtualPileTypes ALIGN
         (List.replicate (clauses.length + 1) xs).flatten
     applyWord (formulaWord n clauses) (compile types_ext) 0 ≥
@@ -426,9 +417,7 @@ theorem formulaWord_correct (n : Nat) (clauses : List Clause)
         (virtualPileTypes ALIGN xs)
         (List.replicate clauses.length PileType.Q)
     accepts types (formulaWord n clauses) ↔
-      ∃ vars : List Bool, vars.length = n
-        ∧ xs = embedVars vars ++ [PileType.Q]
-        ∧ satisfiesFormula vars clauses := by
+      HasMatchingAssignment n xs (satisfiesFormula · clauses) := by
   intro types
   constructor
   · -- Backward: accepts → ∃ satisfying vars (contrapositive via penalty_ext + truncation)
