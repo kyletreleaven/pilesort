@@ -316,8 +316,7 @@ private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
   | succ m ih => exact congrArg (x :: ·) ih
 
 /-- Satisfying case: on extended types (one vestigial block), applying formulaWord
-    from START_POS lands at init.length * block + END_POS + n * ALIGN.length.
-    Proof: formulaState_eq + formulaState_forward + clauseWord_sat part 1. -/
+    from START_POS lands at init.length * block + END_POS + n * ALIGN.length. -/
 theorem formulaWord_sat_pos (n : Nat) (clauses : List Clause)
     (xs : List PileType) (vars : List Bool)
     (hxs_len : xs.length = n + 1)
@@ -329,7 +328,26 @@ theorem formulaWord_sat_pos (n : Nat) (clauses : List Clause)
         (List.replicate (clauses.length + 1) .Q)
     applyWord (formulaWord n clauses) (compile types_ext) START_POS =
       (clauses.length - 1) * (xs.length * ALIGN.length) + END_POS + n * ALIGN.length := by
-  sorry
+  intro types_ext
+  -- 1. Split clauses = init ++ [last]
+  obtain ⟨init, last, rfl, hlen⟩ := list_split_last clauses hne
+  -- 2. formulaState_eq
+  have h_eq := formulaState_eq n xs init last START_POS hxs_len
+  have : init.length + 2 = (init ++ [last]).length + 1 := by omega
+  rw [this] at h_eq; rw [← h_eq]
+  -- 3. formulaState_forward
+  have h_fwd := formulaState_forward n xs init last vars hxs_len hn hxs
+    (fun cl hmem => hsat cl (List.mem_append_left _ hmem))
+  rw [h_fwd]
+  -- 4-5. Unfold formulaState([], last, START_POS) and apply clauseWord_sat part 1
+  simp only [formulaState, List.length_nil, Nat.zero_add]
+  have hsat_last : satisfiesClause vars last :=
+    hsat last (List.mem_append_right _ (List.mem_singleton.mpr rfl))
+  have h_cw := (clauseWord_sat n last xs 2 hxs_len (by omega)).1 vars hn hxs hsat_last
+  rw [h_cw]
+  -- 6. init.length = (init ++ [last]).length - 1
+  have : (init ++ [last]).length - 1 = init.length := by omega
+  rw [this]; omega
 
 /-- Non-satisfying case: on extended types, applying formulaWord from START_POS
     reaches at least clauses.length * block + CHAIN_DISQ. -/
