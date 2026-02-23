@@ -8,29 +8,27 @@ import PileSort.Gadgets.Next
 def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop) : Prop :=
   ∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q] ∧ P vars
 
-/--
-
-When testWord is applied from ACTD, it advances to ACTD on the next block.
-When testWord is applied from NACTD, it advances to ACTD on the next block if x is a Q; otherwise to NACTD.
-When testWord is applied from CLAUSE_DISQ, it advances to at least CLAUSE_DISQ on the next block.
-
--/
+/-- testWord consumes one block and passes control to the suffix on the tail.
+    From ACTD: stays activated (ACTD on next block).
+    From NACTD: activates (→ ACTD) if literal i is satisfied by x, else stays NACTD.
+    From CLAUSE_DISQ: penalty propagates (≥ CLAUSE_DISQ on next block). -/
 theorem testWord_consumption
-  (i : Nat) (clause: Clause) (suffix : List Action)
-  (x: PileType) (rest : List PileType) :
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
     let machine := compile (virtualPileTypes ALIGN (x :: rest))
     let suffixMachine := compile (virtualPileTypes ALIGN rest)
-    let sat := (.pos i ∈ clause ∧ x = PileType.Q) ∨ (.neg i ∈ clause ∧ x = PileType.S)
+    let sat := (.pos i ∈ clause ∧ x = .Q) ∨ (.neg i ∈ clause ∧ x = .S)
     let m := ALIGN.length
     -- from ACTD
-    (applyWord (testWord i clause ++ suffix) machine ACTD = m + applyWord suffix suffixMachine ACTD)
+    (applyWord (testWord i clause ++ suffix) machine ACTD =
+      m + applyWord suffix suffixMachine ACTD)
     -- from CLAUSE_DISQ
-    ∧ (applyWord (testWord i clause ++ suffix) machine CLAUSE_DISQ
-      >= m + applyWord suffix suffixMachine CLAUSE_DISQ)
+    ∧ (m + applyWord suffix suffixMachine CLAUSE_DISQ ≤
+      applyWord (testWord i clause ++ suffix) machine CLAUSE_DISQ)
     -- from NACTD
-    ∧ (applyWord (testWord i clause ++ suffix) machine NACTD
-      = m + applyWord suffix suffixMachine (if sat then ACTD else NACTD))
-:= by sorry
+    ∧ (applyWord (testWord i clause ++ suffix) machine NACTD =
+      m + applyWord suffix suffixMachine (if sat then ACTD else NACTD))
+    := by sorry
 
 /-- Clause word correctness for machine compiled from virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     where A1 has length n+1. -/
