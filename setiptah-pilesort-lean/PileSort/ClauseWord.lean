@@ -14,6 +14,27 @@ def matchesLiteral (x: PileType) (i : Nat) (clause: Clause): Prop :=
 instance (x: PileType) (i : Nat) (clause: Clause) : Decidable (matchesLiteral x i clause) := by
   unfold matchesLiteral; infer_instance
 
+/-- matchesLiteral on an embedded Bool reduces to the literal satisfaction condition. -/
+theorem matchesLiteral_embedVar (b : Bool) (i : Nat) (clause : Clause) :
+    matchesLiteral (embedVar b) i clause ↔
+      (.pos i ∈ clause ∧ b = true) ∨ (.neg i ∈ clause ∧ b = false) := by
+  cases b <;> simp [matchesLiteral, embedVar]
+
+/-- satisfiesClause is equivalent to matchesLiteral firing at some variable index. -/
+theorem satisfiesClause_iff_matchesLiteral (vars : List Bool) (clause : Clause) :
+    satisfiesClause vars clause ↔
+      ∃ i, matchesLiteral (embedVar (vars.getD i false)) i clause := by
+  constructor
+  · rintro ⟨l, hl, hsat⟩
+    cases l with
+    | pos j => exact ⟨j, by rw [matchesLiteral_embedVar]; exact Or.inl ⟨hl, hsat⟩⟩
+    | neg j => exact ⟨j, by rw [matchesLiteral_embedVar]; exact Or.inr ⟨hl, hsat⟩⟩
+  · rintro ⟨i, hi⟩
+    rw [matchesLiteral_embedVar] at hi
+    rcases hi with ⟨hmem, heq⟩ | ⟨hmem, heq⟩
+    · exact ⟨.pos i, hmem, heq⟩
+    · exact ⟨.neg i, hmem, heq⟩
+
 /-- testWord consumes one block and passes control to the suffix on the tail.
     From ACTD: stays activated (ACTD on next block).
     From NACTD: activates (→ ACTD) if literal i is satisfied by x, else stays NACTD.
