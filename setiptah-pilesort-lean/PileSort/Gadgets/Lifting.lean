@@ -17,4 +17,17 @@ theorem gadget_lift_eq (word : List Action) (A window B : List PileType) (s r : 
     (hr : r < (virtualPileTypes ALIGN window).length) :
     applyWord word (compile (virtualPileTypes ALIGN (A ++ window ++ B)))
       (A.length * ALIGN.length + s) = A.length * ALIGN.length + r := by
-  sorry
+  -- 1. Split and reassociate: vpt ALIGN ((A ++ window) ++ B)
+  --    = (vpt A ++ vpt window) ++ vpt B = vpt A ++ (vpt window ++ vpt B)
+  rw [virtualPileTypes_append, virtualPileTypes_append, List.append_assoc]
+  -- 2. Shift past vpt ALIGN A
+  have h_len : (virtualPileTypes ALIGN A).length = A.length * ALIGN.length :=
+    virtualPileTypes_length ALIGN A
+  rw [← h_len, applyWord_compile_append_shift]
+  congr 1
+  -- 3. Truncate: connect small machine to (window ++ B) machine
+  have h_trunc := applyWord_append_truncate word
+    (virtualPileTypes ALIGN window) (virtualPileTypes ALIGN B) s (by omega)
+  -- 4. h says small result = r, hr says r < window size, so min resolves
+  rw [h] at h_trunc
+  omega
