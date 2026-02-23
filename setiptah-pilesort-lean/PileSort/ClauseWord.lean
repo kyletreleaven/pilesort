@@ -8,6 +8,12 @@ import PileSort.Gadgets.Next
 def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop) : Prop :=
   ∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q] ∧ P vars
 
+def matchesLiteral (x: PileType) (i : Nat) (clause: Clause): Prop :=
+  (.pos i ∈ clause ∧ x = .Q) ∨ (.neg i ∈ clause ∧ x = .S)
+
+instance (x: PileType) (i : Nat) (clause: Clause) : Decidable (matchesLiteral x i clause) := by
+  unfold matchesLiteral; infer_instance
+
 /-- testWord consumes one block and passes control to the suffix on the tail.
     From ACTD: stays activated (ACTD on next block).
     From NACTD: activates (→ ACTD) if literal i is satisfied by x, else stays NACTD.
@@ -17,7 +23,6 @@ theorem testWord_consumption
     (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
     let machine := compile (virtualPileTypes ALIGN (x :: rest))
     let suffixMachine := compile (virtualPileTypes ALIGN rest)
-    let sat := (.pos i ∈ clause ∧ x = .Q) ∨ (.neg i ∈ clause ∧ x = .S)
     let m := ALIGN.length
     -- from ACTD
     (applyWord (testWord i clause ++ suffix) machine ACTD =
@@ -27,7 +32,7 @@ theorem testWord_consumption
       applyWord (testWord i clause ++ suffix) machine CLAUSE_DISQ)
     -- from NACTD
     ∧ (applyWord (testWord i clause ++ suffix) machine NACTD =
-      m + applyWord suffix suffixMachine (if sat then ACTD else NACTD))
+      m + applyWord suffix suffixMachine (if matchesLiteral x i clause then ACTD else NACTD))
     := by sorry
 
 /-- Clause word correctness for machine compiled from virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
