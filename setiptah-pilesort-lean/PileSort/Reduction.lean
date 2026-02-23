@@ -11,6 +11,10 @@ inductive Literal where
   | neg (var : Nat)
   deriving DecidableEq, Repr
 
+def Literal.varIdx : Literal → Nat
+  | .pos i => i
+  | .neg i => i
+
 abbrev Clause := List Literal
 
 /-- The test word for variable i in clause φ_j:
@@ -39,11 +43,12 @@ def clauseWord (n : Nat) (clause : Clause) : List Action :=
 def formulaWord (n : Nat) (clauses : List Clause) : List Action :=
   (clauses.flatMap (fun c => clauseWord n c ++ NEXT)).dropLast
 
-/-- A clause is satisfied by a variable assignment if some literal matches. -/
+/-- A clause is satisfied by a variable assignment if some in-range literal matches.
+    Out-of-range indices (≥ vars.length) are inert. -/
 def satisfiesClause (vars : List Bool) (clause : Clause) : Prop :=
   ∃ l ∈ clause, match l with
-    | .pos i => vars.getD i false = true
-    | .neg i => vars.getD i false = false
+    | .pos i => vars[i]? = some true
+    | .neg i => vars[i]? = some false
 
 /-- A compiled machine accepts a word if starting from state 0
     it does not reach the sink state (types.length). -/

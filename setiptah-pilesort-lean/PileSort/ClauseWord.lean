@@ -20,20 +20,38 @@ theorem matchesLiteral_embedVar (b : Bool) (i : Nat) (clause : Clause) :
       (.pos i ∈ clause ∧ b = true) ∨ (.neg i ∈ clause ∧ b = false) := by
   cases b <;> simp [matchesLiteral, embedVar]
 
-/-- satisfiesClause is equivalent to matchesLiteral firing at some variable index. -/
+/-- satisfiesClause is equivalent to matchesLiteral firing at some in-range variable index. -/
 theorem satisfiesClause_iff_matchesLiteral (vars : List Bool) (clause : Clause) :
     satisfiesClause vars clause ↔
-      ∃ i, matchesLiteral (embedVar (vars.getD i false)) i clause := by
+      ∃ i, i < vars.length ∧ matchesLiteral (embedVar (vars.getD i false)) i clause := by
   constructor
   · rintro ⟨l, hl, hsat⟩
     cases l with
-    | pos j => exact ⟨j, by rw [matchesLiteral_embedVar]; exact Or.inl ⟨hl, hsat⟩⟩
-    | neg j => exact ⟨j, by rw [matchesLiteral_embedVar]; exact Or.inr ⟨hl, hsat⟩⟩
-  · rintro ⟨i, hi⟩
-    rw [matchesLiteral_embedVar] at hi
-    rcases hi with ⟨hmem, heq⟩ | ⟨hmem, heq⟩
-    · exact ⟨.pos i, hmem, heq⟩
-    · exact ⟨.neg i, hmem, heq⟩
+    | pos j =>
+      have hsat' : vars[j]? = some true := hsat
+      have hlt : j < vars.length := Decidable.byContradiction fun hc => by
+        simp at hc; simp [List.getElem?_eq_none hc] at hsat'
+      refine ⟨j, hlt, ?_⟩
+      rw [matchesLiteral_embedVar]
+      exact Or.inl ⟨hl, by simp [List.getD, hsat']⟩
+    | neg j =>
+      have hsat' : vars[j]? = some false := hsat
+      have hlt : j < vars.length := Decidable.byContradiction fun hc => by
+        simp at hc; simp [List.getElem?_eq_none hc] at hsat'
+      refine ⟨j, hlt, ?_⟩
+      rw [matchesLiteral_embedVar]
+      exact Or.inr ⟨hl, by simp [List.getD, hsat']⟩
+  · rintro ⟨i, hi, hm⟩
+    rw [matchesLiteral_embedVar] at hm
+    rcases hm with ⟨hmem, heq⟩ | ⟨hmem, heq⟩
+    · exact ⟨.pos i, hmem, by
+        show vars[i]? = some true
+        simp [List.getD, List.getElem?_eq_getElem hi] at heq
+        rw [List.getElem?_eq_getElem hi, heq]⟩
+    · exact ⟨.neg i, hmem, by
+        show vars[i]? = some false
+        simp [List.getD, List.getElem?_eq_getElem hi] at heq
+        rw [List.getElem?_eq_getElem hi, heq]⟩
 
 /-- testWord consumes one block and passes control to the suffix on the tail.
     From ACTD: stays activated (ACTD on next block).
