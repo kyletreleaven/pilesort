@@ -96,9 +96,9 @@ theorem endTestWord_consumption
     )
     := by sorry
 
-/-- Clause word correctness for machine compiled from virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
-    where A1 has length n+1. -/
-theorem clauseWord_correct (n : Nat) (clause : Clause)
+/-- clauseWord from START_POS: if a satisfying assignment matches A1, reaches END_POS;
+    otherwise reaches the penalty zone. -/
+theorem clauseWord_start (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
     (hA1 : A1.length = n + 1) :
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
@@ -113,12 +113,41 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
     -- From START_POS without any satisfying assignment matching A1: → penalty
     (¬ HasMatchingAssignment n A1 (satisfiesClause · clause) →
       applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
-        CHAIN_DISQ + (k + n + 1) * m)
-    ∧
-    -- From CHAIN_DISQ: penalty propagates unconditionally
+        CHAIN_DISQ + (k + n + 1) * m) := by
+  sorry
+
+/-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally. -/
+theorem clauseWord_chain (n : Nat) (clause : Clause)
+    (A0 A1 A2 : List PileType)
+    (hA1 : A1.length = n + 1) :
+    let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
+    let k := A0.length
+    let m := ALIGN.length
     applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
       CHAIN_DISQ + (k + n + 1) * m := by
   sorry
+
+/-- Combined clauseWord correctness, assembling start and chain parts. -/
+theorem clauseWord_correct (n : Nat) (clause : Clause)
+    (A0 A1 A2 : List PileType)
+    (hA1 : A1.length = n + 1) :
+    let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
+    let k := A0.length
+    let m := ALIGN.length
+    (∀ vars : List Bool, vars.length = n → A1 = embedVars vars ++ [PileType.Q] →
+      satisfiesClause vars clause →
+      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
+        END_POS + (k + n) * m)
+    ∧
+    (¬ HasMatchingAssignment n A1 (satisfiesClause · clause) →
+      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
+        CHAIN_DISQ + (k + n + 1) * m)
+    ∧
+    applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
+      CHAIN_DISQ + (k + n + 1) * m :=
+  ⟨(clauseWord_start n clause A0 A1 A2 hA1).1,
+   (clauseWord_start n clause A0 A1 A2 hA1).2,
+   clauseWord_chain n clause A0 A1 A2 hA1⟩
 
 theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
     ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
