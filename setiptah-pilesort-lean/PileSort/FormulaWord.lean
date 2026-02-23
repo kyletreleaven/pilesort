@@ -37,6 +37,46 @@ import PileSort.Reduction
 import PileSort.ClauseWord
 import PileSort.Gadgets.Next
 
+/-- clauseWord ++ NEXT from START_POS on replicated types: if a matching assignment
+    satisfies the clause, advances exactly one block; otherwise reaches ≥ CHAIN_DISQ + block.
+    Combines clauseWord_sat with next_correct. -/
+theorem clauseNext_sat (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat)
+    (hxs_len : xs.length = n + 1)
+    (hm : m ≥ 2) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    (∀ vars : List Bool, vars.length = n → xs = embedVars vars ++ [PileType.Q] →
+      satisfiesClause vars c →
+      applyWord (clauseWord n c ++ NEXT) (compile types) START_POS =
+        xs.length * ALIGN.length)
+    ∧
+    (¬ HasMatchingAssignment n xs (satisfiesClause · c) →
+      CHAIN_DISQ + xs.length * ALIGN.length ≤
+        applyWord (clauseWord n c ++ NEXT) (compile types) START_POS) := by
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp]; congr 1
+    have : m = (m - 1) + 1 := by omega
+    rw [this, List.replicate_succ, List.flatten_cons]; simp
+  simp only [List.nil_append] at h_eq
+  rw [h_eq]
+  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hxs_len
+  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, Nat.add_zero, List.nil_append] at hcw
+  have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by
+    simp; omega
+  constructor
+  · intro vars hvars hxs hsat
+    rw [applyWord_append, hcw.1 vars hvars hxs hsat]
+    have hnext := next_correct (xs ++ (List.replicate (m - 1) xs).flatten) n hk
+    simp only [START_POS] at hnext ⊢
+    rw [hnext, hxs_len]; omega
+  · intro hno
+    rw [applyWord_append]
+    calc CHAIN_DISQ + xs.length * ALIGN.length
+        = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
+      _ ≤ applyWord (clauseWord n c) _ START_POS := hcw.2.1 hno
+      _ ≤ applyWord NEXT _ _ := applyWord_ge NEXT _ _
+
 /-- If all init clauses are satisfied by a matching assignment, formulaState
     accumulates blocks cleanly and the last clause runs from START_POS.
 
