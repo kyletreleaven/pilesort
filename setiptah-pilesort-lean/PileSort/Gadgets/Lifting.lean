@@ -31,3 +31,11 @@ theorem gadget_lift_eq (word : List Action) (A window B : List PileType) (s r : 
   -- 4. h says small result = r, hr says r < window size, so min resolves
   rw [h] at h_trunc
   omega
+
+theorem gadget_lift_ge (word : List Action) (A window B : List PileType) (s r : Nat)
+    (hs : s < (virtualPileTypes ALIGN window).length)
+    (h : applyWord word (compile (virtualPileTypes ALIGN window)) s >= r)
+    (hr : r < (virtualPileTypes ALIGN window).length) :
+    applyWord word (compile (virtualPileTypes ALIGN (A ++ window ++ B)))
+      (A.length * ALIGN.length + s) >= A.length * ALIGN.length + r := by
+sorry
