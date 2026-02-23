@@ -35,6 +35,29 @@ theorem testWord_consumption
       m + applyWord suffix suffixMachine (if matchesLiteral x i clause then ACTD else NACTD))
     := by sorry
 
+theorem endTestWord_consumption
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x y : PileType) (rest : List PileType)
+    (hrest : rest ≠ [])
+    :
+    let m := ALIGN.length
+    let machine := compile (virtualPileTypes ALIGN (x :: y :: rest))
+    let nextGood := m + applyWord suffix (compile (virtualPileTypes ALIGN (y :: rest))) END_POS
+    let nextBad := 2 * m + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CHAIN_DISQ
+    (applyWord (endTestWord i clause ++ suffix) machine CLAUSE_DISQ >= nextBad)
+    ∧
+    (if y = .Q then
+      (applyWord (endTestWord i clause ++ suffix) machine ACTD = nextGood) ∧
+      if matchesLiteral x i clause then
+         applyWord (endTestWord i clause ++ suffix) machine NACTD = nextGood
+      else
+         applyWord (endTestWord i clause ++ suffix) machine NACTD >= nextBad
+    else
+      applyWord (endTestWord i clause ++ suffix) machine ACTD >= nextBad
+      -- NACTD case is subsumed by ACTD since NACTD is closer to the end than ACTD
+    )
+    := by sorry
+
 /-- Clause word correctness for machine compiled from virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     where A1 has length n+1. -/
 theorem clauseWord_correct (n : Nat) (clause : Clause)
