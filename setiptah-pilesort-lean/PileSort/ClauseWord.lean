@@ -116,7 +116,24 @@ theorem clauseWord_start (n : Nat) (clause : Clause)
         CHAIN_DISQ + (k + n + 1) * m) := by
   sorry
 
-/-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally. -/
+/-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally.
+
+    English proof:
+    1. Factor out A0: applyWord_compile_append_shift reduces the goal to
+       k*m + applyWord clauseWord (compile (vpt ALIGN (A1 ++ A2))) CHAIN_DISQ
+       ≥ CHAIN_DISQ + (k + n + 1) * m, i.e., the inner result ≥ CHAIN_DISQ + (n+1)*m.
+    2. Unfold clauseWord = START_CLAUSE ++ testWords ++ endTestWord.
+       Split with applyWord_append: first apply START_CLAUSE, then the rest.
+    3. start_clause_lifted_ge: START_CLAUSE from CHAIN_DISQ on A1[0] reaches
+       some s₁ ≥ CLAUSE_DISQ.
+    4. Round down via applyWord_mono: the remaining word from s₁ ≥ its result
+       from CLAUSE_DISQ. (CLAUSE_DISQ = 5 > NACTD = 3 > ACTD = 2, so this is
+       stronger than any "good" path.)
+    5. Chain testWord_consumption's CLAUSE_DISQ case (n-1 times): each step
+       shifts by m and preserves ≥ CLAUSE_DISQ on the suffix machine.
+       After n-1 steps: result ≥ (n-1)*m + (endTestWord result from CLAUSE_DISQ).
+    6. endTestWord_consumption's CLAUSE_DISQ case: result ≥ 2*m + CHAIN_DISQ.
+    7. Total: (n-1)*m + 2*m + CHAIN_DISQ = (n+1)*m + CHAIN_DISQ. ∎ -/
 theorem clauseWord_chain (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
     (hA1 : A1.length = n + 1) :
