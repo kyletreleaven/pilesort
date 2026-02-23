@@ -28,8 +28,8 @@ theorem testWord_consumption
     (applyWord (testWord i clause ++ suffix) machine ACTD =
       m + applyWord suffix suffixMachine ACTD)
     -- from CLAUSE_DISQ
-    ∧ (m + applyWord suffix suffixMachine CLAUSE_DISQ ≤
-      applyWord (testWord i clause ++ suffix) machine CLAUSE_DISQ)
+    ∧ (applyWord (testWord i clause ++ suffix) machine CLAUSE_DISQ ≥
+      m + applyWord suffix suffixMachine CLAUSE_DISQ)
     -- from NACTD
     ∧ (applyWord (testWord i clause ++ suffix) machine NACTD =
       m + applyWord suffix suffixMachine (if matchesLiteral x i clause then ACTD else NACTD))
