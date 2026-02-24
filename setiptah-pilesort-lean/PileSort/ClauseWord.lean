@@ -167,21 +167,12 @@ theorem clauseWord_chain_consumption (n : Nat) (clause : Clause) (suffix : List 
 /-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally.
 
     English proof:
-    1. Factor out A0: applyWord_compile_append_shift reduces the goal to
-       k*m + applyWord clauseWord (compile (vpt ALIGN (A1 ++ A2))) CHAIN_DISQ
-       ≥ CHAIN_DISQ + (k + n + 1) * m, i.e., the inner result ≥ CHAIN_DISQ + (n+1)*m.
-    2. Unfold clauseWord = START_CLAUSE ++ testWords ++ endTestWord.
-       Split with applyWord_append: first apply START_CLAUSE, then the rest.
-    3. start_clause_lifted_ge: START_CLAUSE from CHAIN_DISQ on A1[0] reaches
-       some s₁ ≥ CLAUSE_DISQ.
-    4. Round down via applyWord_mono: the remaining word from s₁ ≥ its result
-       from CLAUSE_DISQ. (CLAUSE_DISQ = 5 > NACTD = 3 > ACTD = 2, so this is
-       stronger than any "good" path.)
-    5. Chain testWord_consumption's CLAUSE_DISQ case (n-1 times): each step
-       shifts by m and preserves ≥ CLAUSE_DISQ on the suffix machine.
-       After n-1 steps: result ≥ (n-1)*m + (endTestWord result from CLAUSE_DISQ).
-    6. endTestWord_consumption's CLAUSE_DISQ case: result ≥ 2*m + CHAIN_DISQ.
-    7. Total: (n-1)*m + 2*m + CHAIN_DISQ = (n+1)*m + CHAIN_DISQ. ∎ -/
+    1. Factor out A0 via applyWord_compile_append_shift:
+       goal reduces to k*m + inner ≥ CHAIN_DISQ + (k+n+1)*m,
+       i.e., inner ≥ CHAIN_DISQ + (n+1)*m.
+    2. Apply clauseWord_chain_consumption (with empty suffix) on A1 ++ A2:
+       inner ≥ (n+1)*m + applyWord [] (compile (vpt ALIGN A2)) CHAIN_DISQ
+            = (n+1)*m + CHAIN_DISQ. ∎ -/
 theorem clauseWord_chain (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
     (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
@@ -190,7 +181,23 @@ theorem clauseWord_chain (n : Nat) (clause : Clause)
     let m := ALIGN.length
     applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
       CHAIN_DISQ + (k + n + 1) * m := by
-  sorry
+  simp only []
+  -- 1. Factor out A0
+  rw [show A0 ++ A1 ++ A2 = A0 ++ (A1 ++ A2) from List.append_assoc ..,
+      virtualPileTypes_append,
+      show CHAIN_DISQ + A0.length * ALIGN.length =
+        (virtualPileTypes ALIGN A0).length + CHAIN_DISQ from by
+        rw [virtualPileTypes_length]; omega,
+      applyWord_compile_append_shift, virtualPileTypes_length]
+  -- 2. Apply clauseWord_chain_consumption with empty suffix
+  have hcc := clauseWord_chain_consumption n clause [] A1 A2 hn hA1 hA2
+  rw [List.append_nil, show applyWord ([] : List Action)
+    (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ = CHAIN_DISQ from rfl] at hcc
+  -- hcc: applyWord clauseWord ... CHAIN_DISQ ≥ (n+1)*ALIGN.length + CHAIN_DISQ
+  -- Goal: A0*AL + applyWord clauseWord ... CHAIN_DISQ ≥ CHAIN_DISQ + (A0+n+1)*AL
+  -- 3. Arithmetic: (A0+n+1)*AL = A0*AL + (n+1)*AL, then omega combines with hcc
+  rw [show A0.length + n + 1 = A0.length + (n + 1) from by omega, Nat.add_mul]
+  omega
 
 /-- Combined clauseWord correctness, assembling start and chain parts. -/
 theorem clauseWord_correct (n : Nat) (clause : Clause)
