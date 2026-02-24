@@ -116,6 +116,34 @@ theorem clauseWord_start (n : Nat) (clause : Clause)
         CHAIN_DISQ + (k + n + 1) * m) := by
   sorry
 
+/-- Chaining testWords from CLAUSE_DISQ: each step shifts by one block and preserves ≥ CLAUSE_DISQ.
+    After k steps on range' start k, the result is ≥ k * m + (suffix result on dropped types).
+
+    Induction on k:
+    - k = 0: range' is empty, trivial.
+    - k + 1: peel off testWord start via range'_succ + flatMap_cons.
+      testWord_consumption (CLAUSE_DISQ case) gives ≥ m + (rest on tail).
+      IH gives rest on tail ≥ k * m + (suffix on drop). Combine with omega. -/
+theorem testChain_disq : ∀ (k : Nat) (start : Nat) (clause : Clause)
+    (suffix : List Action) (types : List PileType), k < types.length →
+    applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
+      (compile (virtualPileTypes ALIGN types)) CLAUSE_DISQ >=
+    k * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop k))) CLAUSE_DISQ
+  | 0, _, _, _, _, _ => by simp
+  | k + 1, start, clause, suffix, [], htypes => by simp at htypes
+  | k + 1, start, clause, suffix, x :: rest, htypes => by
+    simp only [List.length_cons] at htypes
+    have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
+    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
+    have htw := (testWord_consumption start clause
+      ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
+      x rest hrest).2.1
+    have hih := testChain_disq k (start + 1) clause suffix rest (by omega)
+    show _ >= (k + 1) * ALIGN.length + applyWord suffix
+      (compile (virtualPileTypes ALIGN (List.drop k rest))) CLAUSE_DISQ
+    rw [Nat.succ_mul]; omega
+
 /-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally.
 
     English proof:
