@@ -43,7 +43,8 @@ import PileSort.Gadgets.Next
 theorem clauseNext_sat (n : Nat) (c : Clause) (xs : List PileType)
     (m : Nat)
     (hxs_len : xs.length = n + 1)
-    (hm : m ≥ 2) :
+    (hm : m ≥ 2)
+    (hn : n ≥ 1) :
     let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
     (∀ vars : List Bool, vars.length = n → xs = embedVars vars ++ [PileType.Q] →
       satisfiesClause vars c →
@@ -60,7 +61,7 @@ theorem clauseNext_sat (n : Nat) (c : Clause) (xs : List PileType)
     rw [this, List.replicate_succ, List.flatten_cons]; simp
   simp only [List.nil_append] at h_eq
   rw [h_eq]
-  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hxs_len
+  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len
   simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, Nat.add_zero, List.nil_append] at hcw
   have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by
     simp; omega
@@ -89,6 +90,7 @@ theorem formulaState_forward (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (vars : List Bool)
     (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1)
     (hvars : vars.length = n)
     (hxs : xs = embedVars vars ++ [PileType.Q])
     (hsat : satisfiesFormula vars clauses_) :
@@ -101,7 +103,7 @@ theorem formulaState_forward (n : Nat) (xs : List PileType)
     have hsat_c : satisfiesClause vars c := hsat c (List.mem_cons_self c rest)
     have hsat_rest : satisfiesFormula vars rest :=
       fun cl hmem => hsat cl (List.mem_cons_of_mem c hmem)
-    have h_mid := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega)).1
+    have h_mid := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega) hn).1
       vars hvars hxs hsat_c
     show xs.length * ALIGN.length + formulaState n xs rest last
         (applyWord (clauseWord n c ++ NEXT)
@@ -140,21 +142,22 @@ theorem not_satisfiesFormula_rest (n : Nat) (xs : List PileType)
 theorem clauseNext_advance (n : Nat) (c : Clause) (xs : List PileType)
     (m : Nat) (s : Nat)
     (hxs_len : xs.length = n + 1)
-    (hm : m ≥ 2) :
+    (hm : m ≥ 2)
+    (hn : n ≥ 1) :
     xs.length * ALIGN.length ≤
       applyWord (clauseWord n c ++ NEXT)
         (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) s := by
   by_cases hs : s = 0
   · -- s = 0 = START_POS
     subst hs
-    have h := clauseNext_sat n c xs m hxs_len hm
+    have h := clauseNext_sat n c xs m hxs_len hm hn
     rcases Classical.em (HasMatchingAssignment n xs (satisfiesClause · c))
         with ⟨vars, hvars, hxs, hsat⟩ | hnc
     · have := h.1 vars hvars hxs hsat; unfold START_POS at this; omega
     · have := h.2 hnc; unfold START_POS at this; omega
   · -- s ≥ 1 = CHAIN_DISQ
     have : CHAIN_DISQ ≤ s := by unfold CHAIN_DISQ; omega
-    have h_cw := clauseWord_penalty n c xs m s hxs_len hm this
+    have h_cw := clauseWord_penalty n c xs m s hn hxs_len hm this
     rw [applyWord_append]
     calc xs.length * ALIGN.length
         ≤ CHAIN_DISQ + xs.length * ALIGN.length := by omega
@@ -166,6 +169,7 @@ theorem clauseNext_advance (n : Nat) (c : Clause) (xs : List PileType)
 theorem formulaState_penalty (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause) (start : Nat)
     (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1)
     (hstart : CHAIN_DISQ ≤ start) :
     formulaState n xs clauses_ last start ≥
       (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
@@ -208,6 +212,7 @@ theorem formulaState_penalty (n : Nat) (xs : List PileType)
 theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1)
     (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · clauses_)) :
     formulaState n xs clauses_ last START_POS ≥
       (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
@@ -228,14 +233,14 @@ theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
         (rest.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
       rcases Classical.em (HasMatchingAssignment n xs (satisfiesClause · c))
           with ⟨vars₀, hvars₀, hxs₀, hsat₀⟩ | hnc
-      · have h_mid := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega)).1
+      · have h_mid := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega) hn).1
           vars₀ hvars₀ hxs₀ hsat₀
         rw [show mid = xs.length * ALIGN.length from h_mid,
             show xs.length * ALIGN.length - xs.length * ALIGN.length = START_POS from by
               unfold START_POS; omega]
         exact ih (not_satisfiesFormula_rest n xs c rest hno ⟨vars₀, hvars₀, hxs₀, hsat₀⟩)
-      · have := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega)).2 hnc
-        exact formulaState_penalty n xs rest last _ hxs_len (by omega)
+      · have := (clauseNext_sat n c xs ((c :: rest).length + 2) hxs_len (by omega) hn).2 hnc
+        exact formulaState_penalty n xs rest last _ hxs_len hn (by omega)
     have : ((c :: rest).length + 1) * (xs.length * ALIGN.length) =
         xs.length * ALIGN.length + (rest.length + 1) * (xs.length * ALIGN.length) := by
       simp [List.length_cons, Nat.succ_mul]; omega
@@ -251,6 +256,7 @@ theorem formulaState_penalty_start (n : Nat) (xs : List PileType)
 theorem formulaState_penalty_all (n : Nat) (xs : List PileType)
     (clauses_ : List Clause) (last : Clause)
     (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1)
     (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · (clauses_ ++ [last]))) :
     formulaState n xs clauses_ last START_POS ≥
       (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
@@ -266,14 +272,14 @@ theorem formulaState_penalty_all (n : Nat) (xs : List PileType)
         rcases List.mem_append.mp hmem with h | h
         · exact hsat₀ cl h
         · exact (List.mem_singleton.mp h) ▸ hsat'⟩
-    rw [formulaState_forward n xs clauses_ last vars₀ hxs_len hvars₀ hxs₀ hsat₀]
+    rw [formulaState_forward n xs clauses_ last vars₀ hxs_len hn hvars₀ hxs₀ hsat₀]
     simp only [formulaState, List.length_nil, Nat.zero_add]
     have := (clauseWord_sat n last xs 2 hxs_len (by omega)).2 hno_last
     have : clauses_.length * (xs.length * ALIGN.length) + (xs.length * ALIGN.length + CHAIN_DISQ) =
         (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
       simp [Nat.succ_mul]; omega
     omega
-  · exact formulaState_penalty_start n xs clauses_ last hxs_len hno_init
+  · exact formulaState_penalty_start n xs clauses_ last hxs_len hn hno_init
 
 theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
     formulaWord n (init ++ [last]) =
@@ -304,7 +310,8 @@ private theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (la
     the direct application of formulaWord to the compiled machine. -/
 theorem formulaState_eq (n : Nat) (xs : List PileType)
     (init : List Clause) (last : Clause) (start : Nat)
-    (hxs_len : xs.length = n + 1) :
+    (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1) :
     formulaState n xs init last start =
       applyWord (formulaWord n (init ++ [last]))
         (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
@@ -333,7 +340,7 @@ theorem formulaState_eq (n : Nat) (xs : List PileType)
             virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (rest.length + 2) .Q)))
           start := by
       rw [← h_types]
-      exact clauseNext_advance n c xs _ start hxs_len (by omega)
+      exact clauseNext_advance n c xs _ start hxs_len (by omega) hn
     have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
       virtualPileTypes_length ALIGN xs
     have h_shift := applyWord_compile_append_shift
@@ -360,7 +367,8 @@ private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
 theorem formulaWord_sat_pos (n : Nat) (clauses : List Clause)
     (xs : List PileType) (vars : List Bool)
     (hxs_len : xs.length = n + 1)
-    (hn : vars.length = n)
+    (hn : n ≥ 1)
+    (hvars : vars.length = n)
     (hxs : xs = embedVars vars ++ [PileType.Q])
     (hsat : satisfiesFormula vars clauses)
     (hne : clauses ≠ []) :
@@ -372,18 +380,18 @@ theorem formulaWord_sat_pos (n : Nat) (clauses : List Clause)
   -- 1. Split clauses = init ++ [last]
   obtain ⟨init, last, rfl, hlen⟩ := list_split_last clauses hne
   -- 2. formulaState_eq
-  have h_eq := formulaState_eq n xs init last START_POS hxs_len
+  have h_eq := formulaState_eq n xs init last START_POS hxs_len hn
   have : init.length + 2 = (init ++ [last]).length + 1 := by omega
   rw [this] at h_eq; rw [← h_eq]
   -- 3. formulaState_forward
-  have h_fwd := formulaState_forward n xs init last vars hxs_len hn hxs
+  have h_fwd := formulaState_forward n xs init last vars hxs_len hn hvars hxs
     (fun cl hmem => hsat cl (List.mem_append_left _ hmem))
   rw [h_fwd]
   -- 4-5. Unfold formulaState([], last, START_POS) and apply clauseWord_sat part 1
   simp only [formulaState, List.length_nil, Nat.zero_add]
   have hsat_last : satisfiesClause vars last :=
     hsat last (List.mem_append_right _ (List.mem_singleton.mpr rfl))
-  have h_cw := (clauseWord_sat n last xs 2 hxs_len (by omega)).1 vars hn hxs hsat_last
+  have h_cw := (clauseWord_sat n last xs 2 hxs_len (by omega)).1 vars hvars hxs hsat_last
   rw [h_cw]
   -- 6. init.length = (init ++ [last]).length - 1
   have : (init ++ [last]).length - 1 = init.length := by omega
@@ -394,6 +402,7 @@ theorem formulaWord_sat_pos (n : Nat) (clauses : List Clause)
 theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
     (xs : List PileType)
     (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1)
     (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · clauses))
     (hne : clauses ≠ []) :
     let types_ext := virtualPileTypes (virtualPileTypes ALIGN xs)
@@ -404,12 +413,12 @@ theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
   -- 1. Split clauses = init ++ [last]
   obtain ⟨init, last, rfl, hlen⟩ := list_split_last clauses hne
   -- 2. formulaState_eq (types_ext has init.length + 2 Q-reps)
-  have h_eq := formulaState_eq n xs init last START_POS hxs_len
+  have h_eq := formulaState_eq n xs init last START_POS hxs_len hn
   have : init.length + 2 = (init ++ [last]).length + 1 := by omega
   rw [this] at h_eq
   rw [← h_eq]
   -- 3. formulaState_penalty_all
-  have h_pen := formulaState_penalty_all n xs init last hxs_len hno
+  have h_pen := formulaState_penalty_all n xs init last hxs_len hn hno
   -- 4. Combine
   simp [List.length_append] at h_pen ⊢; omega
 
@@ -419,6 +428,7 @@ theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
 theorem formulaWord_correct (n : Nat) (clauses : List Clause)
     (xs : List PileType)
     (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1)
     (hne : clauses ≠ []) :
     let types := virtualPileTypes
         (virtualPileTypes ALIGN xs)
@@ -446,7 +456,7 @@ theorem formulaWord_correct (n : Nat) (clauses : List Clause)
   · -- Backward (contrapositive): accepts → ∃ satisfying vars
     intro hacc
     exact Classical.byContradiction fun hno => by
-      have h_unsat := formulaWord_unsat_pos n clauses xs hxs_len hno hne
+      have h_unsat := formulaWord_unsat_pos n clauses xs hxs_len hn hno hne
       unfold accepts at hacc
       rw [show (0 : Nat) = START_POS from rfl, h_trunc] at hacc
       have h_ge : types.length ≤ applyWord (formulaWord n clauses)
@@ -456,8 +466,8 @@ theorem formulaWord_correct (n : Nat) (clauses : List Clause)
       rw [Nat.min_eq_right h_ge] at hacc
       omega
   · -- Forward: ∃ satisfying vars → accepts
-    intro ⟨vars, hn, hxs, hsat⟩
-    have h_sat := formulaWord_sat_pos n clauses xs vars hxs_len hn hxs hsat hne
+    intro ⟨vars, hvars, hxs, hsat⟩
+    have h_sat := formulaWord_sat_pos n clauses xs vars hxs_len hn hvars hxs hsat hne
     unfold accepts
     rw [show (0 : Nat) = START_POS from rfl, h_trunc, h_sat]
     have h_lt : (clauses.length - 1) * (xs.length * ALIGN.length) +
