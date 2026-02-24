@@ -39,11 +39,34 @@ theorem testChain_actd_end (k j : Nat) (clause : Clause) (suffix : List Action)
     3. A1.drop(k) has ≥ 2 elements (since A1.length = k+2).
     4. endTestWord_consumption CLAUSE_DISQ case: ≥ 2*m + suffix from CHAIN_DISQ on A2.
     5. Total: k*m + 2*m = (k+2)*m. -/
-theorem testChain_disq_end (k j : Nat) (clause : Clause) (suffix : List Action)
+theorem testChain_disq_end' (k j : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ []) :
     applyWord ((List.range' j k).flatMap (fun i => testWord i clause) ++
               endTestWord (j + k) clause ++ suffix)
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) CLAUSE_DISQ ≥
     (k + 2) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
-  sorry
+  -- 1. Reassociate word
+  rw [show (List.range' j k).flatMap (fun i => testWord i clause) ++
+        endTestWord (j + k) clause ++ suffix =
+      (List.range' j k).flatMap (fun i => testWord i clause) ++
+        (endTestWord (j + k) clause ++ suffix) from List.append_assoc ..]
+  -- 2. Decompose A1 at position k: A1 = A1.take(k) ++ A1.drop(k)
+  --    where A1.drop(k) = [x, y] since A1.length = k+2
+  obtain ⟨x, y, hdrop⟩ : ∃ x y, A1.drop k = [x, y] := by
+    have hdlen : (A1.drop k).length = 2 := by rw [List.length_drop, hA1]; omega
+    match A1.drop k, hdlen with | [a, b], _ => exact ⟨a, b, rfl⟩
+  -- 3. testChain_disq: k steps on A1 ++ A2
+  have hlen : k < (A1 ++ A2).length := by simp [hA1]; omega
+  have htc := testChain_disq k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) hlen
+  -- Rewrite the drop: (A1 ++ A2).drop k = A1.drop(k) ++ A2 = [x, y] ++ A2
+  have hdrop2 : (A1 ++ A2).drop k = x :: y :: A2 := by
+    rw [List.drop_append_eq_append_drop, hdrop,
+        show k - A1.length = 0 from by omega, List.drop_zero]; simp
+  rw [hdrop2] at htc
+  -- 4. endTestWord_consumption on [x, y] ++ A2 from CLAUSE_DISQ
+  have hend := (endTestWord_consumption (j + k) clause suffix x y A2 hA2).1
+  -- 5. Combine: k*m + 2*m = (k+2)*m
+  show _ ≥ (k + 2) * ALIGN.length + _
+  rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
+    rw [Nat.add_mul]]; omega
