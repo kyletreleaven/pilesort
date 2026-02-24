@@ -144,17 +144,28 @@ theorem testChain_disq : ∀ (k : Nat) (start : Nat) (clause : Clause)
       (compile (virtualPileTypes ALIGN (List.drop k rest))) CLAUSE_DISQ
     rw [Nat.succ_mul]; omega
 
-/-- clauseWord in consumption form from CHAIN_DISQ: consumes n+1 blocks,
-    suffix runs from ≥ CHAIN_DISQ on the remaining machine.
+/-- testWords ++ endTestWord from CLAUSE_DISQ: chains n-1 testWords then endTestWord,
+    consuming n+1 blocks total, landing at ≥ CHAIN_DISQ.
 
-    Proof steps:
-    1. applyWord_append to split START_CLAUSE from testWords ++ endTestWord.
-    2. start_clause_lifted_ge + applyWord_mono: from CHAIN_DISQ to ≥ CLAUSE_DISQ.
-    3. testChain_disq (n-1 steps): shifts by (n-1)*m, stays ≥ CLAUSE_DISQ.
-    4. endTestWord_consumption (CLAUSE_DISQ case): shifts by 2*m, lands ≥ CHAIN_DISQ.
-    5. Arithmetic: m + (n-1)*m + 2*m = (n+2)*m... wait, no.
-       START_CLAUSE doesn't shift. testChain shifts (n-1)*m. endTestWord shifts 2*m.
-       Total shift = (n-1)*m + 2*m = (n+1)*m. ✓ -/
+    Proof:
+    1. Reassociate word as testWords ++ (endTestWord ++ suffix).
+    2. testChain_disq (n-1 steps): shifts by (n-1)*m, stays ≥ CLAUSE_DISQ on drop.
+    3. Decompose (A1++A2).drop(n-1) = [x,y] ++ A2 (last 2 of A1 plus A2).
+    4. endTestWord_consumption CLAUSE_DISQ case: shifts by 2*m, lands ≥ CHAIN_DISQ.
+    5. Arithmetic: (n-1)*m + 2*m = (n+1)*m. -/
+theorem testChain_disq_end (n : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hn : n ≥ 1)
+    (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
+    applyWord ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+              endTestWord (n - 1) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) CLAUSE_DISQ ≥
+    (n + 1) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
+  sorry
+
+/-- clauseWord in consumption form from CHAIN_DISQ: consumes n+1 blocks.
+
+    Proof: unfold clauseWord, start_clause_disq + testChain_disq_end. -/
 theorem clauseWord_chain_consumption (n : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hn : n ≥ 1)
     (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :

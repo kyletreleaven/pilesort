@@ -38,3 +38,11 @@ theorem start_clause_lifted_ge (t : PileType) (A B : List PileType) :
       applyWord START_CLAUSE (compile (virtualPileTypes ALIGN (A ++ [t] ++ B)))
         (A.length * ALIGN.length + CHAIN_DISQ) := by
   cases t <;> exact gadget_lift_ge START_CLAUSE A [_] B CHAIN_DISQ CLAUSE_DISQ (by decide) (by decide)
+
+/-- START_CLAUSE ++ suffix from CHAIN_DISQ: result ≥ suffix from CLAUSE_DISQ on the same machine.
+    Just applyWord_append + start_clause_lifted_ge + applyWord_mono. -/
+theorem start_clause_disq (suffix : List Action) (t : PileType) (rest : List PileType) :
+    applyWord (START_CLAUSE ++ suffix) (compile (virtualPileTypes ALIGN (t :: rest))) CHAIN_DISQ ≥
+      applyWord suffix (compile (virtualPileTypes ALIGN (t :: rest))) CLAUSE_DISQ := by
+  rw [applyWord_append]
+  exact applyWord_mono suffix _ (by have := start_clause_lifted_ge t [] rest; simp at this; exact this)
