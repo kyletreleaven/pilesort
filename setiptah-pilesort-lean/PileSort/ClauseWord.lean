@@ -1,6 +1,7 @@
 
 import PileSort.Mono
 import PileSort.Reduction
+import PileSort.Gadgets.StartClause
 
 /-- There exists a Boolean assignment of length n whose embedding matches xs
     and that satisfies predicate P (typically satisfiesClause or satisfiesFormula). -/
@@ -173,7 +174,23 @@ theorem clauseWord_chain_consumption (n : Nat) (clause : Clause) (suffix : List 
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) CHAIN_DISQ ≥
     (n + 1) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
-  sorry
+  -- Unfold clauseWord and reassociate
+  unfold clauseWord
+  rw [show START_CLAUSE ++ (List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+        endTestWord (n - 1) clause ++ suffix =
+      START_CLAUSE ++ ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+        endTestWord (n - 1) clause ++ suffix) from by simp [List.append_assoc]]
+  -- A1 is nonempty
+  obtain ⟨t, rest, rfl⟩ : ∃ t rest, A1 = t :: rest := by
+    match A1, hA1 with | a :: as, _ => exact ⟨a, as, rfl⟩
+  -- start_clause_disq: from CHAIN_DISQ, ≥ rest from CLAUSE_DISQ
+  have hsc := start_clause_disq
+    ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+      endTestWord (n - 1) clause ++ suffix)
+    t (rest ++ A2)
+  -- testChain_disq_end: from CLAUSE_DISQ, consumes n+1 blocks
+  have hte := testChain_disq_end n clause suffix (t :: rest) A2 hn hA1 hA2
+  exact Nat.le_trans hte (hsc)
 
 /-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally.
 
