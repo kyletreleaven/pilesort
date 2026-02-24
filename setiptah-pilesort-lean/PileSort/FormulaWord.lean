@@ -61,7 +61,11 @@ theorem clauseNext_sat (n : Nat) (c : Clause) (xs : List PileType)
     rw [this, List.replicate_succ, List.flatten_cons]; simp
   simp only [List.nil_append] at h_eq
   rw [h_eq]
-  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) (hn : n ≥ 1) hxs_len
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    rw [show m - 1 = (m - 2) + 1 from by omega, List.replicate_succ, List.flatten_cons]
+    simp [this]
+  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) (hn : n ≥ 1) hxs_len hA2
   simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, Nat.add_zero, List.nil_append] at hcw
   have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by
     simp; omega

@@ -100,7 +100,7 @@ theorem endTestWord_consumption
     otherwise reaches the penalty zone. -/
 theorem clauseWord_start (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
-    (hn : n ≥ 1) (hA1 : A1.length = n + 1) :
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     let k := A0.length
     let m := ALIGN.length
@@ -156,12 +156,12 @@ theorem testChain_disq : ∀ (k : Nat) (start : Nat) (clause : Clause)
        START_CLAUSE doesn't shift. testChain shifts (n-1)*m. endTestWord shifts 2*m.
        Total shift = (n-1)*m + 2*m = (n+1)*m. ✓ -/
 theorem clauseWord_chain_consumption (n : Nat) (clause : Clause) (suffix : List Action)
-    (types : List PileType) (hn : n ≥ 1)
-    (htypes : types.length ≥ n + 2) :
+    (A1 A2 : List PileType) (hn : n ≥ 1)
+    (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
     applyWord (clauseWord n clause ++ suffix)
-      (compile (virtualPileTypes ALIGN types)) CHAIN_DISQ ≥
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) CHAIN_DISQ ≥
     (n + 1) * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop (n + 1)))) CHAIN_DISQ := by
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
   sorry
 
 /-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally.
@@ -184,7 +184,7 @@ theorem clauseWord_chain_consumption (n : Nat) (clause : Clause) (suffix : List 
     7. Total: (n-1)*m + 2*m + CHAIN_DISQ = (n+1)*m + CHAIN_DISQ. ∎ -/
 theorem clauseWord_chain (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
-    (hn : n ≥ 1) (hA1 : A1.length = n + 1) :
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     let k := A0.length
     let m := ALIGN.length
@@ -195,7 +195,7 @@ theorem clauseWord_chain (n : Nat) (clause : Clause)
 /-- Combined clauseWord correctness, assembling start and chain parts. -/
 theorem clauseWord_correct (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
-    (hn : n ≥ 1) (hA1 : A1.length = n + 1) :
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     let k := A0.length
     let m := ALIGN.length
@@ -210,9 +210,9 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
     ∧
     applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
       CHAIN_DISQ + (k + n + 1) * m :=
-  ⟨(clauseWord_start n clause A0 A1 A2 hn hA1).1,
-   (clauseWord_start n clause A0 A1 A2 hn hA1).2,
-   clauseWord_chain n clause A0 A1 A2 hn hA1⟩
+  ⟨(clauseWord_start n clause A0 A1 A2 hn hA1 hA2).1,
+   (clauseWord_start n clause A0 A1 A2 hn hA1 hA2).2,
+   clauseWord_chain n clause A0 A1 A2 hn hA1 hA2⟩
 
 theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
     ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
@@ -243,7 +243,12 @@ theorem clauseWord_sat (n : Nat) (c : Clause) (xs : List PileType)
     have : m = (m - 1) + 1 := by omega
     rw [this, List.replicate_succ, List.flatten_cons]; simp
   rw [h_eq]
-  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have : m - 1 ≥ 1 := by omega
+    have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    rw [show m - 1 = (m - 2) + 1 from by omega, List.replicate_succ, List.flatten_cons]
+    simp [this]
+  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2
   simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
   constructor
   · exact hcw.1
@@ -270,7 +275,11 @@ theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
     rw [this, List.replicate_succ, List.flatten_cons]; simp
   rw [h_eq]
   -- clauseWord_correct part 3 with A0=[], A1=xs, A2=remaining
-  have hcw := (clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len).2.2
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    rw [show m - 1 = (m - 2) + 1 from by omega, List.replicate_succ, List.flatten_cons]
+    simp [this]
+  have hcw := (clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2).2.2
   simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
   -- mono: result(s) ≥ result(CHAIN_DISQ) ≥ bound
   calc CHAIN_DISQ + xs.length * ALIGN.length
