@@ -164,6 +164,28 @@ theorem testChain_disq_end (n : Nat) (clause : Clause) (suffix : List Action)
       applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
   sorry
 
+/-- ACTD is a trap: from ACTD, testWords stay at exactly ACTD after shifting.
+    Mirrors testChain_disq but uses the ACTD equality case. -/
+theorem testChain_actd : ∀ (k : Nat) (start : Nat) (clause : Clause)
+    (suffix : List Action) (types : List PileType), k < types.length →
+    applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
+      (compile (virtualPileTypes ALIGN types)) ACTD =
+    k * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop k))) ACTD
+  | 0, _, _, _, _, _ => by simp
+  | k + 1, start, clause, suffix, [], htypes => by simp at htypes
+  | k + 1, start, clause, suffix, x :: rest, htypes => by
+    simp only [List.length_cons] at htypes
+    have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
+    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
+    have htw := (testWord_consumption start clause
+      ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
+      x rest hrest).1
+    have hih := testChain_actd k (start + 1) clause suffix rest (by omega)
+    show _ = (k + 1) * ALIGN.length + applyWord suffix
+      (compile (virtualPileTypes ALIGN (List.drop k rest))) ACTD
+    rw [Nat.succ_mul, htw, hih]; omega
+
 /-- clauseWord in consumption form from CHAIN_DISQ: consumes n+1 blocks.
 
     Proof: unfold clauseWord, start_clause_disq + testChain_disq_end. -/
