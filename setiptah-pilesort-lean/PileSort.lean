@@ -12,4 +12,5 @@ import PileSort.Gadgets.Alignment
 import PileSort.Gadgets.Lifting
 import PileSort.Reduction
 import PileSort.ClauseWord
+import PileSort.TestChain
 import PileSort.FormulaWord
