@@ -144,6 +144,26 @@ theorem testChain_disq : ∀ (k : Nat) (start : Nat) (clause : Clause)
       (compile (virtualPileTypes ALIGN (List.drop k rest))) CLAUSE_DISQ
     rw [Nat.succ_mul]; omega
 
+/-- clauseWord in consumption form from CHAIN_DISQ: consumes n+1 blocks,
+    suffix runs from ≥ CHAIN_DISQ on the remaining machine.
+
+    Proof steps:
+    1. applyWord_append to split START_CLAUSE from testWords ++ endTestWord.
+    2. start_clause_lifted_ge + applyWord_mono: from CHAIN_DISQ to ≥ CLAUSE_DISQ.
+    3. testChain_disq (n-1 steps): shifts by (n-1)*m, stays ≥ CLAUSE_DISQ.
+    4. endTestWord_consumption (CLAUSE_DISQ case): shifts by 2*m, lands ≥ CHAIN_DISQ.
+    5. Arithmetic: m + (n-1)*m + 2*m = (n+2)*m... wait, no.
+       START_CLAUSE doesn't shift. testChain shifts (n-1)*m. endTestWord shifts 2*m.
+       Total shift = (n-1)*m + 2*m = (n+1)*m. ✓ -/
+theorem clauseWord_chain_consumption (n : Nat) (clause : Clause) (suffix : List Action)
+    (types : List PileType) (hn : n ≥ 1)
+    (htypes : types.length ≥ n + 2) :
+    applyWord (clauseWord n clause ++ suffix)
+      (compile (virtualPileTypes ALIGN types)) CHAIN_DISQ ≥
+    (n + 1) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop (n + 1)))) CHAIN_DISQ := by
+  sorry
+
 /-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally.
 
     English proof:
