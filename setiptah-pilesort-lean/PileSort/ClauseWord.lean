@@ -100,7 +100,7 @@ theorem endTestWord_consumption
     otherwise reaches the penalty zone. -/
 theorem clauseWord_start (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
-    (hA1 : A1.length = n + 1) :
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) :
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     let k := A0.length
     let m := ALIGN.length
@@ -164,7 +164,7 @@ theorem testChain_disq : ∀ (k : Nat) (start : Nat) (clause : Clause)
     7. Total: (n-1)*m + 2*m + CHAIN_DISQ = (n+1)*m + CHAIN_DISQ. ∎ -/
 theorem clauseWord_chain (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
-    (hA1 : A1.length = n + 1) :
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) :
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     let k := A0.length
     let m := ALIGN.length
@@ -175,7 +175,7 @@ theorem clauseWord_chain (n : Nat) (clause : Clause)
 /-- Combined clauseWord correctness, assembling start and chain parts. -/
 theorem clauseWord_correct (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
-    (hA1 : A1.length = n + 1) :
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) :
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     let k := A0.length
     let m := ALIGN.length
@@ -190,9 +190,9 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
     ∧
     applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
       CHAIN_DISQ + (k + n + 1) * m :=
-  ⟨(clauseWord_start n clause A0 A1 A2 hA1).1,
-   (clauseWord_start n clause A0 A1 A2 hA1).2,
-   clauseWord_chain n clause A0 A1 A2 hA1⟩
+  ⟨(clauseWord_start n clause A0 A1 A2 hn hA1).1,
+   (clauseWord_start n clause A0 A1 A2 hn hA1).2,
+   clauseWord_chain n clause A0 A1 A2 hn hA1⟩
 
 theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
     ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
@@ -206,7 +206,7 @@ theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
     Repackages clauseWord_correct parts 1 and 2 for the List.replicate m .Q form. -/
 theorem clauseWord_sat (n : Nat) (c : Clause) (xs : List PileType)
     (m : Nat)
-    (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
     (hm : m ≥ 2) :
     let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
     (∀ vars : List Bool, vars.length = n → xs = embedVars vars ++ [PileType.Q] →
@@ -223,7 +223,7 @@ theorem clauseWord_sat (n : Nat) (c : Clause) (xs : List PileType)
     have : m = (m - 1) + 1 := by omega
     rw [this, List.replicate_succ, List.flatten_cons]; simp
   rw [h_eq]
-  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hxs_len
+  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len
   simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
   constructor
   · exact hcw.1
@@ -237,7 +237,7 @@ theorem clauseWord_sat (n : Nat) (c : Clause) (xs : List PileType)
     Repackages clauseWord_correct part 3 for the List.replicate m .Q form. -/
 theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
     (m : Nat) (s : Nat)
-    (hxs_len : xs.length = n + 1)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
     (hm : m ≥ 2) (hs : CHAIN_DISQ ≤ s) :
     CHAIN_DISQ + xs.length * ALIGN.length ≤
       applyWord (clauseWord n c)
@@ -250,7 +250,7 @@ theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
     rw [this, List.replicate_succ, List.flatten_cons]; simp
   rw [h_eq]
   -- clauseWord_correct part 3 with A0=[], A1=xs, A2=remaining
-  have hcw := (clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hxs_len).2.2
+  have hcw := (clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len).2.2
   simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
   -- mono: result(s) ≥ result(CHAIN_DISQ) ≥ bound
   calc CHAIN_DISQ + xs.length * ALIGN.length
