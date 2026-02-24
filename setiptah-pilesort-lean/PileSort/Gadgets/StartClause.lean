@@ -46,3 +46,12 @@ theorem start_clause_disq (suffix : List Action) (t : PileType) (rest : List Pil
       applyWord suffix (compile (virtualPileTypes ALIGN (t :: rest))) CLAUSE_DISQ := by
   rw [applyWord_append]
   exact applyWord_mono suffix _ (by have := start_clause_lifted_ge t [] rest; simp at this; exact this)
+
+/-- START_CLAUSE ++ suffix from START_POS: result = suffix from NACTD on the same machine.
+    Just applyWord_append + start_clause_lifted_eq. -/
+theorem start_clause_start (suffix : List Action) (t : PileType) (rest : List PileType) :
+    applyWord (START_CLAUSE ++ suffix) (compile (virtualPileTypes ALIGN (t :: rest))) START_POS =
+      applyWord suffix (compile (virtualPileTypes ALIGN (t :: rest))) NACTD := by
+  rw [applyWord_append]
+  congr 1
+  have := start_clause_lifted_eq t [] rest; simp at this; exact this
