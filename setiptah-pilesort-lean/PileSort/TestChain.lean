@@ -116,4 +116,36 @@ theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Acti
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
     (k + 2) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  sorry
+  -- 1. Peel off the activating testWord
+  obtain ⟨a, rest, rfl⟩ : ∃ a rest, A1 = a :: rest := by
+    match A1, hA1 with | a :: as, _ => exact ⟨a, as, rfl⟩
+  simp only [List.getElem_cons_zero] at hlit
+  rw [show (List.range' j (k + 1)).flatMap (fun i => testWord i clause) ++
+        endTestWord (j + k + 1) clause ++ suffix =
+      testWord j clause ++ ((List.range' (j + 1) k).flatMap (fun i => testWord i clause) ++
+        endTestWord (j + k + 1) clause ++ suffix) from by
+    rw [List.range'_succ, List.flatMap_cons]; simp [List.append_assoc]]
+  -- Normalize (a :: rest) ++ A2 to a :: (rest ++ A2)
+  simp only [List.cons_append]
+  -- 2. testWord_consumption NACTD case with matching literal → ACTD
+  have hrest_ne : rest ++ A2 ≠ [] := by
+    have : rest.length = k + 2 := by simp at hA1; omega
+    simp [show rest ≠ [] from by intro h; simp [h] at this]
+  have htw := (testWord_consumption j clause
+    ((List.range' (j + 1) k).flatMap (fun i => testWord i clause) ++
+      endTestWord (j + k + 1) clause ++ suffix)
+    a (rest ++ A2) hrest_ne).2.2
+  rw [if_pos hlit] at htw
+  rw [htw]
+  -- 3. testChain_actd_end on tail
+  have hrest_len : rest.length = k + 2 := by simp at hA1; omega
+  have hQ' : rest[k + 1]'(by omega) = PileType.Q := by
+    have : (a :: rest)[k + 2]'(by omega) = PileType.Q := hQ
+    simpa using this
+  have hae := testChain_actd_end k (j + 1) clause suffix rest A2 hrest_len hA2 hQ'
+  rw [show j + 1 + k = j + k + 1 from by omega] at hae
+  rw [hae]
+  -- 4. Arithmetic: m + (k+1)*m = (k+2)*m
+  rw [show (k + 2) * ALIGN.length = ALIGN.length + (k + 1) * ALIGN.length from by
+    rw [show k + 2 = 1 + (k + 1) from by omega, Nat.add_mul, Nat.one_mul]]
+  omega
