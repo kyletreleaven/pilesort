@@ -98,3 +98,22 @@ theorem testChain_disq_end' (k j : Nat) (clause : Clause) (suffix : List Action)
   show _ ≥ (k + 2) * ALIGN.length + _
   rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
     rw [Nat.add_mul]]; omega
+
+/-- From NACTD at activation site: the activating testWord (index j, matching A1[0])
+    transitions NACTD → ACTD, then k remaining testWords + endTestWord reach END_POS.
+
+    Proof:
+    1. Peel first testWord via range'_succ + flatMap_cons.
+    2. testWord_consumption NACTD case with hlit: = m + rest from ACTD on A1.tail ++ A2.
+    3. testChain_actd_end on tail (k steps, index j+1): = (k+1)*m + suffix from END_POS.
+    4. Total: m + (k+1)*m = (k+2)*m. -/
+theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 3) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 2]'(by omega) = PileType.Q)
+    (hlit : matchesLiteral (A1[0]'(by omega)) j clause) :
+    applyWord ((List.range' j (k + 1)).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k + 1) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
+    (k + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  sorry
