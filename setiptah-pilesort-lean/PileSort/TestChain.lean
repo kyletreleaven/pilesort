@@ -28,32 +28,15 @@ theorem testChain_actd_end (k j : Nat) (clause : Clause) (suffix : List Action)
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) ACTD =
     (k + 1) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  -- 1. Reassociate word
-  rw [show (List.range' j k).flatMap (fun i => testWord i clause) ++
-        endTestWord (j + k) clause ++ suffix =
-      (List.range' j k).flatMap (fun i => testWord i clause) ++
-        (endTestWord (j + k) clause ++ suffix) from List.append_assoc ..]
-  -- 2. Decompose A1.drop(k) = [x, Q] since A1.length = k+2 and A1[k+1] = Q
-  obtain ⟨x, hdrop⟩ : ∃ x, A1.drop k = [x, PileType.Q] := by
-    have hdlen : (A1.drop k).length = 2 := by rw [List.length_drop, hA1]; omega
-    match h : A1.drop k, hdlen with
-    | [a, b], _ =>
-      have : b = PileType.Q := by
-        have h1 : (A1.drop k)[1] = A1[k + 1] := List.getElem_drop A1
-        simp [h] at h1; rw [h1]; exact hQ
-      exact ⟨a, by rw [this]⟩
-  -- 3. testChain_actd: k steps on A1 ++ A2
-  have hlen : k < (A1 ++ A2).length := by simp [hA1]; omega
-  have htc := testChain_actd k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) hlen
-  have hdrop2 : (A1 ++ A2).drop k = x :: PileType.Q :: A2 := by
-    rw [List.drop_append_eq_append_drop, hdrop,
-        show k - A1.length = 0 from by omega, List.drop_zero]; simp
-  rw [hdrop2] at htc
-  -- 4. endTestWord_consumption ACTD case with y = Q
-  have hend_raw := (endTestWord_consumption (j + k) clause suffix x PileType.Q A2 hA2).2
-  rw [if_pos rfl] at hend_raw
-  -- 5. Combine via rw: goal becomes k*m + (m + suffix_result) = (k+1)*m + suffix_result
-  rw [htc, hend_raw.1]
+  -- 1. Reassociate word, apply testChain_actd, rewrite drop
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htc := testChain_actd k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega)
+  rw [list_drop_append_two A1 A2 k hA1] at htc
+  -- 2. endTestWord_consumption ACTD case with y = Q
+  have hend_raw := (endTestWord_consumption (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2).2
+  rw [hQ, if_pos rfl] at hend_raw
+  -- 3. Combine via rw
+  rw [htc, show A1[k + 1] = PileType.Q from hQ, hend_raw.1]
   show k * ALIGN.length + (ALIGN.length + _) = (k + 1) * ALIGN.length + _
   rw [show (k + 1) * ALIGN.length = k * ALIGN.length + ALIGN.length from by
     rw [Nat.add_mul, Nat.one_mul], Nat.add_assoc]
