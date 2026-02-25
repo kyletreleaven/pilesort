@@ -158,15 +158,35 @@ theorem testChain_disq : ∀ (k : Nat) (start : Nat) (clause : Clause)
       (compile (virtualPileTypes ALIGN (List.drop k rest))) CLAUSE_DISQ
     rw [Nat.succ_mul]; omega
 
-/-- testWords ++ endTestWord from CLAUSE_DISQ: chains n-1 testWords then endTestWord,
-    consuming n+1 blocks total, landing at ≥ CHAIN_DISQ.
+/-- From CLAUSE_DISQ: k testWords (indices j..j+k-1) + endTestWord (j+k) reach
+    penalty zone, consuming k+2 blocks total.
 
     Proof:
     1. Reassociate word as testWords ++ (endTestWord ++ suffix).
-    2. testChain_disq (n-1 steps): shifts by (n-1)*m, stays ≥ CLAUSE_DISQ on drop.
-    3. Decompose (A1++A2).drop(n-1) = [x,y] ++ A2 (last 2 of A1 plus A2).
-    4. endTestWord_consumption CLAUSE_DISQ case: shifts by 2*m, lands ≥ CHAIN_DISQ.
-    5. Arithmetic: (n-1)*m + 2*m = (n+1)*m. -/
+    2. testChain_disq (k steps): shifts by k*m, stays ≥ CLAUSE_DISQ on A1.drop(k) ++ A2.
+    3. A1.drop(k) has ≥ 2 elements (since A1.length = k+2).
+    4. endTestWord_consumption CLAUSE_DISQ case: ≥ 2*m + suffix from CHAIN_DISQ on A2.
+    5. Total: k*m + 2*m = (k+2)*m. -/
+theorem testChain_disq_end' (k j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ []) :
+    applyWord ((List.range' j k).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) CLAUSE_DISQ ≥
+    (k + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
+  -- 1. Reassociate word, apply testChain_disq, rewrite drop
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htc := testChain_disq k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega)
+  rw [list_drop_append_two A1 A2 k hA1] at htc
+  -- 2. endTestWord_consumption CLAUSE_DISQ case
+  have hend := (endTestWord_consumption (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2).1
+  -- 3. Combine: htc ≥ k*m + hend, hend ≥ 2*m + suffix result
+  show _ ≥ (k + 2) * ALIGN.length + _
+  rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
+    rw [Nat.add_mul]]; omega
+
+/-- testWords ++ endTestWord from CLAUSE_DISQ: specialization of testChain_disq_end'
+    with k = n-1, j = 0. -/
 theorem testChain_disq_end (n : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hn : n ≥ 1)
     (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
@@ -175,7 +195,10 @@ theorem testChain_disq_end (n : Nat) (clause : Clause) (suffix : List Action)
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) CLAUSE_DISQ ≥
     (n + 1) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
-  sorry
+  rw [show List.range (n - 1) = List.range' 0 (n - 1) from List.range_eq_range' ..,
+      show (n + 1) = (n - 1 + 2) from by omega,
+      show endTestWord (n - 1) = endTestWord (0 + (n - 1)) from by simp]
+  exact testChain_disq_end' (n - 1) 0 clause suffix A1 A2 (by omega) hA2
 
 /-- ACTD is a trap: from ACTD, testWords stay at exactly ACTD after shifting.
     Mirrors testChain_disq but uses the ACTD equality case. -/
