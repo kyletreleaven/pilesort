@@ -118,3 +118,23 @@ theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Acti
   rw [show (k + 2) * ALIGN.length = ALIGN.length + (k + 1) * ALIGN.length from by
     rw [show k + 2 = 1 + (k + 1) from by omega, Nat.add_mul, Nat.one_mul]]
   omega
+
+/-- From NACTD with no matching literals anywhere: k testWords (indices j..j+k-1) +
+    endTestWord (j+k) all fail to activate, reaching penalty zone.
+    Requires y = Q (the sentinel) and ¬matchesLiteral for the endTestWord too.
+
+    Proof:
+    1. Reassociate word, apply testChain_nactd, rewrite drop via list_drop_append_two.
+    2. endTestWord_consumption NACTD case with y=Q, ¬matchesLiteral: ≥ nextBad.
+    3. Arithmetic: k*m + 2*m = (k+2)*m. -/
+theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 1]'(by omega) = PileType.Q)
+    (hno : ∀ i (hi : i < k), ¬matchesLiteral (A1[i]'(by omega)) (j + i) clause)
+    (hno_end : ¬matchesLiteral (A1[k]'(by omega)) (j + k) clause) :
+    applyWord ((List.range' j k).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD ≥
+    (k + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
+  sorry
