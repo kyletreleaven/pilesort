@@ -2,6 +2,7 @@
 import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Gadgets.StartClause
+import PileSort.TestConsume
 
 theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
     (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by
@@ -20,12 +21,6 @@ theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.l
     and that satisfies predicate P (typically satisfiesClause or satisfiesFormula). -/
 def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop) : Prop :=
   ∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q] ∧ P vars
-
-def matchesLiteral (x: PileType) (i : Nat) (clause: Clause): Prop :=
-  (.pos i ∈ clause ∧ x = .Q) ∨ (.neg i ∈ clause ∧ x = .S)
-
-instance (x: PileType) (i : Nat) (clause: Clause) : Decidable (matchesLiteral x i clause) := by
-  unfold matchesLiteral; infer_instance
 
 /-- matchesLiteral on an embedded Bool reduces to the literal satisfaction condition. -/
 theorem matchesLiteral_embedVar (b : Bool) (i : Nat) (clause : Clause) :
@@ -66,49 +61,173 @@ theorem satisfiesClause_iff_matchesLiteral (vars : List Bool) (clause : Clause) 
         simp [List.getD, List.getElem?_eq_getElem hi] at heq
         rw [List.getElem?_eq_getElem hi, heq]⟩
 
-/-- testWord consumes one block and passes control to the suffix on the tail.
-    From ACTD: stays activated (ACTD on next block).
-    From NACTD: activates (→ ACTD) if literal i is satisfied by x, else stays NACTD.
-    From CLAUSE_DISQ: penalty propagates (≥ CLAUSE_DISQ on next block). -/
-theorem testWord_consumption
-    (i : Nat) (clause : Clause) (suffix : List Action)
-    (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
-    let machine := compile (virtualPileTypes ALIGN (x :: rest))
-    let suffixMachine := compile (virtualPileTypes ALIGN rest)
-    let m := ALIGN.length
-    -- from ACTD
-    (applyWord (testWord i clause ++ suffix) machine ACTD =
-      m + applyWord suffix suffixMachine ACTD)
-    -- from CLAUSE_DISQ
-    ∧ (applyWord (testWord i clause ++ suffix) machine CLAUSE_DISQ ≥
-      m + applyWord suffix suffixMachine CLAUSE_DISQ)
-    -- from NACTD
-    ∧ (applyWord (testWord i clause ++ suffix) machine NACTD =
-      m + applyWord suffix suffixMachine (if matchesLiteral x i clause then ACTD else NACTD))
-    := by sorry
+/-- ACTD is a trap: from ACTD, testWords stay at exactly ACTD after shifting.
+    Mirrors testChain_disq but uses the ACTD equality case. -/
+theorem testChain_actd : ∀ (k : Nat) (start : Nat) (clause : Clause)
+    (suffix : List Action) (types : List PileType), k < types.length →
+    applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
+      (compile (virtualPileTypes ALIGN types)) ACTD =
+    k * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop k))) ACTD
+  | 0, _, _, _, _, _ => by simp
+  | k + 1, start, clause, suffix, [], htypes => by simp at htypes
+  | k + 1, start, clause, suffix, x :: rest, htypes => by
+    simp only [List.length_cons] at htypes
+    have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
+    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
+    have htw := (testWord_consumption start clause
+      ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
+      x rest hrest).1
+    have hih := testChain_actd k (start + 1) clause suffix rest (by omega)
+    show _ = (k + 1) * ALIGN.length + applyWord suffix
+      (compile (virtualPileTypes ALIGN (List.drop k rest))) ACTD
+    rw [Nat.succ_mul, htw, hih]; omega
 
-theorem endTestWord_consumption
-    (i : Nat) (clause : Clause) (suffix : List Action)
-    (x y : PileType) (rest : List PileType)
-    (hrest : rest ≠ [])
-    :
-    let m := ALIGN.length
-    let machine := compile (virtualPileTypes ALIGN (x :: y :: rest))
-    let nextGood := m + applyWord suffix (compile (virtualPileTypes ALIGN (y :: rest))) END_POS
-    let nextBad := 2 * m + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CHAIN_DISQ
-    (applyWord (endTestWord i clause ++ suffix) machine CLAUSE_DISQ >= nextBad)
-    ∧
-    (if y = .Q then
-      (applyWord (endTestWord i clause ++ suffix) machine ACTD = nextGood) ∧
-      if matchesLiteral x i clause then
-         applyWord (endTestWord i clause ++ suffix) machine NACTD = nextGood
-      else
-         applyWord (endTestWord i clause ++ suffix) machine NACTD >= nextBad
-    else
-      applyWord (endTestWord i clause ++ suffix) machine ACTD >= nextBad
-      -- NACTD case is subsumed by ACTD since NACTD is closer to the end than ACTD
-    )
-    := by sorry
+/-- From ACTD: k testWords (indices j..j+k-1) + endTestWord (j+k) reach END_POS
+    when the sentinel Q is at position k+1 in A1.
+
+    Proof:
+    1. Reassociate word as testWords ++ (endTestWord ++ suffix).
+    2. testChain_actd (k steps): shifts by k*m, stays ACTD on A1.drop(k) ++ A2.
+    3. A1.drop(k) = [A1[k], Q] (since A1.length = k+2, A1[k+1] = Q).
+    4. endTestWord_consumption ACTD case with y=Q: = m + suffix from END_POS.
+    5. Total: k*m + m = (k+1)*m. -/
+theorem testChain_actd_end (k j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 1]'(by omega) = PileType.Q) :
+    applyWord ((List.range' j k).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) ACTD =
+    (k + 1) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  -- 1. Reassociate word, apply testChain_actd, rewrite drop
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htc := testChain_actd k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega)
+  rw [list_drop_append_two A1 A2 k hA1] at htc
+  -- 2. endTestWord_consumption ACTD case with y = Q
+  have hend_raw := (endTestWord_consumption (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2).2
+  rw [hQ, if_pos rfl] at hend_raw
+  -- 3. Combine via rw
+  rw [htc, show A1[k + 1] = PileType.Q from hQ, hend_raw.1]
+  show k * ALIGN.length + (ALIGN.length + _) = (k + 1) * ALIGN.length + _
+  rw [show (k + 1) * ALIGN.length = k * ALIGN.length + ALIGN.length from by
+    rw [Nat.add_mul, Nat.one_mul], Nat.add_assoc]
+
+/-- From NACTD at activation site: the activating testWord (index j, matching A1[0])
+    transitions NACTD → ACTD, then k remaining testWords + endTestWord reach END_POS.
+
+    Proof:
+    1. Peel first testWord via range'_succ + flatMap_cons.
+    2. testWord_consumption NACTD case with hlit: = m + rest from ACTD on A1.tail ++ A2.
+    3. testChain_actd_end on tail (k steps, index j+1): = (k+1)*m + suffix from END_POS.
+    4. Total: m + (k+1)*m = (k+2)*m. -/
+theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 3) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 2]'(by omega) = PileType.Q)
+    (hlit : matchesLiteral (A1[0]'(by omega)) j clause) :
+    applyWord ((List.range' j (k + 1)).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k + 1) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
+    (k + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  -- 1. Peel off the activating testWord
+  obtain ⟨a, rest, rfl⟩ : ∃ a rest, A1 = a :: rest := by
+    match A1, hA1 with | a :: as, _ => exact ⟨a, as, rfl⟩
+  simp only [List.getElem_cons_zero] at hlit
+  rw [show (List.range' j (k + 1)).flatMap (fun i => testWord i clause) ++
+        endTestWord (j + k + 1) clause ++ suffix =
+      testWord j clause ++ ((List.range' (j + 1) k).flatMap (fun i => testWord i clause) ++
+        endTestWord (j + k + 1) clause ++ suffix) from by
+    rw [List.range'_succ, List.flatMap_cons]; simp [List.append_assoc]]
+  -- Normalize (a :: rest) ++ A2 to a :: (rest ++ A2)
+  simp only [List.cons_append]
+  -- 2. testWord_consumption NACTD case with matching literal → ACTD
+  have hrest_ne : rest ++ A2 ≠ [] := by
+    have : rest.length = k + 2 := by simp at hA1; omega
+    simp [show rest ≠ [] from by intro h; simp [h] at this]
+  have htw := (testWord_consumption j clause
+    ((List.range' (j + 1) k).flatMap (fun i => testWord i clause) ++
+      endTestWord (j + k + 1) clause ++ suffix)
+    a (rest ++ A2) hrest_ne).2.2
+  rw [if_pos hlit] at htw
+  rw [htw]
+  -- 3. testChain_actd_end on tail
+  have hrest_len : rest.length = k + 2 := by simp at hA1; omega
+  have hQ' : rest[k + 1]'(by omega) = PileType.Q := by
+    have : (a :: rest)[k + 2]'(by omega) = PileType.Q := hQ
+    simpa using this
+  have hae := testChain_actd_end k (j + 1) clause suffix rest A2 hrest_len hA2 hQ'
+  rw [show j + 1 + k = j + k + 1 from by omega] at hae
+  rw [hae]
+  -- 4. Arithmetic: m + (k+1)*m = (k+2)*m
+  rw [show (k + 2) * ALIGN.length = ALIGN.length + (k + 1) * ALIGN.length from by
+    rw [show k + 2 = 1 + (k + 1) from by omega, Nat.add_mul, Nat.one_mul]]
+  omega
+
+/-- NACTD with no matching literals: stays at exactly NACTD after shifting.
+    Mirrors testChain_actd but uses the NACTD case with ¬matchesLiteral. -/
+theorem testChain_nactd : ∀ (k : Nat) (start : Nat) (clause : Clause)
+    (suffix : List Action) (types : List PileType) (hlen : k < types.length),
+    (∀ i (hi : i < k), ¬matchesLiteral (types[i]'(by omega)) (start + i) clause) →
+    applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
+      (compile (virtualPileTypes ALIGN types)) NACTD =
+    k * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop k))) NACTD
+  | 0, _, _, _, _, _, _ => by simp
+  | k + 1, start, clause, suffix, [], htypes, _ => by simp at htypes
+  | k + 1, start, clause, suffix, x :: rest, htypes, hno => by
+    simp only [List.length_cons] at htypes
+    have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
+    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
+    have hno0 : ¬matchesLiteral x start clause := by
+      have := hno 0 (by omega); simp at this; exact this
+    have htw := (testWord_consumption start clause
+      ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
+      x rest hrest).2.2
+    rw [if_neg hno0] at htw
+    have hih := testChain_nactd k (start + 1) clause suffix rest (by omega) (by
+      intro i hi
+      have := hno (i + 1) (by omega)
+      simp only [List.length_cons, List.getElem_cons_succ] at this
+      rw [show start + (i + 1) = start + 1 + i from by omega] at this
+      exact this)
+    show _ = (k + 1) * ALIGN.length + applyWord suffix
+      (compile (virtualPileTypes ALIGN (List.drop k rest))) NACTD
+    rw [Nat.succ_mul, htw, hih]; omega
+
+/-- From NACTD with no matching literals anywhere: k testWords (indices j..j+k-1) +
+    endTestWord (j+k) all fail to activate, reaching penalty zone.
+    Requires y = Q (the sentinel) and ¬matchesLiteral for the endTestWord too.
+
+    Proof:
+    1. Reassociate word, apply testChain_nactd, rewrite drop via list_drop_append_two.
+    2. endTestWord_consumption NACTD case with y=Q, ¬matchesLiteral: ≥ nextBad.
+    3. Arithmetic: k*m + 2*m = (k+2)*m. -/
+theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 1]'(by omega) = PileType.Q)
+    (hno : ∀ i (hi : i < k), ¬matchesLiteral (A1[i]'(by omega)) (j + i) clause)
+    (hno_end : ¬matchesLiteral (A1[k]'(by omega)) (j + k) clause) :
+    applyWord ((List.range' j k).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD ≥
+    (k + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
+  -- 1. Reassociate word, apply testChain_nactd, rewrite drop
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htc := testChain_nactd k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega) (by
+    intro i hi
+    rw [List.getElem_append_left (by omega)]
+    exact hno i hi)
+  rw [list_drop_append_two A1 A2 k hA1, show A1[k + 1] = PileType.Q from hQ] at htc
+  -- 2. endTestWord_consumption NACTD case with y=Q, ¬matchesLiteral
+  have hend_raw := (endTestWord_consumption (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2).2
+  rw [hQ, if_pos rfl] at hend_raw
+  rw [if_neg hno_end] at hend_raw
+  -- 3. Combine
+  show _ ≥ (k + 2) * ALIGN.length + _
+  rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
+    rw [Nat.add_mul]]; omega
 
 /-- clauseWord from START_POS: if a satisfying assignment matches A1, reaches END_POS;
     otherwise reaches the penalty zone. -/
@@ -199,59 +318,6 @@ theorem testChain_disq_end (n : Nat) (clause : Clause) (suffix : List Action)
       show (n + 1) = (n - 1 + 2) from by omega,
       show endTestWord (n - 1) = endTestWord (0 + (n - 1)) from by simp]
   exact testChain_disq_end' (n - 1) 0 clause suffix A1 A2 (by omega) hA2
-
-/-- ACTD is a trap: from ACTD, testWords stay at exactly ACTD after shifting.
-    Mirrors testChain_disq but uses the ACTD equality case. -/
-theorem testChain_actd : ∀ (k : Nat) (start : Nat) (clause : Clause)
-    (suffix : List Action) (types : List PileType), k < types.length →
-    applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
-      (compile (virtualPileTypes ALIGN types)) ACTD =
-    k * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop k))) ACTD
-  | 0, _, _, _, _, _ => by simp
-  | k + 1, start, clause, suffix, [], htypes => by simp at htypes
-  | k + 1, start, clause, suffix, x :: rest, htypes => by
-    simp only [List.length_cons] at htypes
-    have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
-    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
-    have htw := (testWord_consumption start clause
-      ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
-      x rest hrest).1
-    have hih := testChain_actd k (start + 1) clause suffix rest (by omega)
-    show _ = (k + 1) * ALIGN.length + applyWord suffix
-      (compile (virtualPileTypes ALIGN (List.drop k rest))) ACTD
-    rw [Nat.succ_mul, htw, hih]; omega
-
-/-- NACTD with no matching literals: stays at exactly NACTD after shifting.
-    Mirrors testChain_actd but uses the NACTD case with ¬matchesLiteral. -/
-theorem testChain_nactd : ∀ (k : Nat) (start : Nat) (clause : Clause)
-    (suffix : List Action) (types : List PileType) (hlen : k < types.length),
-    (∀ i (hi : i < k), ¬matchesLiteral (types[i]'(by omega)) (start + i) clause) →
-    applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
-      (compile (virtualPileTypes ALIGN types)) NACTD =
-    k * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop k))) NACTD
-  | 0, _, _, _, _, _, _ => by simp
-  | k + 1, start, clause, suffix, [], htypes, _ => by simp at htypes
-  | k + 1, start, clause, suffix, x :: rest, htypes, hno => by
-    simp only [List.length_cons] at htypes
-    have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
-    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
-    have hno0 : ¬matchesLiteral x start clause := by
-      have := hno 0 (by omega); simp at this; exact this
-    have htw := (testWord_consumption start clause
-      ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
-      x rest hrest).2.2
-    rw [if_neg hno0] at htw
-    have hih := testChain_nactd k (start + 1) clause suffix rest (by omega) (by
-      intro i hi
-      have := hno (i + 1) (by omega)
-      simp only [List.length_cons, List.getElem_cons_succ] at this
-      rw [show start + (i + 1) = start + 1 + i from by omega] at this
-      exact this)
-    show _ = (k + 1) * ALIGN.length + applyWord suffix
-      (compile (virtualPileTypes ALIGN (List.drop k rest))) NACTD
-    rw [Nat.succ_mul, htw, hih]; omega
 
 /-- clauseWord in consumption form from CHAIN_DISQ: consumes n+1 blocks.
 
