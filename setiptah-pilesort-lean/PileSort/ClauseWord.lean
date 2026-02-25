@@ -302,6 +302,19 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
    (clauseWord_start n clause A0 A1 A2 hn hA1 hA2).2,
    clauseWord_chain n clause A0 A1 A2 hn hA1 hA2⟩
 
+theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
+    (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by
+  have h1 : k ≤ A1.length := by omega
+  rw [List.drop_append_eq_append_drop,
+      show k - A1.length = 0 from by omega, List.drop_zero]
+  have hdlen : (A1.drop k).length = 2 := by rw [List.length_drop, hA1]; omega
+  match h : A1.drop k, hdlen with
+  | [a, b], _ =>
+    simp
+    constructor
+    · have := List.getElem_drop (i := k) (j := 0) (h := by omega) A1; simp [h] at this; exact this
+    · have := List.getElem_drop (i := k) (j := 1) (h := by omega) A1; simp [h] at this; exact this
+
 theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
     ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
   | [x], _ => ⟨[], x, rfl, rfl⟩
