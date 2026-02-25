@@ -231,23 +231,29 @@ theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
 
 /-- clauseWord from START_POS: if a satisfying assignment matches A1, reaches END_POS;
     otherwise reaches the penalty zone. -/
-theorem clauseWord_start (n : Nat) (clause : Clause)
+theorem clauseWord_start_sat (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
     (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
     let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
     let k := A0.length
     let m := ALIGN.length
-    -- From START_POS with satisfying assignment: → END_POS
-    (∀ vars : List Bool, vars.length = n → A1 = embedVars vars ++ [PileType.Q] →
+    ∀ vars : List Bool, vars.length = n → A1 = embedVars vars ++ [PileType.Q] →
       satisfiesClause vars clause →
       applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
-        END_POS + (k + n) * m)
-    ∧
-    -- From START_POS without any satisfying assignment matching A1: → penalty
-    (¬ HasMatchingAssignment n A1 (satisfiesClause · clause) →
-      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
-        CHAIN_DISQ + (k + n + 1) * m) := by
+        END_POS + (k + n) * m := by
   sorry
+
+theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
+    (A0 A1 A2 : List PileType)
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
+    let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
+    let k := A0.length
+    let m := ALIGN.length
+    ¬ HasMatchingAssignment n A1 (satisfiesClause · clause) →
+      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
+        CHAIN_DISQ + (k + n + 1) * m := by
+  sorry
+
 
 /-- Chaining testWords from CLAUSE_DISQ: each step shifts by one block and preserves ≥ CLAUSE_DISQ.
     After k steps on range' start k, the result is ≥ k * m + (suffix result on dropped types).
@@ -400,8 +406,8 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
     ∧
     applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
       CHAIN_DISQ + (k + n + 1) * m :=
-  ⟨(clauseWord_start n clause A0 A1 A2 hn hA1 hA2).1,
-   (clauseWord_start n clause A0 A1 A2 hn hA1 hA2).2,
+  ⟨clauseWord_start_sat n clause A0 A1 A2 hn hA1 hA2,
+   clauseWord_start_nonsat n clause A0 A1 A2 hn hA1 hA2,
    clauseWord_chain n clause A0 A1 A2 hn hA1 hA2⟩
 
 theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
