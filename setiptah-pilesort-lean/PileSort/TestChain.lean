@@ -137,4 +137,18 @@ theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD ≥
     (k + 2) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
-  sorry
+  -- 1. Reassociate word, apply testChain_nactd, rewrite drop
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htc := testChain_nactd k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega) (by
+    intro i hi
+    rw [List.getElem_append_left (by omega)]
+    exact hno i hi)
+  rw [list_drop_append_two A1 A2 k hA1, show A1[k + 1] = PileType.Q from hQ] at htc
+  -- 2. endTestWord_consumption NACTD case with y=Q, ¬matchesLiteral
+  have hend_raw := (endTestWord_consumption (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2).2
+  rw [hQ, if_pos rfl] at hend_raw
+  rw [if_neg hno_end] at hend_raw
+  -- 3. Combine
+  show _ ≥ (k + 2) * ALIGN.length + _
+  rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
+    rw [Nat.add_mul]]; omega
