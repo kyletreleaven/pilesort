@@ -31,6 +31,15 @@ theorem embedVars_injective : ∀ (a b : List Bool), embedVars a = embedVars b �
     have hxy : x = y := by cases x <;> cases y <;> simp_all [embedVar]
     subst hxy; exact congrArg (x :: ·) (embedVars_injective xs ys h.2)
 
+theorem embedVars_surjective : ∀ (xs : List PileType),
+    ∃ vars : List Bool, vars.length = xs.length ∧ embedVars vars = xs
+  | [] => ⟨[], rfl, rfl⟩
+  | x :: rest => by
+    obtain ⟨vars, hlen, heq⟩ := embedVars_surjective rest
+    refine ⟨(x = .Q) :: vars, by simp [hlen], ?_⟩
+    unfold embedVars; simp only [List.map]; unfold embedVar
+    cases x <;> simp [embedVars] at heq ⊢ <;> exact heq
+
 -- Decidable instances for universal/existential quantifiers over PileType.
 -- This avoids depending on Mathlib's Fintype.
 
