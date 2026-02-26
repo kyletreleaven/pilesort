@@ -266,6 +266,106 @@ theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
   rw [List.cons_append,
       start_clause_start _ t (rest ++ A2)]
 
+theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
+    ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
+  | [x], _ => ⟨[], x, rfl, rfl⟩
+  | x :: y :: rest, _ => by
+    have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
+    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
+
+/-- When A1 ends in Q and has no matching satisfying assignment,
+    no matchesLiteral fires at any index. -/
+theorem not_hasMatchingAssignment_no_matchesLiteral
+    (n : Nat) (A1 : List PileType) (clause : Clause)
+    (hA1 : A1.length = n + 1) (hQ : A1[n]'(by omega) = PileType.Q)
+    (hno : ¬HasMatchingAssignment n A1 (satisfiesClause · clause)) :
+    ∀ i (hi : i < n), ¬matchesLiteral (A1[i]'(by omega)) i clause := by
+  -- A1 = init ++ [Q], init = embedVars vars
+  obtain ⟨init, last, hsplit, hilen⟩ := list_split_last A1 (by intro h; simp [h] at hA1)
+  have hlast : last = PileType.Q := by
+    have h1 : A1[n]'(by omega) = last := by
+      simp only [hsplit]
+      rw [List.getElem_append_right (by omega)]
+      simp
+    rw [← h1]; exact hQ
+  have hinit_len : init.length = n := by omega
+  obtain ⟨vars, hvlen, hvars⟩ := embedVars_surjective init
+  -- ¬satisfiesClause
+  have hnotsat : ¬satisfiesClause vars clause := by
+    intro hsat
+    exact hno ⟨vars, hvlen ▸ hinit_len, hlast ▸ hvars ▸ hsplit, hsat⟩
+  -- Pointwise ¬matchesLiteral
+  intro i hi hml
+  apply hnotsat
+  -- A1[i] = init[i] = embedVar vars[i]
+  have hAi : A1[i]'(by omega) = init[i]'(by omega) := by
+    simp only [hsplit]; rw [List.getElem_append_left (by omega)]
+  rw [hAi] at hml
+  simp only [← hvars, embedVars, List.getElem_map] at hml
+  -- hml : matchesLiteral (embedVar vars[i]) i clause
+  -- Construct satisfiesClause directly
+  unfold matchesLiteral at hml
+  rcases hml with ⟨hmem, heq⟩ | ⟨hmem, heq⟩
+  · have : vars[i]'(by rw [hvlen]; omega) = true := by
+      cases hv : vars[i]'(by rw [hvlen]; omega) <;> simp_all [embedVar]
+    exact ⟨.pos i, hmem, by
+      show vars[i]? = some true
+      rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
+  · have : vars[i]'(by rw [hvlen]; omega) = false := by
+      cases hv : vars[i]'(by rw [hvlen]; omega) <;> simp_all [embedVar]
+    exact ⟨.neg i, hmem, by
+      show vars[i]? = some false
+      rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
+
+/-- getD on embedVars equals embedVar on getD of vars (when in range). -/
+theorem matchesLiteral_embedVars_getD (vars : List Bool) (i : Nat) (clause : Clause)
+    (hi : i < vars.length) :
+    matchesLiteral ((embedVars vars).getD i .Q) i clause ↔
+    matchesLiteral (embedVar (vars.getD i false)) i clause := by
+  have hv : vars[i]? = some vars[i] := List.getElem?_eq_getElem hi
+  have he : (embedVars vars)[i]? = some (embedVar vars[i]) := by
+    simp [embedVars, List.getElem?_map, hv]
+  simp [List.getD, hv, he]
+
+/-- getD equals getElem when in bounds. -/
+theorem List.getD_eq_getElem {α : Type} (l : List α) (i : Nat) (d : α) (hi : i < l.length) :
+    l.getD i d = l[i] := by
+  simp [List.getD, List.getElem?_eq_getElem hi]
+
+/-- When vars satisfies a clause, there is a first index where matchesLiteral fires.
+    Translates satisfiesClause (on vars) to matchesLiteral (on embedVars vars).
+    Uses getD to avoid dependent bound proofs in the existential. -/
+theorem satisfiesClause_first_matchesLiteral
+    (n : Nat) (vars : List Bool) (clause : Clause)
+    (hvars : vars.length = n)
+    (hsat : satisfiesClause vars clause) :
+    ∃ i₀, i₀ < n ∧
+      matchesLiteral ((embedVars vars).getD i₀ .Q) i₀ clause ∧
+      ∀ j, j < i₀ → ¬matchesLiteral ((embedVars vars).getD j .Q) j clause := by
+  -- From satisfiesClause, get some matching index on embedVars
+  rw [satisfiesClause_iff_matchesLiteral] at hsat
+  obtain ⟨i, hi, hml⟩ := hsat
+  have hml' : matchesLiteral ((embedVars vars).getD i .Q) i clause :=
+    (matchesLiteral_embedVars_getD vars i clause hi).mpr hml
+  -- Find first: induction on the bound
+  suffices ∀ bound, bound ≤ n →
+      (∃ k, k < bound ∧ matchesLiteral ((embedVars vars).getD k .Q) k clause) →
+      ∃ i₀, i₀ < n ∧ matchesLiteral ((embedVars vars).getD i₀ .Q) i₀ clause ∧
+        ∀ j, j < i₀ → ¬matchesLiteral ((embedVars vars).getD j .Q) j clause from
+    this n (Nat.le_refl _) ⟨i, hvars ▸ hi, hml'⟩
+  intro bound
+  induction bound with
+  | zero => intro _ ⟨_, hk, _⟩; omega
+  | succ b ih =>
+    intro hbn ⟨k, hk, hmlk⟩
+    have hkb : k ≤ b := Nat.lt_succ_iff.mp hk
+    rcases Nat.lt_or_eq_of_le hkb with hkb' | rfl
+    · exact ih (by omega) ⟨k, hkb', hmlk⟩
+    · by_cases hex : ∃ k', k' < k ∧
+          matchesLiteral ((embedVars vars).getD k' .Q) k' clause
+      · exact ih (by omega) hex
+      · exact ⟨k, by omega, hmlk, fun j hj hc => hex ⟨j, hj, hc⟩⟩
+
 /-- clauseWord from START_POS: if a satisfying assignment matches A1, reaches END_POS;
     otherwise reaches the penalty zone. -/
 theorem clauseWord_start_sat (n : Nat) (clause : Clause)
@@ -383,106 +483,6 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
   rw [show (n - 2 - i₀) + 2 = n - i₀ from by omega]
   rw [show n = i₀ + (n - i₀) from by omega, Nat.add_mul]
   omega
-
-theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
-    ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
-  | [x], _ => ⟨[], x, rfl, rfl⟩
-  | x :: y :: rest, _ => by
-    have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
-    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
-
-/-- When A1 ends in Q and has no matching satisfying assignment,
-    no matchesLiteral fires at any index. -/
-theorem not_hasMatchingAssignment_no_matchesLiteral
-    (n : Nat) (A1 : List PileType) (clause : Clause)
-    (hA1 : A1.length = n + 1) (hQ : A1[n]'(by omega) = PileType.Q)
-    (hno : ¬HasMatchingAssignment n A1 (satisfiesClause · clause)) :
-    ∀ i (hi : i < n), ¬matchesLiteral (A1[i]'(by omega)) i clause := by
-  -- A1 = init ++ [Q], init = embedVars vars
-  obtain ⟨init, last, hsplit, hilen⟩ := list_split_last A1 (by intro h; simp [h] at hA1)
-  have hlast : last = PileType.Q := by
-    have h1 : A1[n]'(by omega) = last := by
-      simp only [hsplit]
-      rw [List.getElem_append_right (by omega)]
-      simp
-    rw [← h1]; exact hQ
-  have hinit_len : init.length = n := by omega
-  obtain ⟨vars, hvlen, hvars⟩ := embedVars_surjective init
-  -- ¬satisfiesClause
-  have hnotsat : ¬satisfiesClause vars clause := by
-    intro hsat
-    exact hno ⟨vars, hvlen ▸ hinit_len, hlast ▸ hvars ▸ hsplit, hsat⟩
-  -- Pointwise ¬matchesLiteral
-  intro i hi hml
-  apply hnotsat
-  -- A1[i] = init[i] = embedVar vars[i]
-  have hAi : A1[i]'(by omega) = init[i]'(by omega) := by
-    simp only [hsplit]; rw [List.getElem_append_left (by omega)]
-  rw [hAi] at hml
-  simp only [← hvars, embedVars, List.getElem_map] at hml
-  -- hml : matchesLiteral (embedVar vars[i]) i clause
-  -- Construct satisfiesClause directly
-  unfold matchesLiteral at hml
-  rcases hml with ⟨hmem, heq⟩ | ⟨hmem, heq⟩
-  · have : vars[i]'(by rw [hvlen]; omega) = true := by
-      cases hv : vars[i]'(by rw [hvlen]; omega) <;> simp_all [embedVar]
-    exact ⟨.pos i, hmem, by
-      show vars[i]? = some true
-      rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
-  · have : vars[i]'(by rw [hvlen]; omega) = false := by
-      cases hv : vars[i]'(by rw [hvlen]; omega) <;> simp_all [embedVar]
-    exact ⟨.neg i, hmem, by
-      show vars[i]? = some false
-      rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
-
-/-- getD on embedVars equals embedVar on getD of vars (when in range). -/
-theorem matchesLiteral_embedVars_getD (vars : List Bool) (i : Nat) (clause : Clause)
-    (hi : i < vars.length) :
-    matchesLiteral ((embedVars vars).getD i .Q) i clause ↔
-    matchesLiteral (embedVar (vars.getD i false)) i clause := by
-  have hv : vars[i]? = some vars[i] := List.getElem?_eq_getElem hi
-  have he : (embedVars vars)[i]? = some (embedVar vars[i]) := by
-    simp [embedVars, List.getElem?_map, hv]
-  simp [List.getD, hv, he]
-
-/-- getD equals getElem when in bounds. -/
-theorem List.getD_eq_getElem {α : Type} (l : List α) (i : Nat) (d : α) (hi : i < l.length) :
-    l.getD i d = l[i] := by
-  simp [List.getD, List.getElem?_eq_getElem hi]
-
-/-- When vars satisfies a clause, there is a first index where matchesLiteral fires.
-    Translates satisfiesClause (on vars) to matchesLiteral (on embedVars vars).
-    Uses getD to avoid dependent bound proofs in the existential. -/
-theorem satisfiesClause_first_matchesLiteral
-    (n : Nat) (vars : List Bool) (clause : Clause)
-    (hvars : vars.length = n)
-    (hsat : satisfiesClause vars clause) :
-    ∃ i₀, i₀ < n ∧
-      matchesLiteral ((embedVars vars).getD i₀ .Q) i₀ clause ∧
-      ∀ j, j < i₀ → ¬matchesLiteral ((embedVars vars).getD j .Q) j clause := by
-  -- From satisfiesClause, get some matching index on embedVars
-  rw [satisfiesClause_iff_matchesLiteral] at hsat
-  obtain ⟨i, hi, hml⟩ := hsat
-  have hml' : matchesLiteral ((embedVars vars).getD i .Q) i clause :=
-    (matchesLiteral_embedVars_getD vars i clause hi).mpr hml
-  -- Find first: induction on the bound
-  suffices ∀ bound, bound ≤ n →
-      (∃ k, k < bound ∧ matchesLiteral ((embedVars vars).getD k .Q) k clause) →
-      ∃ i₀, i₀ < n ∧ matchesLiteral ((embedVars vars).getD i₀ .Q) i₀ clause ∧
-        ∀ j, j < i₀ → ¬matchesLiteral ((embedVars vars).getD j .Q) j clause from
-    this n (Nat.le_refl _) ⟨i, hvars ▸ hi, hml'⟩
-  intro bound
-  induction bound with
-  | zero => intro _ ⟨_, hk, _⟩; omega
-  | succ b ih =>
-    intro hbn ⟨k, hk, hmlk⟩
-    have hkb : k ≤ b := Nat.lt_succ_iff.mp hk
-    rcases Nat.lt_or_eq_of_le hkb with hkb' | rfl
-    · exact ih (by omega) ⟨k, hkb', hmlk⟩
-    · by_cases hex : ∃ k', k' < k ∧
-          matchesLiteral ((embedVars vars).getD k' .Q) k' clause
-      · exact ih (by omega) hex
-      · exact ⟨k, by omega, hmlk, fun j hj hc => hex ⟨j, hj, hc⟩⟩
 
 /-- clauseWord from START_POS without satisfying assignment → penalty.
 
