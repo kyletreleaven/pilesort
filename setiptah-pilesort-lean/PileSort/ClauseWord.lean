@@ -4,18 +4,21 @@ import PileSort.Reduction
 import PileSort.Gadgets.StartClause
 import PileSort.TestConsume
 
-theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
-    (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by
-  have h1 : k ≤ A1.length := by omega
-  rw [List.drop_append_eq_append_drop,
-      show k - A1.length = 0 from by omega, List.drop_zero]
+/-- When A1 has exactly k+2 elements, dropping the first k gives the last two. -/
+theorem list_drop_two {α : Type} (A1 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
+    A1.drop k = [A1[k]'(by omega), A1[k + 1]'(by omega)] := by
   have hdlen : (A1.drop k).length = 2 := by rw [List.length_drop, hA1]; omega
   match h : A1.drop k, hdlen with
   | [a, b], _ =>
-    simp
-    constructor
+    simp; constructor
     · have := List.getElem_drop (i := k) (j := 0) (h := by omega) A1; simp [h] at this; exact this
     · have := List.getElem_drop (i := k) (j := 1) (h := by omega) A1; simp [h] at this; exact this
+
+theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
+    (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by
+  rw [List.drop_append_eq_append_drop,
+      show k - A1.length = 0 from by omega, List.drop_zero,
+      list_drop_two A1 k hA1]; simp
 
 theorem list_drop_append_two_last {α : Type} (A1 A2 : List α) (n : Nat)
     (hA1 : A1.length = n + 1) (hn : n ≥ 1) :
@@ -265,7 +268,7 @@ theorem testChain_sat_end (k j i₀ : Nat) (clause : Clause) (suffix : List Acti
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
     (k + 1) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  sorry
+sorry
 
 /-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
     after factoring out A0 and applying start_clause_start. -/
