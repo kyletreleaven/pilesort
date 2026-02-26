@@ -248,6 +248,37 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
       satisfiesClause vars clause →
       applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
         END_POS + (k + n) * m := by
+  -- Proof:
+  -- 1. Preamble (clauseWord_start_preamble): reduce to
+  --      A0.length * m + applyWord (testWords(0..n-2) ++ endTestWord(n-1)) machine NACTD
+  --    where machine = compile (vpt ALIGN (A1 ++ A2)).
+  --    Goal becomes: inner = END_POS + n * m.
+  --
+  -- 2. From satisfiesClause, use satisfiesClause_first_matchesLiteral to get
+  --    the first index i₀ < n where matchesLiteral fires on embedVars vars,
+  --    with ¬matchesLiteral for all j < i₀.
+  --    Use List.getD_eq_getElem + A1 = embedVars vars ++ [Q] to convert to
+  --    matchesLiteral on A1[i₀] and ¬matchesLiteral on A1[j].
+  --
+  -- 3. Split the word at i₀:
+  --    range(0, n-1) = range(0, i₀) ++ range(i₀, n-1-i₀)
+  --    so testWords(0..n-2) ++ endTestWord(n-1)
+  --     = testWords(0..i₀-1) ++ [testWords(i₀..n-2) ++ endTestWord(n-1)]
+  --
+  -- 4. Apply testChain_nactd with k=i₀, start=0 on A1 ++ A2:
+  --    all j < i₀ have ¬matchesLiteral, so NACTD stays NACTD.
+  --    Result: i₀ * m + applyWord (testWords(i₀..n-2) ++ endTestWord(n-1))
+  --              (compile (vpt ALIGN ((A1 ++ A2).drop i₀))) NACTD
+  --
+  -- 5. (A1 ++ A2).drop i₀ = A1[i₀..] ++ A2 which has A1[i₀] at front,
+  --    A1[n] = Q at position n - i₀, and length ≥ (n - i₀) + 2.
+  --    Apply testChain_activate_end with k = n-2-i₀, j = i₀, suffix = []:
+  --    matchesLiteral fires at A1[i₀], then ACTD propagates through
+  --    remaining testWords, endTestWord sees Q → END_POS.
+  --    Result: (n - i₀) * m + applyWord [] (compile (vpt ALIGN (Q :: A2))) END_POS
+  --          = (n - i₀) * m + END_POS
+  --
+  -- 6. Combine: i₀ * m + (n - i₀) * m + END_POS = n * m + END_POS.
   sorry
 
 /-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
@@ -340,6 +371,11 @@ theorem matchesLiteral_embedVars_getD (vars : List Bool) (i : Nat) (clause : Cla
   have he : (embedVars vars)[i]? = some (embedVar vars[i]) := by
     simp [embedVars, List.getElem?_map, hv]
   simp [List.getD, hv, he]
+
+/-- getD equals getElem when in bounds. -/
+theorem List.getD_eq_getElem {α : Type} (l : List α) (i : Nat) (d : α) (hi : i < l.length) :
+    l.getD i d = l[i] := by
+  simp [List.getD, List.getElem?_eq_getElem hi]
 
 /-- When vars satisfies a clause, there is a first index where matchesLiteral fires.
     Translates satisfiesClause (on vars) to matchesLiteral (on embedVars vars).
