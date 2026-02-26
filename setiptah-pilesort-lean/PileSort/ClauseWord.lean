@@ -280,6 +280,13 @@ theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
   rw [List.cons_append,
       start_clause_start _ t (rest ++ A2)]
 
+theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
+    ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
+  | [x], _ => ⟨[], x, rfl, rfl⟩
+  | x :: y :: rest, _ => by
+    have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
+    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
+
 /-- clauseWord from START_POS without satisfying assignment → penalty.
 
     Proof:
@@ -512,13 +519,6 @@ theorem clauseWord_correct (n : Nat) (clause : Clause)
   ⟨clauseWord_start_sat n clause A0 A1 A2 hn hA1 hA2,
    clauseWord_start_nonsat n clause A0 A1 A2 hn hA1 hA2,
    clauseWord_chain n clause A0 A1 A2 hn hA1 hA2⟩
-
-theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
-    ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
-  | [x], _ => ⟨[], x, rfl, rfl⟩
-  | x :: y :: rest, _ => by
-    have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
-    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
 
 /-- clauseWord from START_POS on replicated types: if a matching assignment satisfies the
     clause, reaches END_POS + n * ALIGN.length; otherwise reaches ≥ CHAIN_DISQ + block.
