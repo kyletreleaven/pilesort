@@ -365,7 +365,23 @@ theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
     rw [show A0.length + n + 1 = A0.length + (n + 1) from by omega, Nat.add_mul]; omega
   -- Case split on last element of A1
   cases ht : A1[n]'(by omega) with
-  | Q => sorry  -- case 2a
+  | Q =>
+    -- Case 2a: A1[n] = Q, so A1 = embedVars vars ++ [Q] for some vars.
+    -- Steps 1-3: no matchesLiteral fires anywhere
+    have hnoml := not_hasMatchingAssignment_no_matchesLiteral n A1 clause hA1 ht hno
+    -- Step 4: testChain_nactd_end with k=n-1, j=0
+    simp only [List.range_eq_range']
+    have hQ' : A1[(n - 1) + 1]'(by omega) = PileType.Q := by
+      simp only [show n - 1 + 1 = n from by omega]; exact ht
+    have hte := testChain_nactd_end (n - 1) 0 clause [] A1 A2 (by omega) hA2 hQ'
+      (by intro i hi; simp; exact hnoml i (by omega))
+      (by simp; exact hnoml (n - 1) (by omega))
+    simp only [show 0 + (n - 1) = n - 1 from by omega,
+      List.append_nil,
+      show applyWord ([] : List Action) (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ = CHAIN_DISQ from rfl] at hte
+    show _ ≥ (n + 1) * ALIGN.length + CHAIN_DISQ
+    rw [show n + 1 = (n - 1) + 2 from by omega]
+    exact hte
   | S =>
     -- Case 2b: A1[n] = S (≠ Q).
     -- Goal: applyWord (testWords ++ endTestWord) machine NACTD ≥ (n+1)*m + CHAIN_DISQ
