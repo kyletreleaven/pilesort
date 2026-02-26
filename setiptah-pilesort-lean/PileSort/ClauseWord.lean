@@ -331,6 +331,50 @@ theorem not_hasMatchingAssignment_no_matchesLiteral
       show vars[i]? = some false
       rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
 
+/-- getD on embedVars equals embedVar on getD of vars (when in range). -/
+theorem matchesLiteral_embedVars_getD (vars : List Bool) (i : Nat) (clause : Clause)
+    (hi : i < vars.length) :
+    matchesLiteral ((embedVars vars).getD i .Q) i clause ↔
+    matchesLiteral (embedVar (vars.getD i false)) i clause := by
+  have hv : vars[i]? = some vars[i] := List.getElem?_eq_getElem hi
+  have he : (embedVars vars)[i]? = some (embedVar vars[i]) := by
+    simp [embedVars, List.getElem?_map, hv]
+  simp [List.getD, hv, he]
+
+/-- When vars satisfies a clause, there is a first index where matchesLiteral fires.
+    Translates satisfiesClause (on vars) to matchesLiteral (on embedVars vars).
+    Uses getD to avoid dependent bound proofs in the existential. -/
+theorem satisfiesClause_first_matchesLiteral
+    (n : Nat) (vars : List Bool) (clause : Clause)
+    (hvars : vars.length = n)
+    (hsat : satisfiesClause vars clause) :
+    ∃ i₀, i₀ < n ∧
+      matchesLiteral ((embedVars vars).getD i₀ .Q) i₀ clause ∧
+      ∀ j, j < i₀ → ¬matchesLiteral ((embedVars vars).getD j .Q) j clause := by
+  -- From satisfiesClause, get some matching index on embedVars
+  rw [satisfiesClause_iff_matchesLiteral] at hsat
+  obtain ⟨i, hi, hml⟩ := hsat
+  have hml' : matchesLiteral ((embedVars vars).getD i .Q) i clause :=
+    (matchesLiteral_embedVars_getD vars i clause hi).mpr hml
+  -- Find first: induction on the bound
+  suffices ∀ bound, bound ≤ n →
+      (∃ k, k < bound ∧ matchesLiteral ((embedVars vars).getD k .Q) k clause) →
+      ∃ i₀, i₀ < n ∧ matchesLiteral ((embedVars vars).getD i₀ .Q) i₀ clause ∧
+        ∀ j, j < i₀ → ¬matchesLiteral ((embedVars vars).getD j .Q) j clause from
+    this n (Nat.le_refl _) ⟨i, hvars ▸ hi, hml'⟩
+  intro bound
+  induction bound with
+  | zero => intro _ ⟨_, hk, _⟩; omega
+  | succ b ih =>
+    intro hbn ⟨k, hk, hmlk⟩
+    have hkb : k ≤ b := Nat.lt_succ_iff.mp hk
+    rcases Nat.lt_or_eq_of_le hkb with hkb' | rfl
+    · exact ih (by omega) ⟨k, hkb', hmlk⟩
+    · by_cases hex : ∃ k', k' < k ∧
+          matchesLiteral ((embedVars vars).getD k' .Q) k' clause
+      · exact ih (by omega) hex
+      · exact ⟨k, by omega, hmlk, fun j hj hc => hex ⟨j, hj, hc⟩⟩
+
 /-- clauseWord from START_POS without satisfying assignment → penalty.
 
     Proof:
