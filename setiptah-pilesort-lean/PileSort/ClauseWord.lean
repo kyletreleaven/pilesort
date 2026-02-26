@@ -279,7 +279,80 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
   --          = (n - i₀) * m + END_POS
   --
   -- 6. Combine: i₀ * m + (n - i₀) * m + END_POS = n * m + END_POS.
-  sorry
+  intro vars hvars hA1eq hsat
+  -- Step 1: Preamble
+  have hpre := clauseWord_start_preamble n clause A0 A1 A2 hn hA1
+  rw [hpre]
+  -- Goal: A0.length * m + inner = END_POS + (A0.length + n) * m
+  -- Suffices to show inner = END_POS + n * m
+  suffices h : applyWord ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+      endTestWord (n - 1) clause)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD = END_POS + n * ALIGN.length by
+    rw [show A0.length + n = A0.length + n from rfl, Nat.add_mul]; omega
+  -- Step 2: Get first matching index
+  obtain ⟨i₀, hi₀, hml₀, hnoml⟩ := satisfiesClause_first_matchesLiteral n vars clause hvars hsat
+  -- Convert getD to getElem on A1
+  have hevlen : (embedVars vars).length = n := by simp [embedVars, hvars]
+  have hml_A1 : matchesLiteral (A1[i₀]'(by omega)) i₀ clause := by
+    rw [hA1eq, List.getElem_append_left (by simp [embedVars, hvars]; omega)]
+    rw [← List.getD_eq_getElem _ _ .Q (by simp [embedVars, hvars]; omega)]
+    exact hml₀
+  have hnoml_A1 : ∀ j (hj : j < i₀), ¬matchesLiteral (A1[j]'(by omega)) j clause := by
+    intro j hj
+    rw [hA1eq, List.getElem_append_left (by simp [embedVars, hvars]; omega)]
+    rw [← List.getD_eq_getElem _ _ .Q (by simp [embedVars, hvars]; omega)]
+    exact hnoml j hj
+  -- Step 3: Split range at i₀
+  simp only [List.range_eq_range']
+  rw [show (List.range' 0 (n - 1)).flatMap (fun i => testWord i clause) ++
+      endTestWord (n - 1) clause =
+    (List.range' 0 i₀).flatMap (fun i => testWord i clause) ++
+    ((List.range' i₀ (n - 1 - i₀)).flatMap (fun i => testWord i clause) ++
+      endTestWord (n - 1) clause) from by
+    rw [← List.range'_append 0 i₀ (n - 1 - i₀) (by omega),
+        show i₀ + (n - 1 - i₀) = n - 1 from by omega]
+    simp [List.append_assoc]]
+  -- Step 4: testChain_nactd for 0..i₀-1
+  have hlen_A1A2 : i₀ < (A1 ++ A2).length := by simp [hA1]; omega
+  have hnoml_types : ∀ i (hi : i < i₀),
+      ¬matchesLiteral ((A1 ++ A2)[i]'(by omega)) (0 + i) i clause := by
+    intro i hi
+    simp only [Nat.zero_add]
+    rw [List.getElem_append_left (by omega)]
+    exact hnoml_A1 i hi
+  have htcn := testChain_nactd i₀ 0 clause
+    ((List.range' i₀ (n - 1 - i₀)).flatMap (fun i => testWord i clause) ++
+      endTestWord (n - 1) clause)
+    (A1 ++ A2) hlen_A1A2 hnoml_types
+  rw [htcn]
+  -- Step 5: testChain_activate_end on the dropped tail
+  -- (A1 ++ A2).drop i₀ starts with A1[i₀], ends with A1[n] = Q
+  have hdrop : (A1 ++ A2).drop i₀ = A1.drop i₀ ++ A2 := by
+    rw [List.drop_append_eq_append_drop,
+        show i₀ - A1.length = 0 from by omega, List.drop_zero]
+  have hdrop_len : (A1.drop i₀).length = n + 1 - i₀ := by
+    rw [List.length_drop, hA1]
+  have hdrop_len' : (A1.drop i₀).length = (n - 2 - i₀) + 3 := by omega
+  have hQ_drop : (A1.drop i₀)[(n - 2 - i₀) + 2]'(by omega) = PileType.Q := by
+    rw [List.getElem_drop (by omega)]
+    simp only [show i₀ + ((n - 2 - i₀) + 2) = n from by omega]
+    rw [hA1eq, List.getElem_append_right (by simp [embedVars, hvars]; omega)]
+    simp [hevlen]
+  have hml_drop : matchesLiteral ((A1.drop i₀)[0]'(by omega)) i₀ clause := by
+    rw [List.getElem_drop (by omega)]
+    simp only [Nat.add_zero]
+    exact hml_A1
+  have htae := testChain_activate_end (n - 2 - i₀) i₀ clause [] (A1.drop i₀) A2
+    hdrop_len' hA2 hQ_drop hml_drop
+  simp only [show i₀ + (n - 2 - i₀) + 1 = n - 1 from by omega,
+    List.append_nil] at htae
+  rw [hdrop] at htcn ⊢
+  rw [htae]
+  -- Step 6: Arithmetic
+  simp only [show applyWord ([] : List Action) (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS = END_POS from rfl]
+  rw [show (n - 2 - i₀) + 2 = n - i₀ from by omega]
+  rw [show n = i₀ + (n - i₀) from by omega, Nat.add_mul]
+  omega
 
 /-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
     after factoring out A0 and applying start_clause_start. -/
