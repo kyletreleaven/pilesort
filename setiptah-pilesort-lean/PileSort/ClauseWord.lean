@@ -174,32 +174,33 @@ theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Acti
 /-- NACTD with no matching literals: stays at exactly NACTD after shifting.
     Mirrors testChain_actd but uses the NACTD case with ¬matchesLiteral. -/
 theorem testChain_nactd : ∀ (k : Nat) (start : Nat) (clause : Clause)
-    (suffix : List Action) (types : List PileType) (hlen : k < types.length),
-    (∀ i (hi : i < k), ¬matchesLiteral (types[i]'(by omega)) (start + i) clause) →
+    (suffix : List Action) (A1 A2 : List PileType) (hlen : A1.length > k),
+    (∀ i (hi : i < k), ¬matchesLiteral (A1[i]'(by omega)) (start + i) clause) →
     applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
-      (compile (virtualPileTypes ALIGN types)) NACTD =
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
     k * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop k))) NACTD
-  | 0, _, _, _, _, _, _ => by simp
-  | k + 1, start, clause, suffix, [], htypes, _ => by simp at htypes
-  | k + 1, start, clause, suffix, x :: rest, htypes, hno => by
-    simp only [List.length_cons] at htypes
-    have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
-    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
+      applyWord suffix (compile (virtualPileTypes ALIGN (A1.drop k ++ A2))) NACTD
+  | 0, _, _, _, _, _, _, _ => by simp
+  | k + 1, start, clause, suffix, [], _, hlen, _ => by simp at hlen
+  | k + 1, start, clause, suffix, x :: rest, A2, hlen, hno => by
+    simp only [List.length_cons] at hlen
+    have hrest_ne : rest ++ A2 ≠ [] := by
+      intro h; simp at h
+    rw [List.range'_succ, List.flatMap_cons, List.append_assoc, List.cons_append]
     have hno0 : ¬matchesLiteral x start clause := by
       have := hno 0 (by omega); simp at this; exact this
     have htw := (testWord_consumption start clause
       ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
-      x rest hrest).2.2
+      x (rest ++ A2) hrest_ne).2.2
     rw [if_neg hno0] at htw
-    have hih := testChain_nactd k (start + 1) clause suffix rest (by omega) (by
+    have hih := testChain_nactd k (start + 1) clause suffix rest A2 (by omega) (by
       intro i hi
       have := hno (i + 1) (by omega)
       simp only [List.length_cons, List.getElem_cons_succ] at this
       rw [show start + (i + 1) = start + 1 + i from by omega] at this
       exact this)
     show _ = (k + 1) * ALIGN.length + applyWord suffix
-      (compile (virtualPileTypes ALIGN (List.drop k rest))) NACTD
+      (compile (virtualPileTypes ALIGN (List.drop k rest ++ A2))) NACTD
     rw [Nat.succ_mul, htw, hih]; omega
 
 /-- From NACTD with no matching literals anywhere: k testWords (indices j..j+k-1) +
