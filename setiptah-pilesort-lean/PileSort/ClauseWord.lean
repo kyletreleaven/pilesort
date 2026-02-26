@@ -287,6 +287,50 @@ theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
     have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
     exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
 
+/-- When A1 ends in Q and has no matching satisfying assignment,
+    no matchesLiteral fires at any index. -/
+theorem not_hasMatchingAssignment_no_matchesLiteral
+    (n : Nat) (A1 : List PileType) (clause : Clause)
+    (hA1 : A1.length = n + 1) (hQ : A1[n]'(by omega) = PileType.Q)
+    (hno : ¬HasMatchingAssignment n A1 (satisfiesClause · clause)) :
+    ∀ i (hi : i < n), ¬matchesLiteral (A1[i]'(by omega)) i clause := by
+  -- A1 = init ++ [Q], init = embedVars vars
+  obtain ⟨init, last, hsplit, hilen⟩ := list_split_last A1 (by intro h; simp [h] at hA1)
+  have hlast : last = PileType.Q := by
+    have h1 : A1[n]'(by omega) = last := by
+      simp only [hsplit]
+      rw [List.getElem_append_right (by omega)]
+      simp
+    rw [← h1]; exact hQ
+  have hinit_len : init.length = n := by omega
+  obtain ⟨vars, hvlen, hvars⟩ := embedVars_surjective init
+  -- ¬satisfiesClause
+  have hnotsat : ¬satisfiesClause vars clause := by
+    intro hsat
+    exact hno ⟨vars, hvlen ▸ hinit_len, hlast ▸ hvars ▸ hsplit, hsat⟩
+  -- Pointwise ¬matchesLiteral
+  intro i hi hml
+  apply hnotsat
+  -- A1[i] = init[i] = embedVar vars[i]
+  have hAi : A1[i]'(by omega) = init[i]'(by omega) := by
+    simp only [hsplit]; rw [List.getElem_append_left (by omega)]
+  rw [hAi] at hml
+  simp only [← hvars, embedVars, List.getElem_map] at hml
+  -- hml : matchesLiteral (embedVar vars[i]) i clause
+  -- Construct satisfiesClause directly
+  unfold matchesLiteral at hml
+  rcases hml with ⟨hmem, heq⟩ | ⟨hmem, heq⟩
+  · have : vars[i]'(by rw [hvlen]; omega) = true := by
+      cases hv : vars[i]'(by rw [hvlen]; omega) <;> simp_all [embedVar]
+    exact ⟨.pos i, hmem, by
+      show vars[i]? = some true
+      rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
+  · have : vars[i]'(by rw [hvlen]; omega) = false := by
+      cases hv : vars[i]'(by rw [hvlen]; omega) <;> simp_all [embedVar]
+    exact ⟨.neg i, hmem, by
+      show vars[i]? = some false
+      rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
+
 /-- clauseWord from START_POS without satisfying assignment → penalty.
 
     Proof:
