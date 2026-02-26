@@ -243,6 +243,36 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
         END_POS + (k + n) * m := by
   sorry
 
+/-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
+    after factoring out A0 and applying start_clause_start. -/
+theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
+    (A0 A1 A2 : List PileType)
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) :
+    applyWord (clauseWord n clause)
+      (compile (virtualPileTypes ALIGN (A0 ++ A1 ++ A2))) (START_POS + A0.length * ALIGN.length) =
+    A0.length * ALIGN.length +
+      applyWord ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+        endTestWord (n - 1) clause)
+        (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD := by
+  -- 1. Factor out A0
+  rw [show A0 ++ A1 ++ A2 = A0 ++ (A1 ++ A2) from List.append_assoc ..,
+      virtualPileTypes_append,
+      show START_POS + A0.length * ALIGN.length =
+        (virtualPileTypes ALIGN A0).length + START_POS from by
+        rw [virtualPileTypes_length]; omega,
+      applyWord_compile_append_shift, virtualPileTypes_length]
+  -- 2. Unfold clauseWord, reassociate as START_CLAUSE ++ rest
+  unfold clauseWord
+  rw [show START_CLAUSE ++ (List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+        endTestWord (n - 1) clause =
+      START_CLAUSE ++ ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+        endTestWord (n - 1) clause) from by simp [List.append_assoc]]
+  -- 3. A1 is nonempty; start_clause_start → NACTD
+  obtain ⟨t, rest, rfl⟩ : ∃ t rest, A1 = t :: rest := by
+    match A1, hA1 with | a :: as, _ => exact ⟨a, as, rfl⟩
+  rw [List.cons_append,
+      start_clause_start _ t (rest ++ A2)]
+
 /-- clauseWord from START_POS without satisfying assignment → penalty.
 
     Proof:
@@ -267,29 +297,16 @@ theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
         CHAIN_DISQ + (k + n + 1) * m := by
   simp only []
   intro hno
-  -- 1. Factor out A0
-  rw [show A0 ++ A1 ++ A2 = A0 ++ (A1 ++ A2) from List.append_assoc ..,
-      virtualPileTypes_append,
-      show START_POS + A0.length * ALIGN.length =
-        (virtualPileTypes ALIGN A0).length + START_POS from by
-        rw [virtualPileTypes_length]; omega,
-      applyWord_compile_append_shift, virtualPileTypes_length]
-  -- 2. Unfold clauseWord, reassociate as START_CLAUSE ++ rest
-  unfold clauseWord
-  rw [show START_CLAUSE ++ (List.range (n - 1)).flatMap (fun i => testWord i clause) ++
-        endTestWord (n - 1) clause =
-      START_CLAUSE ++ ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
-        endTestWord (n - 1) clause) from by simp [List.append_assoc]]
-  -- 3. A1 is nonempty; start_clause_start → NACTD
-  obtain ⟨t, rest, rfl⟩ : ∃ t rest, A1 = t :: rest := by
-    match A1, hA1 with | a :: as, _ => exact ⟨a, as, rfl⟩
-  rw [List.cons_append,
-      start_clause_start _ t (rest ++ A2)]
-  -- Goal: A0.length * m + applyWord (testWords ++ endTestWord) (vpt (t :: rest ++ A2)) NACTD
+  rw [clauseWord_start_preamble n clause A0 A1 A2 hn hA1]
+  -- Goal: A0.length * m + applyWord (testWords ++ endTestWord) (vpt (A1 ++ A2)) NACTD
   --       ≥ CHAIN_DISQ + (A0.length + n + 1) * m
-  -- 4. Case split on last element of A1 = t :: rest
-  have hrest_len : rest.length = n := by simp at hA1; omega
-  cases ht : (t :: rest)[n]'(by omega) with
+  -- Suffices to show inner ≥ (n+1)*m + CHAIN_DISQ
+  suffices h : applyWord ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+      endTestWord (n - 1) clause) (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD ≥
+      (n + 1) * ALIGN.length + CHAIN_DISQ by
+    rw [show A0.length + n + 1 = A0.length + (n + 1) from by omega, Nat.add_mul]; omega
+  -- Case split on last element of A1
+  cases ht : A1[n]'(by omega) with
   | Q => sorry  -- case 2a
   | S => sorry  -- case 2b
 
