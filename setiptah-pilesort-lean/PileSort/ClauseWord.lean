@@ -290,7 +290,24 @@ theorem testChain_sat_end_eq (k j : Nat) (clause : Clause) (suffix : List Action
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
     (k + 1) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  sorry
+  -- 1. Reassociate word, apply testChain_nactd_split
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from
+    List.append_assoc ..]
+  have htcn := testChain_nactd_split k j clause (endTestWord (j + k) clause ++ suffix)
+    A1 A2 (by omega) hno
+  rw [htcn]
+  -- 2. Rewrite A1.drop k as [A1[k], A1[k+1]], then A1[k+1] → Q, normalize list append
+  rw [list_drop_two A1 k hA1, show A1[k + 1] = PileType.Q from hQ]
+  simp only [List.cons_append, List.nil_append]
+  -- 3. endTestWord_consumption NACTD with matchesLiteral and y=Q
+  have hend := (endTestWord_consumption (j + k) clause suffix
+    (A1[k]'(by omega)) PileType.Q A2 hA2).2
+  rw [if_pos rfl, if_pos hml] at hend
+  rw [hend.2]
+  -- 4. Arithmetic: k * m + m = (k+1) * m
+  rw [show (k + 1) * ALIGN.length = k * ALIGN.length + ALIGN.length from by
+    rw [Nat.add_mul, Nat.one_mul]]
+  omega
 
 /-- Combined: dispatches on i₀ < k vs i₀ = k. -/
 theorem testChain_sat_end (k j i₀ : Nat) (clause : Clause) (suffix : List Action)
