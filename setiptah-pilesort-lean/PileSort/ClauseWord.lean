@@ -253,10 +253,46 @@ theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
   rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
     rw [Nat.add_mul]]; omega
 
-/-- From NACTD with a first matching literal at index i₀:
-    k testWords(j..j+k-1) + endTestWord(j+k) activates at i₀, then reaches END_POS.
-    Combines testChain_nactd (prefix) + testChain_activate_end (tail).
-    A1 has k+2 elements: k tested by testWords, 1 by endTestWord, 1 sentinel Q. -/
+/-- Case i₀ < k: activation during a regular testWord.
+    Proof sketch:
+    1. Split range [j..j+k) into [j..j+i₀) ++ [j+i₀..j+k).
+    2. testChain_nactd_split on prefix (i₀ steps, stays NACTD) on A1 ++ A2.
+    3. list_drop_two + List.cons_append to rewrite A1.drop i₀ ++ A2 for activate_end.
+    4. testChain_activate_end on tail (k-i₀ steps from NACTD, activates at A1[i₀]).
+    5. Arithmetic: i₀ * m + (k-1-i₀+2) * m = (k+1) * m. -/
+theorem testChain_sat_end_lt (k j i₀ : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 1]'(by omega) = PileType.Q)
+    (hi₀ : i₀ < k)
+    (hml : matchesLiteral (A1[i₀]'(by omega)) (j + i₀) clause)
+    (hno : ∀ i (hi : i < i₀), ¬matchesLiteral (A1[i]'(by omega)) (j + i) clause) :
+    applyWord ((List.range' j k).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
+    (k + 1) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  sorry
+
+/-- Case i₀ = k: activation at the endTestWord.
+    Proof sketch:
+    1. testChain_nactd_split on all k testWords (stays NACTD) on A1 ++ A2.
+    2. list_drop_two to rewrite A1.drop k as [A1[k], A1[k+1]].
+    3. Rewrite A1[k+1] to Q via hQ.
+    4. endTestWord_consumption NACTD with matchesLiteral and y=Q → m + suffix from END_POS.
+    5. Arithmetic: k * m + m = (k+1) * m. -/
+theorem testChain_sat_end_eq (k j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 1]'(by omega) = PileType.Q)
+    (hml : matchesLiteral (A1[k]'(by omega)) (j + k) clause)
+    (hno : ∀ i (hi : i < k), ¬matchesLiteral (A1[i]'(by omega)) (j + i) clause) :
+    applyWord ((List.range' j k).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
+    (k + 1) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  sorry
+
+/-- Combined: dispatches on i₀ < k vs i₀ = k. -/
 theorem testChain_sat_end (k j i₀ : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
     (hQ : A1[k + 1]'(by omega) = PileType.Q)
@@ -268,7 +304,9 @@ theorem testChain_sat_end (k j i₀ : Nat) (clause : Clause) (suffix : List Acti
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
     (k + 1) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-sorry
+  rcases Nat.lt_or_eq_of_le hi₀ with hi₀' | rfl
+  · exact testChain_sat_end_lt k j i₀ clause suffix A1 A2 hA1 hA2 hQ hi₀' hml hno
+  · exact testChain_sat_end_eq i₀ j clause suffix A1 A2 hA1 hA2 hQ hml hno
 
 /-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
     after factoring out A0 and applying start_clause_start. -/
