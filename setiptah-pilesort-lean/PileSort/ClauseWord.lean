@@ -17,6 +17,13 @@ theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.l
     · have := List.getElem_drop (i := k) (j := 0) (h := by omega) A1; simp [h] at this; exact this
     · have := List.getElem_drop (i := k) (j := 1) (h := by omega) A1; simp [h] at this; exact this
 
+theorem list_drop_append_two_last {α : Type} (A1 A2 : List α) (n : Nat)
+    (hA1 : A1.length = n + 1) (hn : n ≥ 1) :
+    (A1 ++ A2).drop (n - 1) = A1[n - 1]'(by omega) :: A1[n]'(by omega) :: A2 := by
+  have h := list_drop_append_two A1 A2 (n - 1) (by omega)
+  simp only [show n - 1 + 1 = n from by omega] at h
+  exact h
+
 /-- There exists a Boolean assignment of length n whose embedding matches xs
     and that satisfies predicate P (typically satisfiesClause or satisfiesFormula). -/
 def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop) : Prop :=
@@ -308,8 +315,48 @@ theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
   -- Case split on last element of A1
   cases ht : A1[n]'(by omega) with
   | Q => sorry  -- case 2a
-  | S => sorry  -- case 2b
-
+  | S =>
+    -- Case 2b: A1[n] = S (≠ Q).
+    -- Goal: applyWord (testWords ++ endTestWord) machine NACTD ≥ (n+1)*m + CHAIN_DISQ
+    -- Let W = testWords ++ endTestWord, M = machine.
+    -- Step 1: applyWord_mono (ACTD ≤ NACTD): applyWord W M ACTD ≤ applyWord W M NACTD.
+    -- Step 2: testChain_actd (n-1) 0 (suffix=endTestWord): applyWord W M ACTD
+    --         = (n-1)*m + applyWord (endTestWord) M' ACTD
+    --         where M' = vpt ALIGN (A1[n-1] :: A1[n] :: A2).
+    -- Step 3: Substitute A1[n] = S in Step 2 result.
+    -- Step 4: endTestWord_consumption ACTD with y=S≠Q, suffix=[]:
+    --         applyWord (endTestWord) M' ACTD ≥ 2*m + CHAIN_DISQ.
+    -- Step 5: Combine Steps 1-4:
+    --         applyWord W M NACTD ≥ applyWord W M ACTD
+    --           = (n-1)*m + applyWord (endTestWord) M' ACTD
+    --           ≥ (n-1)*m + 2*m + CHAIN_DISQ = (n+1)*m + CHAIN_DISQ.
+    -- Step 1: mono
+    have hmono := applyWord_mono
+      ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++ endTestWord (n - 1) clause)
+      (virtualPileTypes ALIGN (A1 ++ A2))
+      (show ACTD ≤ NACTD from by decide)
+    -- Step 2: testChain_actd, using list_drop_append_two_last so indices use A1[n] not A1[n-1+1]
+    simp only [List.range_eq_range'] at hmono ⊢
+    have htc := testChain_actd (n - 1) 0 clause
+      (endTestWord (n - 1) clause) (A1 ++ A2) (by simp [hA1]; omega)
+    rw [list_drop_append_two_last A1 A2 n hA1 hn] at htc
+    -- Steps 3-4: endTestWord_consumption ACTD with y = S ≠ Q
+    have hend := (endTestWord_consumption (n - 1) clause []
+      (A1[n - 1]'(by omega)) (A1[n]'(by omega)) A2 hA2).2
+    simp only [ht, show PileType.S = PileType.Q ↔ False from by decide,
+      false_iff, ite_false, List.append_nil,
+      show applyWord ([] : List Action) (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ = CHAIN_DISQ from rfl] at hend
+    -- Step 5: calc chain
+    simp only [ht] at htc
+    calc (n + 1) * ALIGN.length + CHAIN_DISQ
+        = (n - 1) * ALIGN.length + 2 * ALIGN.length + CHAIN_DISQ := by
+          rw [show n + 1 = (n - 1) + 2 from by omega, Nat.add_mul]
+      _ ≤ (n - 1) * ALIGN.length +
+            applyWord (endTestWord (n - 1) clause)
+              (compile (virtualPileTypes ALIGN (A1[n - 1]'(by omega) :: PileType.S :: A2))) ACTD :=
+          Nat.add_le_add_left hend _
+      _ = applyWord _ _ ACTD := htc.symm
+      _ ≤ applyWord _ _ NACTD := hmono
 
 /-- Chaining testWords from CLAUSE_DISQ: each step shifts by one block and preserves ≥ CLAUSE_DISQ.
     After k steps on range' start k, the result is ≥ k * m + (suffix result on dropped types).
