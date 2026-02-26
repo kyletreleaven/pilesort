@@ -236,6 +236,23 @@ theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
   rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
     rw [Nat.add_mul]]; omega
 
+/-- From NACTD with a first matching literal at index i₀:
+    testWords(j..j+k) + endTestWord(j+k+1) activates at i₀, then reaches END_POS.
+    Combines testChain_nactd (prefix) + testChain_activate_end (tail).
+    Requires A1 to end in Q (the sentinel). -/
+theorem testChain_sat_end (k j i₀ : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 1]'(by omega) = PileType.Q)
+    (hi₀ : i₀ ≤ k)
+    (hml : matchesLiteral (A1[i₀]'(by omega)) (j + i₀) clause)
+    (hno : ∀ i (hi : i < i₀), ¬matchesLiteral (A1[i]'(by omega)) (j + i) clause) :
+    applyWord ((List.range' j (k + 1)).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k + 1) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
+    (k + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  sorry
+
 /-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
     after factoring out A0 and applying start_clause_start. -/
 theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
