@@ -370,6 +370,23 @@ theorem testChain_sat_end (k j i₀ : Nat) (clause : Clause) (suffix : List Acti
   · exact testChain_sat_end_lt k j i₀ clause suffix A1 A2 hA1 hA2 hQ hi₀' hml hno
   · exact testChain_sat_end_eq i₀ j clause suffix A1 A2 hA1 hA2 hQ hml hno
 
+/-- Specialization of testChain_sat_end with j=0: uses List.range and plain indices. -/
+theorem testChain_sat_end_zero (k i₀ : Nat) (clause : Clause)
+    (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
+    (hQ : A1[k + 1]'(by omega) = PileType.Q)
+    (hi₀ : i₀ ≤ k)
+    (hml : matchesLiteral (A1[i₀]'(by omega)) i₀ clause)
+    (hno : ∀ i (hi : i < i₀), ¬matchesLiteral (A1[i]'(by omega)) i clause) :
+    applyWord ((List.range k).flatMap (fun i => testWord i clause) ++
+              endTestWord k clause)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
+    (k + 1) * ALIGN.length +
+      applyWord [] (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  have h := testChain_sat_end k 0 i₀ clause [] A1 A2 hA1 hA2 hQ hi₀
+    (by simp; exact hml) (by intro i hi; simp; exact hno i hi)
+  simp only [List.range_eq_range', List.append_nil, Nat.zero_add] at h ⊢
+  exact h
+
 /-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
     after factoring out A0 and applying start_clause_start. -/
 theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
@@ -500,6 +517,14 @@ theorem satisfiesClause_first_matchesLiteral
       · exact ih (by omega) hex
       · exact ⟨k, by omega, hmlk, fun j hj hc => hex ⟨j, hj, hc⟩⟩
 
+/-- Bridge: for A1 = embedVars vars ++ [Q], matchesLiteral on getD equals matchesLiteral on getElem. -/
+theorem matchesLiteral_getD_eq_getElem (vars : List Bool) (i : Nat) (clause : Clause)
+    (hi : i < vars.length) :
+    matchesLiteral ((embedVars vars).getD i .Q) i clause ↔
+    matchesLiteral ((embedVars vars ++ [PileType.Q])[i]'(by simp [embedVars]; omega)) i clause := by
+  rw [List.getElem_append_left (by simp [embedVars]; omega),
+      List.getD_eq_getElem _ _ _ (by simp [embedVars]; omega)]
+
 /-- clauseWord from START_POS: if a satisfying assignment matches A1, reaches END_POS;
     otherwise reaches the penalty zone. -/
 theorem clauseWord_start_sat (n : Nat) (clause : Clause)
@@ -512,7 +537,34 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
       satisfiesClause vars clause →
       applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
         END_POS + (k + n) * m := by
-sorry
+  simp only []
+  intro vars hvars hA1eq hsat
+  -- 1. Preamble: reduce to NACTD on testWords ++ endTestWord
+  rw [clauseWord_start_preamble n clause A0 A1 A2 hn hA1]
+  -- 2. Find first activation index
+  obtain ⟨i₀, hi₀, hml_getD, hno_getD⟩ :=
+    satisfiesClause_first_matchesLiteral n vars clause hvars hsat
+  -- 3. Substitute A1 = embedVars vars ++ [Q] everywhere
+  subst hA1eq
+  have hevlen : (embedVars vars).length = n := by simp [embedVars, hvars]
+  have hml : matchesLiteral
+      ((embedVars vars ++ [PileType.Q])[i₀]'(by simp [hevlen]; omega)) i₀ clause :=
+    (matchesLiteral_getD_eq_getElem vars i₀ clause (by omega)).mp hml_getD
+  have hno : ∀ i (hi : i < i₀),
+      ¬matchesLiteral
+        ((embedVars vars ++ [PileType.Q])[i]'(by simp [hevlen]; omega)) i clause :=
+    fun i hi hc => hno_getD i hi
+      ((matchesLiteral_getD_eq_getElem vars i clause (by omega)).mpr hc)
+  -- 5. Apply testChain_sat_end_zero
+  have hQ : (embedVars vars ++ [PileType.Q])[(n - 1) + 1]'(by simp [hevlen]; omega) =
+      PileType.Q := by
+    simp [List.getElem_append, hevlen, show n - 1 + 1 = n from by omega]
+  have htse := testChain_sat_end_zero (n - 1) i₀ clause
+    (embedVars vars ++ [PileType.Q]) A2
+    (by simp [hevlen]; omega) hA2 hQ (by omega) hml hno
+  simp only [show applyWord [] _ END_POS = END_POS from rfl] at htse
+  rw [htse, show n - 1 + 1 = n from by omega, Nat.add_mul]
+  omega
 
 /-- clauseWord from START_POS without satisfying assignment → penalty.
 
