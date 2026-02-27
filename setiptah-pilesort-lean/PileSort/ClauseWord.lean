@@ -219,6 +219,25 @@ theorem testChain_nactd_split (k start : Nat) (clause : Clause) (suffix : List A
       show k - A1.length = 0 from by omega, List.drop_zero] at h
   exact h
 
+/-- Adapter: testChain_activate_end for A1 with activation at offset i₀.
+    Wraps testChain_activate_end on A1.drop i₀, proving getElem_drop facts internally. -/
+theorem testChain_activate_end_split (k j i₀ : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hA1 : A1.length = i₀ + k + 3) (hA2 : A2 ≠ [])
+    (hQ : A1[i₀ + k + 2]'(by omega) = PileType.Q)
+    (hlit : matchesLiteral (A1[i₀]'(by omega)) j clause) :
+    applyWord ((List.range' j (k + 1)).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + k + 1) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1.drop i₀ ++ A2))) NACTD =
+    (k + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  have hdrop_len : (A1.drop i₀).length = k + 3 := by
+    rw [List.length_drop]; omega
+  have hQ' : (A1.drop i₀)[k + 2]'(by omega) = PileType.Q := by
+    simp only [List.getElem_drop, show i₀ + (k + 2) = i₀ + k + 2 from by omega]; exact hQ
+  have hlit' : matchesLiteral ((A1.drop i₀)[0]'(by omega)) j clause := by
+    simp only [List.getElem_drop, Nat.add_zero]; exact hlit
+  exact testChain_activate_end k j clause suffix (A1.drop i₀) A2 hdrop_len hA2 hQ' hlit'
+
 /-- From NACTD with no matching literals anywhere: k testWords (indices j..j+k-1) +
     endTestWord (j+k) all fail to activate, reaching penalty zone.
     Requires y = Q (the sentinel) and ¬matchesLiteral for the endTestWord too.
