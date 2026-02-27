@@ -290,7 +290,33 @@ theorem testChain_sat_end_lt (k j i₀ : Nat) (clause : Clause) (suffix : List A
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
     (k + 1) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  sorry
+  -- 1. Reassociate word, split range
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from
+    List.append_assoc ..]
+  have hrange : List.range' j k = List.range' j i₀ ++ List.range' (j + i₀) (k - i₀) := by
+    have := List.range'_append j i₀ (k - i₀) 1
+    simp only [Nat.one_mul] at this
+    rw [show k - i₀ + i₀ = k from by omega] at this
+    exact this.symm
+  rw [hrange, List.flatMap_append, List.append_assoc]
+  -- 2. testChain_nactd_split on prefix
+  have htcn := testChain_nactd_split i₀ j clause
+    ((List.range' (j + i₀) (k - i₀)).flatMap (fun i => testWord i clause) ++
+      (endTestWord (j + k) clause ++ suffix))
+    A1 A2 (by omega) hno
+  rw [htcn]
+  -- 3. Reassociate for testChain_activate_end_split, then apply
+  rw [show k - i₀ = (k - 1 - i₀) + 1 from by omega,
+      show j + k = j + i₀ + (k - 1 - i₀) + 1 from by omega,
+      ← List.append_assoc]
+  have htae := testChain_activate_end_split (k - 1 - i₀) (j + i₀) i₀ clause suffix
+    A1 A2 (by omega) hA2
+    (by simp only [show i₀ + (k - 1 - i₀) + 2 = k + 1 from by omega]; exact hQ)
+    hml
+  rw [htae]
+  -- 4. Arithmetic: i₀ * m + (k-1-i₀+2) * m = (k+1) * m
+  rw [← Nat.add_assoc, ← Nat.add_mul,
+      show i₀ + (k - 1 - i₀ + 2) = k + 1 from by omega]
 
 /-- Case i₀ = k: activation at the endTestWord.
     Proof sketch:
