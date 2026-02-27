@@ -35,41 +35,14 @@ def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop
 /-- matchesLiteral on an embedded Bool reduces to the literal satisfaction condition. -/
 theorem matchesLiteral_embedVar (b : Bool) (i : Nat) (clause : Clause) :
     matchesLiteral (embedVar b) i clause ↔
-      (.pos i ∈ clause ∧ b = true) ∨ (.neg i ∈ clause ∧ b = false) := by
+      (clause.getD i .absent = .pos ∧ b = true) ∨ (clause.getD i .absent = .neg ∧ b = false) := by
   cases b <;> simp [matchesLiteral, embedVar]
 
 /-- satisfiesClause is equivalent to matchesLiteral firing at some in-range variable index. -/
 theorem satisfiesClause_iff_matchesLiteral (vars : List Bool) (clause : Clause) :
     satisfiesClause vars clause ↔
       ∃ i, i < vars.length ∧ matchesLiteral (embedVar (vars.getD i false)) i clause := by
-  constructor
-  · rintro ⟨l, hl, hsat⟩
-    cases l with
-    | pos j =>
-      have hsat' : vars[j]? = some true := hsat
-      have hlt : j < vars.length := Decidable.byContradiction fun hc => by
-        simp at hc; simp [List.getElem?_eq_none hc] at hsat'
-      refine ⟨j, hlt, ?_⟩
-      rw [matchesLiteral_embedVar]
-      exact Or.inl ⟨hl, by simp [List.getD, hsat']⟩
-    | neg j =>
-      have hsat' : vars[j]? = some false := hsat
-      have hlt : j < vars.length := Decidable.byContradiction fun hc => by
-        simp at hc; simp [List.getElem?_eq_none hc] at hsat'
-      refine ⟨j, hlt, ?_⟩
-      rw [matchesLiteral_embedVar]
-      exact Or.inr ⟨hl, by simp [List.getD, hsat']⟩
-  · rintro ⟨i, hi, hm⟩
-    rw [matchesLiteral_embedVar] at hm
-    rcases hm with ⟨hmem, heq⟩ | ⟨hmem, heq⟩
-    · exact ⟨.pos i, hmem, by
-        show vars[i]? = some true
-        simp [List.getD, List.getElem?_eq_getElem hi] at heq
-        rw [List.getElem?_eq_getElem hi, heq]⟩
-    · exact ⟨.neg i, hmem, by
-        show vars[i]? = some false
-        simp [List.getD, List.getElem?_eq_getElem hi] at heq
-        rw [List.getElem?_eq_getElem hi, heq]⟩
+  simp only [satisfiesClause, matchesLiteral_embedVar]
 
 /-- ACTD is a trap: from ACTD, testWords stay at exactly ACTD after shifting.
     Mirrors testChain_disq but uses the ACTD equality case. -/
@@ -454,19 +427,13 @@ theorem not_hasMatchingAssignment_no_matchesLiteral
   rw [hAi] at hml
   simp only [← hvars, embedVars, List.getElem_map] at hml
   -- hml : matchesLiteral (embedVar vars[i]) i clause
-  -- Construct satisfiesClause directly
-  unfold matchesLiteral at hml
-  rcases hml with ⟨hmem, heq⟩ | ⟨hmem, heq⟩
-  · have : vars[i]'(by rw [hvlen]; omega) = true := by
-      cases hv : vars[i]'(by rw [hvlen]; omega) <;> simp_all [embedVar]
-    exact ⟨.pos i, hmem, by
-      show vars[i]? = some true
-      rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
-  · have : vars[i]'(by rw [hvlen]; omega) = false := by
-      cases hv : vars[i]'(by rw [hvlen]; omega) <;> simp_all [embedVar]
-    exact ⟨.neg i, hmem, by
-      show vars[i]? = some false
-      rw [List.getElem?_eq_getElem (by rw [hvlen]; omega), this]⟩
+  rw [satisfiesClause_iff_matchesLiteral]
+  have hvi : i < vars.length := by rw [hvlen]; omega
+  exact ⟨i, hvi, by
+    have : vars.getD i false = vars[i]'hvi := by
+      simp [List.getD, List.getElem?_eq_getElem hvi]
+    rw [this]
+    exact hml⟩
 
 /-- getD on embedVars equals embedVar on getD of vars (when in range). -/
 theorem matchesLiteral_embedVars_getD (vars : List Bool) (i : Nat) (clause : Clause)

@@ -14,7 +14,7 @@ import PileSort.Reduction
 import PileSort.Gadgets.StartClause
 
 def matchesLiteral (x: PileType) (i : Nat) (clause: Clause): Prop :=
-  (.pos i ∈ clause ∧ x = .Q) ∨ (.neg i ∈ clause ∧ x = .S)
+  (clause.getD i .absent = .pos ∧ x = .Q) ∨ (clause.getD i .absent = .neg ∧ x = .S)
 
 instance (x: PileType) (i : Nat) (clause: Clause) : Decidable (matchesLiteral x i clause) := by
   unfold matchesLiteral; infer_instance

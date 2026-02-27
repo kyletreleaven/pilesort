@@ -6,30 +6,29 @@ import PileSort.Basic
 import PileSort.VirtualPileTypes
 import PileSort.Words
 
-inductive Literal where
-  | pos (var : Nat)
-  | neg (var : Nat)
+inductive LitPresence where
+  | pos : LitPresence
+  | neg : LitPresence
+  | absent : LitPresence
   deriving DecidableEq, Repr
 
-def Literal.varIdx : Literal → Nat
-  | .pos i => i
-  | .neg i => i
-
-abbrev Clause := List Literal
+abbrev Clause := List LitPresence
 
 /-- The test word for variable i in clause φ_j:
     POS if x_i ∈ φ_j, NEG if ¬x_i ∈ φ_j, DK otherwise. -/
 def testWord (i : Nat) (clause : Clause) : List Action :=
-  if .pos i ∈ clause then POS
-  else if .neg i ∈ clause then NEG
-  else DK
+  match clause.getD i .absent with
+  | .pos => POS
+  | .neg => NEG
+  | .absent => DK
 
 /-- The end-test word for variable i in clause φ_j:
     ENDPOS if x_i ∈ φ_j, ENDNEG if ¬x_i ∈ φ_j, ENDDK otherwise. -/
 def endTestWord (i : Nat) (clause : Clause) : List Action :=
-  if .pos i ∈ clause then ENDPOS
-  else if .neg i ∈ clause then ENDNEG
-  else ENDDK
+  match clause.getD i .absent with
+  | .pos => ENDPOS
+  | .neg => ENDNEG
+  | .absent => ENDDK
 
 /-- Word embedding of a clause over n variables:
     START_CLAUSE ++ test_0(φ) ++ ... ++ test_{n-2}(φ) ++ endtest_{n-1}(φ) -/
@@ -46,9 +45,9 @@ def formulaWord (n : Nat) (clauses : List Clause) : List Action :=
 /-- A clause is satisfied by a variable assignment if some in-range literal matches.
     Out-of-range indices (≥ vars.length) are inert. -/
 def satisfiesClause (vars : List Bool) (clause : Clause) : Prop :=
-  ∃ l ∈ clause, match l with
-    | .pos i => vars[i]? = some true
-    | .neg i => vars[i]? = some false
+  ∃ i, i < vars.length ∧
+    ((clause.getD i .absent = .pos ∧ vars.getD i false = true) ∨
+     (clause.getD i .absent = .neg ∧ vars.getD i false = false))
 
 /-- A compiled machine accepts a word if starting from state 0
     it does not reach the sink state (types.length). -/
