@@ -19,10 +19,35 @@ def matchesLiteral (x: PileType) (i : Nat) (clause: Clause): Prop :=
 instance (x: PileType) (i : Nat) (clause: Clause) : Decidable (matchesLiteral x i clause) := by
   unfold matchesLiteral; infer_instance
 
-/-- testWord consumes one block and passes control to the suffix on the tail.
-    From ACTD: stays activated (ACTD on next block).
-    From NACTD: activates (→ ACTD) if literal i is satisfied by x, else stays NACTD.
-    From CLAUSE_DISQ: penalty propagates (≥ CLAUSE_DISQ on next block). -/
+/-- From ACTD: testWord stays activated, shifting by one block. -/
+theorem testWord_consumption_actd
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
+    applyWord (testWord i clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: rest))) ACTD =
+    ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) ACTD
+    := by sorry
+
+/-- From CLAUSE_DISQ: penalty propagates (≥ CLAUSE_DISQ on next block). -/
+theorem testWord_consumption_disq
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
+    applyWord (testWord i clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: rest))) CLAUSE_DISQ ≥
+    ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CLAUSE_DISQ
+    := by sorry
+
+/-- From NACTD: activates (→ ACTD) if literal i matches x, else stays NACTD. -/
+theorem testWord_consumption_nactd
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
+    applyWord (testWord i clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: rest))) NACTD =
+    ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest))
+      (if matchesLiteral x i clause then ACTD else NACTD)
+    := by sorry
+
+/-- Combined testWord consumption (all three starting states). -/
 theorem testWord_consumption
     (i : Nat) (clause : Clause) (suffix : List Action)
     (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
@@ -38,7 +63,10 @@ theorem testWord_consumption
     -- from NACTD
     ∧ (applyWord (testWord i clause ++ suffix) machine NACTD =
       m + applyWord suffix suffixMachine (if matchesLiteral x i clause then ACTD else NACTD))
-    := by sorry
+    :=
+  ⟨testWord_consumption_actd i clause suffix x rest hrest,
+   testWord_consumption_disq i clause suffix x rest hrest,
+   testWord_consumption_nactd i clause suffix x rest hrest⟩
 
 theorem endTestWord_consumption
     (i : Nat) (clause : Clause) (suffix : List Action)
