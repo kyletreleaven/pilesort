@@ -36,7 +36,7 @@ def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop
 theorem matchesLiteral_embedVar (b : Bool) (i : Nat) (clause : Clause) :
     matchesLiteral (embedVar b) i clause ↔
       (clause.getD i .absent = .pos ∧ b = true) ∨ (clause.getD i .absent = .neg ∧ b = false) := by
-  cases b <;> simp [matchesLiteral, embedVar]
+  cases b <;> simp [matchesLiteral, litMatches, embedVar]
 
 /-- satisfiesClause is equivalent to matchesLiteral firing at some in-range variable index. -/
 theorem satisfiesClause_iff_matchesLiteral (vars : List Bool) (clause : Clause) :
