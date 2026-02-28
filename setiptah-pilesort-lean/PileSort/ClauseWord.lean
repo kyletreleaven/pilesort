@@ -149,7 +149,7 @@ theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Acti
 
 /-- NACTD with no matching literals: stays at exactly NACTD after shifting.
     Mirrors testChain_actd but uses the NACTD case with ¬matchesLiteral. -/
-theorem testChain_nactd : ∀ (k : Nat) (start : Nat) (clause : Clause)
+theorem testChain_nactd_old : ∀ (k : Nat) (start : Nat) (clause : Clause)
     (suffix : List Action) (types : List PileType) (hlen : k < types.length),
     (∀ i (hi : i < k), ¬matchesLiteral (types[i]'(by omega)) (start + i) clause) →
     applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
@@ -168,7 +168,7 @@ theorem testChain_nactd : ∀ (k : Nat) (start : Nat) (clause : Clause)
       ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
       x rest hrest).2.2
     rw [if_neg hno0] at htw
-    have hih := testChain_nactd k (start + 1) clause suffix rest (by omega) (by
+    have hih := testChain_nactd_old k (start + 1) clause suffix rest (by omega) (by
       intro i hi
       have := hno (i + 1) (by omega)
       simp only [List.length_cons, List.getElem_cons_succ] at this
@@ -186,7 +186,7 @@ theorem testChain_nactd_split (k start : Nat) (clause : Clause) (suffix : List A
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
     k * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN (A1.drop k ++ A2))) NACTD := by
-  have h := testChain_nactd k start clause suffix (A1 ++ A2) (by simp; omega)
+  have h := testChain_nactd_old k start clause suffix (A1 ++ A2) (by simp; omega)
     (by intro i hi; rw [List.getElem_append_left (by omega)]; exact hno i hi)
   rw [List.drop_append_eq_append_drop,
       show k - A1.length = 0 from by omega, List.drop_zero] at h
@@ -231,7 +231,7 @@ theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
       applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
   -- 1. Reassociate word, apply testChain_nactd, rewrite drop
   rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
-  have htc := testChain_nactd k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega) (by
+  have htc := testChain_nactd_old k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega) (by
     intro i hi
     rw [List.getElem_append_left (by omega)]
     exact hno i hi)
