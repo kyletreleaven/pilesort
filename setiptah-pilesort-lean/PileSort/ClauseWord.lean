@@ -178,6 +178,39 @@ theorem testChain_nactd_old : ∀ (k : Nat) (start : Nat) (clause : Clause)
       (compile (virtualPileTypes ALIGN (List.drop k rest))) NACTD
     rw [Nat.succ_mul, htw, hih]; omega
 
+/-- NACTD with no matching literals in A1: stays at exactly NACTD after shifting
+    past A1. Consumption form: A1 is consumed, A2 remains. -/
+theorem testChain_nactd : ∀ (A1 A2 : List PileType)
+    (start : Nat) (clause : Clause) (suffix : List Action), A2 ≠ [] →
+    (∀ i (hi : i < A1.length), ¬matchesLiteral A1[i] (start + i) clause) →
+    applyWord ((List.range' start A1.length).flatMap (fun i => testWord i clause) ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
+    A1.length * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) NACTD
+  | [], _, _, _, _, _, _ => by simp
+  | a :: rest, A2, start, clause, suffix, hA2, hno => by
+    show applyWord ((List.range' start (rest.length + 1)).flatMap _ ++ suffix) _ _ = _
+    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
+    have hno0 : ¬matchesLiteral a start clause := by
+      simpa using hno 0 (by simp)
+    have hrest_ne : rest ++ A2 ≠ [] := by simp [show rest ++ A2 ≠ [] from by
+      cases rest <;> simp [hA2]]
+    have htw := (testWord_consumption start clause
+      ((List.range' (start + 1) rest.length).flatMap (fun i => testWord i clause) ++ suffix)
+      a (rest ++ A2) hrest_ne).2.2
+    rw [if_neg hno0] at htw
+    have hih := testChain_nactd rest A2 (start + 1) clause suffix hA2 (by
+      intro i hi
+      have := hno (i + 1) (by simp; omega)
+      simp only [List.getElem_cons_succ] at this
+      rw [show start + (i + 1) = start + 1 + i from by omega] at this
+      exact this)
+    simp only [List.cons_append] at htw ⊢
+    rw [htw, hih]
+    show ALIGN.length + (rest.length * ALIGN.length + _) =
+      (rest.length + 1) * ALIGN.length + _
+    rw [Nat.add_mul, Nat.one_mul]; omega
+
 /-- Adapter: testChain_nactd for A1 ++ A2 with hno on A1[i]. -/
 theorem testChain_nactd_split (k start : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hlen : k < A1.length)
