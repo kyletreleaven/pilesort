@@ -252,7 +252,7 @@ theorem testChain_activate_end_split (k j i₀ : Nat) (clause : Clause) (suffix 
     1. Reassociate word, apply testChain_nactd, rewrite drop via list_drop_append_two.
     2. endTestWord_consumption NACTD case with y=Q, ¬matchesLiteral: ≥ nextBad.
     3. Arithmetic: k*m + 2*m = (k+2)*m. -/
-theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
+theorem testChain_nactd_end_old (k j : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
     (hQ : A1[k + 1]'(by omega) = PileType.Q)
     (hno : ∀ i (hi : i < k), ¬matchesLiteral (A1[i]'(by omega)) (j + i) clause)
@@ -276,6 +276,30 @@ theorem testChain_nactd_end (k j : Nat) (clause : Clause) (suffix : List Action)
   -- 3. Combine
   show _ ≥ (k + 2) * ALIGN.length + _
   rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
+    rw [Nat.add_mul]]; omega
+
+/-- From NACTD with no matching literals anywhere, sentinel decomposition form.
+    A1 = non-matching variables, x = last variable (non-matching for endTestWord),
+    Q = sentinel, A2 = rest of machine. -/
+theorem testChain_nactd_end (j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 : List PileType) (x : PileType) (A2 : List PileType) (hA2 : A2 ≠ [])
+    (hno : ∀ i (hi : i < A1.length), ¬matchesLiteral (A1[i]) (j + i) clause)
+    (hno_end : ¬matchesLiteral x (j + A1.length) clause) :
+    applyWord ((List.range' j A1.length).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + A1.length) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ x :: PileType.Q :: A2))) NACTD ≥
+    (A1.length + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
+  -- 1. Reassociate word, apply testChain_nactd
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htc := testChain_nactd A1 (x :: PileType.Q :: A2) j clause
+    (endTestWord (j + A1.length) clause ++ suffix) (by simp) hno
+  rw [htc]
+  -- 2. endTestWord_consumption NACTD case with y=Q, ¬matchesLiteral
+  have hend := (endTestWord_consumption (j + A1.length) clause suffix x PileType.Q A2 hA2).2
+  rw [if_pos rfl, if_neg hno_end] at hend
+  -- 3. Combine
+  rw [show (A1.length + 2) * ALIGN.length = A1.length * ALIGN.length + 2 * ALIGN.length from by
     rw [Nat.add_mul]]; omega
 
 /-- Case i₀ < k: activation during a regular testWord.
@@ -592,7 +616,7 @@ theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
     simp only [List.range_eq_range']
     have hQ' : A1[(n - 1) + 1]'(by omega) = PileType.Q := by
       simp only [show n - 1 + 1 = n from by omega]; exact ht
-    have hte := testChain_nactd_end (n - 1) 0 clause [] A1 A2 (by omega) hA2 hQ'
+    have hte := testChain_nactd_end_old (n - 1) 0 clause [] A1 A2 (by omega) hA2 hQ'
       (by intro i hi; simp; exact hnoml i (by omega))
       (by simp; exact hnoml (n - 1) (by omega))
     simp only [show 0 + (n - 1) = n - 1 from by omega,
