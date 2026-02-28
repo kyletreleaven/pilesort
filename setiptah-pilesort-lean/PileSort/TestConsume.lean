@@ -179,6 +179,55 @@ theorem testWord_consumption
    testWord_consumption_disq i clause suffix x rest hrest,
    testWord_consumption_nactd i clause suffix x rest hrest⟩
 
+/-- From CLAUSE_DISQ: endTestWord penalty propagates, consuming two blocks. -/
+theorem endTestWord_consumption_disq
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x y : PileType) (rest : List PileType) (hrest : rest ≠ []) :
+    applyWord (endTestWord i clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: y :: rest))) CLAUSE_DISQ ≥
+    2 * ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CHAIN_DISQ
+    := by sorry
+
+/-- From ACTD when y = Q: endTestWord reaches END_POS in the next block. -/
+theorem endTestWord_consumption_actd_good
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
+    applyWord (endTestWord i clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: PileType.Q :: rest))) ACTD =
+    ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: rest))) END_POS
+    := by sorry
+
+/-- From ACTD when y ≠ Q: endTestWord reaches penalty zone. -/
+theorem endTestWord_consumption_actd_bad
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x y : PileType) (rest : List PileType) (hrest : rest ≠ [])
+    (hy : y ≠ PileType.Q) :
+    applyWord (endTestWord i clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: y :: rest))) ACTD ≥
+    2 * ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CHAIN_DISQ
+    := by sorry
+
+/-- From NACTD when y = Q and literal matches: endTestWord reaches END_POS. -/
+theorem endTestWord_consumption_nactd_good
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x : PileType) (rest : List PileType) (hrest : rest ≠ [])
+    (hlit : matchesLiteral x i clause) :
+    applyWord (endTestWord i clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: PileType.Q :: rest))) NACTD =
+    ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: rest))) END_POS
+    := by sorry
+
+/-- From NACTD when y = Q and literal doesn't match: endTestWord reaches penalty zone. -/
+theorem endTestWord_consumption_nactd_bad
+    (i : Nat) (clause : Clause) (suffix : List Action)
+    (x : PileType) (rest : List PileType) (hrest : rest ≠ [])
+    (hlit : ¬matchesLiteral x i clause) :
+    applyWord (endTestWord i clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: PileType.Q :: rest))) NACTD ≥
+    2 * ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CHAIN_DISQ
+    := by sorry
+
+/-- Combined endTestWord consumption. -/
 theorem endTestWord_consumption
     (i : Nat) (clause : Clause) (suffix : List Action)
     (x y : PileType) (rest : List PileType)
@@ -200,4 +249,13 @@ theorem endTestWord_consumption
       applyWord (endTestWord i clause ++ suffix) machine ACTD >= nextBad
       -- NACTD case is subsumed by ACTD since NACTD is closer to the end than ACTD
     )
-    := by sorry
+    := by
+  simp only []
+  refine ⟨endTestWord_consumption_disq i clause suffix x y rest hrest, ?_⟩
+  by_cases hy : y = PileType.Q
+  · subst hy; rw [if_pos rfl]
+    refine ⟨endTestWord_consumption_actd_good i clause suffix x rest hrest, ?_⟩
+    by_cases hlit : matchesLiteral x i clause
+    · rw [if_pos hlit]; exact endTestWord_consumption_nactd_good i clause suffix x rest hrest hlit
+    · rw [if_neg hlit]; exact endTestWord_consumption_nactd_bad i clause suffix x rest hrest hlit
+  · rw [if_neg hy]; exact endTestWord_consumption_actd_bad i clause suffix x y rest hrest hy
