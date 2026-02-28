@@ -12,19 +12,36 @@ Restated `satisfiesClause_first_matchesLiteral` to use `Fin vars.length` and
 
 Net: -17 lines (851 → 834).
 
-## 2. Restate `testChain_nactd` on `A1 ++ A2` directly
+## 2. Restate `testChain_nactd` in consumption form
 
-`testChain_nactd` takes generic `types` with `hno` using `types[i]`.
-Every external call site passes `A1 ++ A2` and converts via `getElem_append_left`.
+Restate `testChain_nactd` to take `A1 ++ A2` where `A1` is the non-matching prefix,
+with conclusion mentioning `A2` directly instead of `types.drop k`.
 
-If restated on `A1 ++ A2` with `hno` on `A1[i]`:
-- Eliminates `testChain_nactd_split` adapter (lines 182-193, used 2x)
-- Simplifies `testChain_nactd_end` (line 234, currently does getElem_append_left inline)
+**New signature:**
+```
+testChain_nactd (A1 : List PileType) (x : PileType) (A2 : List PileType)
+    (start : Nat) (clause suffix)
+    (hno : ∀ i (hi : i < A1.length), ¬matchesLiteral (A1[i]) (start + i) clause) :
+    applyWord (range' start A1.length ...) (compile (vpt ALIGN (A1 ++ x :: A2))) NACTD =
+    A1.length * ALIGN.length + applyWord suffix (compile (vpt ALIGN (x :: A2))) NACTD
+```
 
-Note: the recursive call (line 171) uses `x :: rest` not `A1 ++ A2`, so the
-induction still needs the generic form internally. May need to keep generic version
-as the inductive core and have the `A1 ++ A2` version as a corollary — which is
-basically what `_split` already is. **Might not be worth it.**
+The `x :: A2` form makes the tail structurally non-empty — no `hA2 : A2 ≠ []` needed,
+since `testWord_consumption` requires `rest ≠ []` and `A1_rest ++ x :: A2` is always
+non-empty.
+
+**Proof:** Induction on `A1` (nil/cons). Cons case: `testWord_consumption` on head
+with rest = `A1_rest ++ x :: A2` (non-empty for free), recurse on tail.
+
+**Eliminates:**
+- `testChain_nactd_split` (lines 182-193) — was the `A1 ++ A2` adapter
+- `list_drop_append_two` calls at downstream sites (no more `drop` in the conclusion)
+- `getElem_append_left` conversions in `testChain_nactd_end`
+
+**Consistency:** Makes `testChain_nactd` match the consumption pattern used by
+`testWord_consumption`, `endTestWord_consumption`, `testChain_actd`, `testChain_disq` —
+all consume from the front and state what's left. Currently `testChain_nactd` is
+the odd one out with its `types.drop k` conclusion.
 
 ## 3. Inline `list_drop_append_two_last` — easy win
 
