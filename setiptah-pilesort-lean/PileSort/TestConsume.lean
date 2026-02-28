@@ -123,7 +123,40 @@ theorem testWord_consumption_nactd
       (compile (virtualPileTypes ALIGN (x :: rest))) NACTD =
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest))
       (if matchesLiteral x i clause then ACTD else NACTD)
-    := by sorry
+    := by
+  -- 1. Gadget helper: NACTD → ACTD or NACTD depending on litMatches
+  have gadget : ∀ (lp : LitPresence) (st nt : PileType),
+      applyWord (match lp with | .pos => POS | .neg => NEG | .absent => DK)
+        (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
+      (if litMatches lp st then ACTD else NACTD) + ALIGN.length := by decide
+  -- 2. Decompose rest = y :: rest'
+  obtain ⟨y, rest', rfl⟩ : ∃ y rest', rest = y :: rest' := by
+    match rest, hrest with | y :: rest', _ => exact ⟨y, rest', rfl⟩
+  -- Specialize to testWord
+  have hgadget : applyWord (testWord i clause)
+      (compile (virtualPileTypes ALIGN [x, y])) NACTD =
+    (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length := by
+    unfold testWord matchesLiteral; exact gadget (clause.getD i .absent) x y
+  -- 3. Lift to full machine via gadget_lift_eq (A=[], window=[x,y], B=rest')
+  have hr : (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length <
+      (virtualPileTypes ALIGN [x, y]).length := by
+    simp [virtualPileTypes_length]; split <;> decide
+  have hlift := gadget_lift_eq (testWord i clause) [] [x, y] rest' NACTD
+    ((if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length)
+    (by simp [virtualPileTypes_length]; decide)
+    hgadget hr
+  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
+      List.cons_append] at hlift
+  -- 4. Split word ++ suffix, substitute, shift past first block
+  rw [applyWord_append, hlift,
+      show (x :: y :: rest' : List PileType) = [x] ++ (y :: rest') from rfl,
+      virtualPileTypes_append,
+      show (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length =
+        (virtualPileTypes ALIGN [x]).length +
+          (if matchesLiteral x i clause then ACTD else NACTD) from by
+        rw [virtualPileTypes_length]; simp; omega,
+      applyWord_compile_append_shift, virtualPileTypes_length,
+      show [x].length = 1 from rfl, Nat.one_mul]
 
 /-- Combined testWord consumption (all three starting states). -/
 theorem testWord_consumption
