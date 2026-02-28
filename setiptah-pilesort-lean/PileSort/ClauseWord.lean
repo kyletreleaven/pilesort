@@ -435,62 +435,39 @@ theorem not_hasMatchingAssignment_no_matchesLiteral
     rw [this]
     exact hml⟩
 
-/-- getD on embedVars equals embedVar on getD of vars (when in range). -/
-theorem matchesLiteral_embedVars_getD (vars : List Bool) (i : Nat) (clause : Clause)
-    (hi : i < vars.length) :
-    matchesLiteral ((embedVars vars).getD i .Q) i clause ↔
-    matchesLiteral (embedVar (vars.getD i false)) i clause := by
-  have hv : vars[i]? = some vars[i] := List.getElem?_eq_getElem hi
-  have he : (embedVars vars)[i]? = some (embedVar vars[i]) := by
-    simp [embedVars, List.getElem?_map, hv]
-  simp [List.getD, hv, he]
-
-/-- getD equals getElem when in bounds. -/
-theorem List.getD_eq_getElem {α : Type} (l : List α) (i : Nat) (d : α) (hi : i < l.length) :
-    l.getD i d = l[i] := by
-  simp [List.getD, List.getElem?_eq_getElem hi]
-
 /-- When vars satisfies a clause, there is a first index where matchesLiteral fires.
-    Translates satisfiesClause (on vars) to matchesLiteral (on embedVars vars).
-    Uses getD to avoid dependent bound proofs in the existential. -/
+    Returns the first matching index with proof it's minimal. -/
 theorem satisfiesClause_first_matchesLiteral
-    (n : Nat) (vars : List Bool) (clause : Clause)
-    (hvars : vars.length = n)
+    (vars : List Bool) (clause : Clause)
     (hsat : satisfiesClause vars clause) :
-    ∃ i₀, i₀ < n ∧
-      matchesLiteral ((embedVars vars).getD i₀ .Q) i₀ clause ∧
-      ∀ j, j < i₀ → ¬matchesLiteral ((embedVars vars).getD j .Q) j clause := by
-  -- From satisfiesClause, get some matching index on embedVars
+    ∃ i₀ : Fin vars.length,
+      matchesLiteral (embedVar vars[i₀]) i₀ clause ∧
+      ∀ j : Fin vars.length, j < i₀ →
+        ¬matchesLiteral (embedVar vars[j]) j clause := by
+  -- From satisfiesClause, get some matching index
   rw [satisfiesClause_iff_matchesLiteral] at hsat
   obtain ⟨i, hi, hml⟩ := hsat
-  have hml' : matchesLiteral ((embedVars vars).getD i .Q) i clause :=
-    (matchesLiteral_embedVars_getD vars i clause hi).mpr hml
-  -- Find first: induction on the bound
-  suffices ∀ bound, bound ≤ n →
-      (∃ k, k < bound ∧ matchesLiteral ((embedVars vars).getD k .Q) k clause) →
-      ∃ i₀, i₀ < n ∧ matchesLiteral ((embedVars vars).getD i₀ .Q) i₀ clause ∧
-        ∀ j, j < i₀ → ¬matchesLiteral ((embedVars vars).getD j .Q) j clause from
-    this n (Nat.le_refl _) ⟨i, hvars ▸ hi, hml'⟩
-  intro bound
-  induction bound with
-  | zero => intro _ ⟨_, hk, _⟩; omega
-  | succ b ih =>
-    intro hbn ⟨k, hk, hmlk⟩
-    have hkb : k ≤ b := Nat.lt_succ_iff.mp hk
-    rcases Nat.lt_or_eq_of_le hkb with hkb' | rfl
-    · exact ih (by omega) ⟨k, hkb', hmlk⟩
-    · by_cases hex : ∃ k', k' < k ∧
-          matchesLiteral ((embedVars vars).getD k' .Q) k' clause
-      · exact ih (by omega) hex
-      · exact ⟨k, by omega, hmlk, fun j hj hc => hex ⟨j, hj, hc⟩⟩
-
-/-- Bridge: for A1 = embedVars vars ++ [Q], matchesLiteral on getD equals matchesLiteral on getElem. -/
-theorem matchesLiteral_getD_eq_getElem (vars : List Bool) (i : Nat) (clause : Clause)
-    (hi : i < vars.length) :
-    matchesLiteral ((embedVars vars).getD i .Q) i clause ↔
-    matchesLiteral ((embedVars vars ++ [PileType.Q])[i]'(by simp [embedVars]; omega)) i clause := by
-  rw [List.getElem_append_left (by simp [embedVars]; omega),
-      List.getD_eq_getElem _ _ _ (by simp [embedVars]; omega)]
+  have hml' : matchesLiteral (embedVar vars[i]) i clause := by
+    rwa [show vars.getD i false = vars[i] from by
+      simp [List.getD, List.getElem?_eq_getElem hi]] at hml
+  -- Find the minimum by strong induction on the index
+  have : ∀ k (hk : k < vars.length),
+      matchesLiteral (embedVar vars[k]) k clause →
+      ∃ i₀ : Fin vars.length,
+        matchesLiteral (embedVar vars[i₀]) i₀ clause ∧
+        ∀ j : Fin vars.length, j < i₀ →
+          ¬matchesLiteral (embedVar vars[j]) j clause := by
+    intro k
+    induction k using Nat.strongRecOn with
+    | _ k ih =>
+      intro hk hmlk
+      by_cases hex : ∃ j : Fin vars.length, j.val < k ∧
+          matchesLiteral (embedVar vars[j]) j clause
+      · obtain ⟨⟨j, hj⟩, hjk, hmlj⟩ := hex
+        exact ih j hjk hj hmlj
+      · exact ⟨⟨k, hk⟩, hmlk, fun j hj hc =>
+          hex ⟨j, hj, hc⟩⟩
+  exact this i hi hml'
 
 /-- clauseWord from START_POS: if a satisfying assignment matches A1, reaches END_POS;
     otherwise reaches the penalty zone. -/
@@ -509,20 +486,27 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
   -- 1. Preamble: reduce to NACTD on testWords ++ endTestWord
   rw [clauseWord_start_preamble n clause A0 A1 A2 hA1]
   -- 2. Find first activation index
-  obtain ⟨i₀, hi₀, hml_getD, hno_getD⟩ :=
-    satisfiesClause_first_matchesLiteral n vars clause hvars hsat
+  obtain ⟨⟨i₀, hi₀v⟩, hml_ev, hno_ev⟩ :=
+    satisfiesClause_first_matchesLiteral vars clause hsat
   -- 3. Substitute A1 = embedVars vars ++ [Q] everywhere
   subst hA1eq
   have hevlen : (embedVars vars).length = n := by simp [embedVars, hvars]
+  have hi₀n : i₀ < n := by omega
+  -- Convert embedVar vars[i] to (embedVars vars ++ [Q])[i]
+  have embed_eq : ∀ i (hi : i < n),
+      (embedVars vars ++ [PileType.Q])[i]'(by simp [hevlen]; omega) = embedVar vars[i] := by
+    intro i hi
+    rw [List.getElem_append_left (by simp [hevlen]; omega)]
+    simp [embedVars]
   have hml : matchesLiteral
-      ((embedVars vars ++ [PileType.Q])[i₀]'(by simp [hevlen]; omega)) i₀ clause :=
-    (matchesLiteral_getD_eq_getElem vars i₀ clause (by omega)).mp hml_getD
+      ((embedVars vars ++ [PileType.Q])[i₀]'(by simp [hevlen]; omega)) i₀ clause := by
+    rw [embed_eq i₀ hi₀n]; exact hml_ev
   have hno : ∀ i (hi : i < i₀),
       ¬matchesLiteral
-        ((embedVars vars ++ [PileType.Q])[i]'(by simp [hevlen]; omega)) i clause :=
-    fun i hi hc => hno_getD i hi
-      ((matchesLiteral_getD_eq_getElem vars i clause (by omega)).mpr hc)
-  -- 5. Apply testChain_sat_end_zero
+        ((embedVars vars ++ [PileType.Q])[i]'(by simp [hevlen]; omega)) i clause := by
+    intro i hi hc
+    exact hno_ev ⟨i, by omega⟩ hi (by rwa [embed_eq i (by omega)] at hc)
+  -- 4. Apply testChain_sat_end_zero
   have hQ : (embedVars vars ++ [PileType.Q])[(n - 1) + 1]'(by simp [hevlen]; omega) =
       PileType.Q := by
     simp [List.getElem_append, hevlen, show n - 1 + 1 = n from by omega]
