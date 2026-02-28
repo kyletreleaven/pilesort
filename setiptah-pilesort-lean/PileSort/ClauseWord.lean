@@ -73,15 +73,52 @@ theorem testChain_actd : ∀ (k : Nat) (start : Nat) (clause : Clause)
       (compile (virtualPileTypes ALIGN (List.drop k rest))) ACTD
     rw [Nat.succ_mul, htw, hih]; omega
 
-/-- From ACTD: k testWords (indices j..j+k-1) + endTestWord (j+k) reach END_POS
-    when the sentinel Q is at position k+1 in A1.
+/-- ACTD in consumption form: from ACTD, testWords shift past A1 and stay ACTD. -/
+theorem testChain_actd_cons : ∀ (A1 A2 : List PileType)
+    (start : Nat) (clause : Clause) (suffix : List Action), A2 ≠ [] →
+    applyWord ((List.range' start A1.length).flatMap (fun i => testWord i clause) ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) ACTD =
+    A1.length * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) ACTD
+  | [], _, _, _, _, _ => by simp
+  | a :: rest, A2, start, clause, suffix, hA2 => by
+    show applyWord ((List.range' start (rest.length + 1)).flatMap _ ++ suffix) _ _ = _
+    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
+    have hrest_ne : rest ++ A2 ≠ [] := by
+      cases rest <;> simp [hA2]
+    have htw := (testWord_consumption start clause
+      ((List.range' (start + 1) rest.length).flatMap (fun i => testWord i clause) ++ suffix)
+      a (rest ++ A2) hrest_ne).1
+    have hih := testChain_actd_cons rest A2 (start + 1) clause suffix hA2
+    simp only [List.cons_append] at htw ⊢
+    rw [htw, hih]
+    show ALIGN.length + (rest.length * ALIGN.length + _) =
+      (rest.length + 1) * ALIGN.length + _
+    rw [Nat.add_mul, Nat.one_mul]; omega
 
-    Proof:
-    1. Reassociate word as testWords ++ (endTestWord ++ suffix).
-    2. testChain_actd (k steps): shifts by k*m, stays ACTD on A1.drop(k) ++ A2.
-    3. A1.drop(k) = [A1[k], Q] (since A1.length = k+2, A1[k+1] = Q).
-    4. endTestWord_consumption ACTD case with y=Q: = m + suffix from END_POS.
-    5. Total: k*m + m = (k+1)*m. -/
+/-- From ACTD, sentinel form: A1 testWords + endTestWord on x :: Q :: A2.
+    Uses testChain_actd_cons to shift past A1, then endTestWord_consumption ACTD with y=Q. -/
+theorem testChain_actd_end_new (j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 : List PileType) (x : PileType) (A2 : List PileType) (hA2 : A2 ≠ []) :
+    applyWord ((List.range' j A1.length).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + A1.length) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ x :: PileType.Q :: A2))) ACTD =
+    (A1.length + 1) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from
+    List.append_assoc ..]
+  have htc := testChain_actd_cons A1 (x :: PileType.Q :: A2) j clause
+    (endTestWord (j + A1.length) clause ++ suffix) (by simp)
+  rw [htc]
+  have hend := (endTestWord_consumption (j + A1.length) clause suffix x PileType.Q A2 hA2).2
+  rw [if_pos rfl] at hend
+  rw [hend.1]
+  rw [show (A1.length + 1) * ALIGN.length = A1.length * ALIGN.length + ALIGN.length from by
+    rw [Nat.add_mul, Nat.one_mul]]
+  omega
+
+/-- From ACTD: k testWords (indices j..j+k-1) + endTestWord (j+k) reach END_POS
+    when the sentinel Q is at position k+1 in A1 (old form). -/
 theorem testChain_actd_end (k j : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
     (hQ : A1[k + 1]'(by omega) = PileType.Q) :
@@ -103,14 +140,44 @@ theorem testChain_actd_end (k j : Nat) (clause : Clause) (suffix : List Action)
   rw [show (k + 1) * ALIGN.length = k * ALIGN.length + ALIGN.length from by
     rw [Nat.add_mul, Nat.one_mul], Nat.add_assoc]
 
-/-- From NACTD at activation site: the activating testWord (index j, matching A1[0])
-    transitions NACTD → ACTD, then k remaining testWords + endTestWord reach END_POS.
+/-- From NACTD at activation site, sentinel form (6 segments).
+    x activates (NACTD → ACTD), A1_mid stays ACTD, y is endTestWord variable, Q is sentinel. -/
+theorem testChain_activate_end_new (j : Nat) (clause : Clause) (suffix : List Action)
+    (x : PileType) (A1_mid : List PileType) (y : PileType) (A2 : List PileType) (hA2 : A2 ≠ [])
+    (hlit : matchesLiteral x j clause) :
+    applyWord ((List.range' j (A1_mid.length + 1)).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + A1_mid.length + 1) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (x :: A1_mid ++ y :: PileType.Q :: A2))) NACTD =
+    (A1_mid.length + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  -- 1. Peel off the activating testWord
+  rw [show (List.range' j (A1_mid.length + 1)).flatMap (fun i => testWord i clause) ++
+        endTestWord (j + A1_mid.length + 1) clause ++ suffix =
+      testWord j clause ++
+        ((List.range' (j + 1) A1_mid.length).flatMap (fun i => testWord i clause) ++
+          endTestWord (j + A1_mid.length + 1) clause ++ suffix) from by
+    rw [List.range'_succ, List.flatMap_cons]; simp only [List.append_assoc]]
+  -- 2. testWord_consumption NACTD with matching literal → ACTD
+  have htw := (testWord_consumption j clause
+    ((List.range' (j + 1) A1_mid.length).flatMap (fun i => testWord i clause) ++
+      endTestWord (j + A1_mid.length + 1) clause ++ suffix)
+    x (A1_mid ++ y :: PileType.Q :: A2) (by simp)).2.2
+  rw [if_pos hlit] at htw
+  simp only [List.cons_append] at htw ⊢
+  rw [htw]
+  -- 3. testChain_actd_end_new on A1_mid ++ y :: Q :: A2
+  rw [show j + A1_mid.length + 1 = (j + 1) + A1_mid.length from by omega]
+  have hae := testChain_actd_end_new (j + 1) clause suffix A1_mid y A2 hA2
+  rw [hae]
+  -- 4. Arithmetic
+  rw [show (A1_mid.length + 2) * ALIGN.length =
+      ALIGN.length + (A1_mid.length + 1) * ALIGN.length from by
+    rw [show A1_mid.length + 2 = 1 + (A1_mid.length + 1) from by omega,
+        Nat.add_mul, Nat.one_mul]]
+  omega
 
-    Proof:
-    1. Peel first testWord via range'_succ + flatMap_cons.
-    2. testWord_consumption NACTD case with hlit: = m + rest from ACTD on A1.tail ++ A2.
-    3. testChain_actd_end on tail (k steps, index j+1): = (k+1)*m + suffix from END_POS.
-    4. Total: m + (k+1)*m = (k+2)*m. -/
+/-- From NACTD at activation site (old form): the activating testWord (index j, matching A1[0])
+    transitions NACTD → ACTD, then k remaining testWords + endTestWord reach END_POS. -/
 theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hA1 : A1.length = k + 3) (hA2 : A2 ≠ [])
     (hQ : A1[k + 2]'(by omega) = PileType.Q)
