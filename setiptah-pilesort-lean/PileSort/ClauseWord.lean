@@ -20,6 +20,13 @@ theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.l
       show k - A1.length = 0 from by omega, List.drop_zero,
       list_drop_two A1 k hA1]; simp
 
+theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
+    ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
+  | [x], _ => ⟨[], x, rfl, rfl⟩
+  | x :: y :: rest, _ => by
+    have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
+    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
+
 theorem list_drop_append_two_last {α : Type} (A1 A2 : List α) (n : Nat)
     (hA1 : A1.length = n + 1) (hn : n ≥ 1) :
     (A1 ++ A2).drop (n - 1) = A1[n - 1]'(by omega) :: A1[n]'(by omega) :: A2 := by
@@ -485,12 +492,6 @@ theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
   rw [List.cons_append,
       start_clause_start _ t (rest ++ A2)]
 
-theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
-    ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
-  | [x], _ => ⟨[], x, rfl, rfl⟩
-  | x :: y :: rest, _ => by
-    have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
-    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
 
 /-- When A1 ends in Q and has no matching satisfying assignment,
     no matchesLiteral fires at any index. -/
