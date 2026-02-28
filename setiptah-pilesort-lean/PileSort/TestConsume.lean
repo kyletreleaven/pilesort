@@ -13,11 +13,20 @@ import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Gadgets.StartClause
 
+def litMatches (lp : LitPresence) (x : PileType) : Prop :=
+  (lp = .pos ∧ x = .Q) ∨ (lp = .neg ∧ x = .S)
+
+instance (lp : LitPresence) (x : PileType) : Decidable (litMatches lp x) := by
+  unfold litMatches; infer_instance
+
 def matchesLiteral (x: PileType) (i : Nat) (clause: Clause): Prop :=
-  (clause.getD i .absent = .pos ∧ x = .Q) ∨ (clause.getD i .absent = .neg ∧ x = .S)
+  litMatches (clause.getD i .absent) x
 
 instance (x: PileType) (i : Nat) (clause: Clause) : Decidable (matchesLiteral x i clause) := by
   unfold matchesLiteral; infer_instance
+
+theorem matchesLiteral_eq_litMatches (x : PileType) (i : Nat) (clause : Clause) :
+    matchesLiteral x i clause = litMatches (clause.getD i .absent) x := rfl
 
 /-- From ACTD: testWord stays activated, shifting by one block.
 
