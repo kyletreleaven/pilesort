@@ -12,6 +12,17 @@ inductive LitPresence where
   | absent : LitPresence
   deriving DecidableEq, Repr
 
+instance {p : LitPresence → Prop}
+    [Decidable (p .pos)] [Decidable (p .neg)] [Decidable (p .absent)] :
+    Decidable (∀ x : LitPresence, p x) :=
+  if hp : p .pos then
+    if hn : p .neg then
+      if ha : p .absent then
+        isTrue (fun x => by cases x <;> assumption)
+      else isFalse (fun h => ha (h .absent))
+    else isFalse (fun h => hn (h .neg))
+  else isFalse (fun h => hp (h .pos))
+
 abbrev Clause := List LitPresence
 
 /-- The test word for variable i in clause φ_j:

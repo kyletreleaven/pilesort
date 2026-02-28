@@ -19,14 +19,52 @@ def matchesLiteral (x: PileType) (i : Nat) (clause: Clause): Prop :=
 instance (x: PileType) (i : Nat) (clause: Clause) : Decidable (matchesLiteral x i clause) := by
   unfold matchesLiteral; infer_instance
 
-/-- From ACTD: testWord stays activated, shifting by one block. -/
+/-- From ACTD: testWord stays activated, shifting by one block.
+
+    Proof plan:
+    1. Prove a helper (by `decide` over LitPresence × PileType × PileType)
+       that for all lp, x, y:
+         applyWord (match lp with .pos => POS | .neg => NEG | .absent => DK)
+           (compile (vpt ALIGN [x, y])) ACTD = ACTD + ALIGN.length.
+       This avoids case-splitting on the word; the ACTD branch of activationProp
+       fires regardless of which word is used.
+    2. Since rest ≠ [], write rest = y :: rest'. Lift to the full machine via
+       `gadget_lift_eq` with A=[], window=[x,y], B=rest'.
+    3. `applyWord_append` splits testWord ++ suffix, substitute the gadget result,
+       then `applyWord_compile_append_shift` shifts past the consumed block. -/
 theorem testWord_consumption_actd
     (i : Nat) (clause : Clause) (suffix : List Action)
     (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :
     applyWord (testWord i clause ++ suffix)
       (compile (virtualPileTypes ALIGN (x :: rest))) ACTD =
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) ACTD
-    := by sorry
+    := by
+  -- 1. Gadget helper: ACTD → ACTD + m on two-element machine, for any word
+  have gadget : ∀ (lp : LitPresence) (st nt : PileType),
+      applyWord (match lp with | .pos => POS | .neg => NEG | .absent => DK)
+        (compile (virtualPileTypes ALIGN [st, nt])) ACTD = ACTD + ALIGN.length := by decide
+  -- 2. Decompose rest = y :: rest'
+  obtain ⟨y, rest', rfl⟩ : ∃ y rest', rest = y :: rest' := by
+    match rest, hrest with | y :: rest', _ => exact ⟨y, rest', rfl⟩
+  -- Specialize to testWord
+  have hgadget : applyWord (testWord i clause)
+      (compile (virtualPileTypes ALIGN [x, y])) ACTD = ACTD + ALIGN.length := by
+    unfold testWord; exact gadget (clause.getD i .absent) x y
+  -- 3. Lift to full machine via gadget_lift_eq (A=[], window=[x,y], B=rest')
+  have hlift := gadget_lift_eq (testWord i clause) [] [x, y] rest' ACTD (ACTD + ALIGN.length)
+    (by simp [virtualPileTypes_length]; decide)
+    hgadget
+    (by simp [virtualPileTypes_length]; decide)
+  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
+      List.cons_append] at hlift
+  -- 4. Split word ++ suffix, substitute, shift past first block
+  rw [applyWord_append, hlift,
+      show (x :: y :: rest' : List PileType) = [x] ++ (y :: rest') from rfl,
+      virtualPileTypes_append,
+      show ACTD + ALIGN.length = (virtualPileTypes ALIGN [x]).length + ACTD from by
+        rw [virtualPileTypes_length]; simp; unfold ALIGN; omega,
+      applyWord_compile_append_shift, virtualPileTypes_length]
+  simp
 
 /-- From CLAUSE_DISQ: penalty propagates (≥ CLAUSE_DISQ on next block). -/
 theorem testWord_consumption_disq
