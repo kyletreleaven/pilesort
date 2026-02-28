@@ -73,7 +73,38 @@ theorem testWord_consumption_disq
     applyWord (testWord i clause ++ suffix)
       (compile (virtualPileTypes ALIGN (x :: rest))) CLAUSE_DISQ ≥
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CLAUSE_DISQ
-    := by sorry
+    := by
+  -- 1. Gadget helper: CLAUSE_DISQ → ≥ CLAUSE_DISQ + m on two-element machine
+  have gadget : ∀ (lp : LitPresence) (st nt : PileType),
+      CLAUSE_DISQ + ALIGN.length ≤
+        applyWord (match lp with | .pos => POS | .neg => NEG | .absent => DK)
+          (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ := by decide
+  -- 2. Decompose rest = y :: rest'
+  obtain ⟨y, rest', rfl⟩ : ∃ y rest', rest = y :: rest' := by
+    match rest, hrest with | y :: rest', _ => exact ⟨y, rest', rfl⟩
+  -- Specialize to testWord
+  have hgadget : CLAUSE_DISQ + ALIGN.length ≤
+      applyWord (testWord i clause)
+        (compile (virtualPileTypes ALIGN [x, y])) CLAUSE_DISQ := by
+    unfold testWord; exact gadget (clause.getD i .absent) x y
+  -- 3. Lift to full machine via gadget_lift_ge (A=[], window=[x,y], B=rest')
+  have hlift := gadget_lift_ge (testWord i clause) [] [x, y] rest' CLAUSE_DISQ
+    (CLAUSE_DISQ + ALIGN.length)
+    (by simp [virtualPileTypes_length]; decide)
+    hgadget
+  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
+      List.cons_append] at hlift
+  -- 4. Split word ++ suffix, apply mono, shift past first block
+  rw [applyWord_append]
+  calc ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (y :: rest'))) CLAUSE_DISQ
+      = applyWord suffix (compile (virtualPileTypes ALIGN (x :: y :: rest')))
+          (CLAUSE_DISQ + ALIGN.length) := by
+        rw [show (x :: y :: rest' : List PileType) = [x] ++ (y :: rest') from rfl,
+            virtualPileTypes_append,
+            show CLAUSE_DISQ + ALIGN.length = (virtualPileTypes ALIGN [x]).length + CLAUSE_DISQ from by
+              rw [virtualPileTypes_length]; simp; decide,
+            applyWord_compile_append_shift, virtualPileTypes_length]; simp
+    _ ≤ _ := applyWord_mono suffix (virtualPileTypes ALIGN (x :: y :: rest')) hlift
 
 /-- From NACTD: activates (→ ACTD) if literal i matches x, else stays NACTD. -/
 theorem testWord_consumption_nactd
