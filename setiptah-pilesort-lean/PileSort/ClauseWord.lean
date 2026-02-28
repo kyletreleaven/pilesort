@@ -364,7 +364,7 @@ theorem testChain_sat_end_zero (k i₀ : Nat) (clause : Clause)
     after factoring out A0 and applying start_clause_start. -/
 theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
     (A0 A1 A2 : List PileType)
-    (hn : n ≥ 1) (hA1 : A1.length = n + 1) :
+    (hA1 : A1.length = n + 1) :
     applyWord (clauseWord n clause)
       (compile (virtualPileTypes ALIGN (A0 ++ A1 ++ A2))) (START_POS + A0.length * ALIGN.length) =
     A0.length * ALIGN.length +
@@ -507,7 +507,7 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
   simp only []
   intro vars hvars hA1eq hsat
   -- 1. Preamble: reduce to NACTD on testWords ++ endTestWord
-  rw [clauseWord_start_preamble n clause A0 A1 A2 hn hA1]
+  rw [clauseWord_start_preamble n clause A0 A1 A2 hA1]
   -- 2. Find first activation index
   obtain ⟨i₀, hi₀, hml_getD, hno_getD⟩ :=
     satisfiesClause_first_matchesLiteral n vars clause hvars hsat
@@ -557,7 +557,7 @@ theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
         CHAIN_DISQ + (k + n + 1) * m := by
   simp only []
   intro hno
-  rw [clauseWord_start_preamble n clause A0 A1 A2 hn hA1]
+  rw [clauseWord_start_preamble n clause A0 A1 A2 hA1]
   -- Goal: A0.length * m + applyWord (testWords ++ endTestWord) (vpt (A1 ++ A2)) NACTD
   --       ≥ CHAIN_DISQ + (A0.length + n + 1) * m
   -- Suffices to show inner ≥ (n+1)*m + CHAIN_DISQ
