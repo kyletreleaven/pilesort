@@ -1,28 +1,45 @@
 # Plan: Simplify ClauseWord.lean
 
-## 1. Eliminate getD/getElem bridge lemmas (highest impact)
+## 1. Eliminate getD/getElem bridge lemmas — DONE
 
-Restate `satisfiesClause_first_matchesLiteral` to produce `getElem` results directly,
-taking `A1 : List PileType` with `A1 = embedVars vars ++ [Q]` as input.
+Restated `satisfiesClause_first_matchesLiteral` to use `Fin vars.length` and
+`embedVar vars[i₀]` directly. Dropped `n`/`hvars` params; used `Nat.strongRecOn`.
 
-**Eliminates:**
-- `matchesLiteral_embedVars_getD` (lines 439-446)
-- `matchesLiteral_getD_eq_getElem` (lines 488-493)
-- The 8-line conversion block in `clauseWord_start_sat` (lines 517-524)
+**Eliminated:**
+- `matchesLiteral_embedVars_getD`
+- `matchesLiteral_getD_eq_getElem`
+- `List.getD_eq_getElem`
+
+Net: -17 lines (851 → 834).
 
 ## 2. Restate `testChain_nactd` on `A1 ++ A2` directly
 
-Change `testChain_nactd` to take `A1 ++ A2` with `hno` using `A1[i]` instead of
-generic `types` with `types[i]`. Eliminates `testChain_nactd_split` adapter.
+`testChain_nactd` takes generic `types` with `hno` using `types[i]`.
+Every external call site passes `A1 ++ A2` and converts via `getElem_append_left`.
 
-## 3. Merge `testChain_sat_end_lt` and `testChain_sat_end_eq` (speculative)
+If restated on `A1 ++ A2` with `hno` on `A1[i]`:
+- Eliminates `testChain_nactd_split` adapter (lines 182-193, used 2x)
+- Simplifies `testChain_nactd_end` (line 234, currently does getElem_append_left inline)
 
-May not actually simplify due to different proof machinery. Investigate.
+Note: the recursive call (line 171) uses `x :: rest` not `A1 ++ A2`, so the
+induction still needs the generic form internally. May need to keep generic version
+as the inductive core and have the `A1 ++ A2` version as a corollary — which is
+basically what `_split` already is. **Might not be worth it.**
 
-## 4. Inline `list_drop_append_two_last`
+## 3. Inline `list_drop_append_two_last` — easy win
 
-Only used once (line 611). Inline it and remove the lemma.
+Only used once (line 595 in `clauseWord_start_nonsat`). Inline it and delete the lemma.
 
-## 5. Simplify `satisfiesClause_first_matchesLiteral` proof
+## 4. Inline `testChain_activate_end_split` — easy win
 
-The 30-line induction is verbose. Consider alternatives, but may not save much without Mathlib.
+Only used once (line 285 in `testChain_sat_end_lt`). It's a thin wrapper around
+`testChain_activate_end` that converts `getElem_drop`. Could inline the conversion.
+
+## 5. Merge `testChain_sat_end_lt` and `testChain_sat_end_eq` — speculative
+
+Different proof machinery (`_lt` uses nactd_split + activate_end_split;
+`_eq` uses nactd_split + endTestWord_consumption). May not simplify.
+
+## 6. (Closed) Simplify `satisfiesClause_first_matchesLiteral` proof — DONE in #1
+
+Replaced verbose bound-based induction with `Nat.strongRecOn` (20 lines vs 30).
