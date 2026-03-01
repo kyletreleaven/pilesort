@@ -427,6 +427,89 @@ theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
   -- 4. Combine
   simp [List.length_append] at h_pen ⊢; omega
 
+/-- Decomposed form of formulaWord_sat_pos. -/
+theorem formulaWord_sat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
+    (xs : List PileType) (vars : List Bool)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
+    (hvars : vars.length = n) (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesFormula vars (clauses_ ++ [last])) :
+    applyWord (formulaWord n (clauses_ ++ [last]))
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+        (List.replicate (clauses_.length + 2) .Q))) START_POS =
+      clauses_.length * (xs.length * ALIGN.length) + END_POS + n * ALIGN.length := by
+  have := formulaWord_sat_pos n (clauses_ ++ [last]) xs vars hn hxs_len hvars hxs hsat (by simp)
+  simp only [show (clauses_ ++ [last]).length + 1 = clauses_.length + 2 from by simp,
+             show (clauses_ ++ [last]).length - 1 = clauses_.length from by simp] at this
+  exact this
+
+/-- Decomposed form of formulaWord_unsat_pos. -/
+theorem formulaWord_unsat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
+    (xs : List PileType)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · (clauses_ ++ [last]))) :
+    applyWord (formulaWord n (clauses_ ++ [last]))
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+        (List.replicate (clauses_.length + 2) .Q))) START_POS ≥
+      (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
+  have := formulaWord_unsat_pos n (clauses_ ++ [last]) xs hn hxs_len hno (by simp)
+  simp only [show (clauses_ ++ [last]).length + 1 = clauses_.length + 2 from by simp,
+             show (clauses_ ++ [last]).length = clauses_.length + 1 from by simp] at this
+  exact this
+
+/-- Formula-level correctness (decomposed form): takes clauses as init ++ [last]. -/
+theorem formulaWord_correct' (n : Nat) (clauses_ : List Clause) (last : Clause)
+    (xs : List PileType)
+    (hn : n ≥ 1)
+    (hxs_len : xs.length = n + 1) :
+    let types := virtualPileTypes
+        (virtualPileTypes ALIGN xs)
+        (List.replicate (clauses_.length + 1) PileType.Q)
+    accepts types (formulaWord n (clauses_ ++ [last])) ↔
+      HasMatchingAssignment n xs (satisfiesFormula · (clauses_ ++ [last])) := by
+  intro types
+  -- types_ext = types ++ one extra block
+  have h_decomp : virtualPileTypes (virtualPileTypes ALIGN xs)
+      (List.replicate (clauses_.length + 2) .Q) =
+    types ++ virtualPileTypes ALIGN xs := by
+    show _ = virtualPileTypes (virtualPileTypes ALIGN xs)
+        (List.replicate (clauses_.length + 1) .Q) ++ virtualPileTypes ALIGN xs
+    rw [replicate_succ_append, virtualPileTypes_append]
+    simp [virtualPileTypes, List.flatMap_cons, List.flatMap_nil, applyPile]
+  -- Truncation
+  have h_trunc := applyWord_append_truncate (formulaWord n (clauses_ ++ [last]))
+      types (virtualPileTypes ALIGN xs) 0 (Nat.zero_le _)
+  rw [show (0 : Nat) = START_POS from rfl, ← h_decomp] at h_trunc
+  -- types.length
+  have h_len : types.length = (clauses_.length + 1) * (xs.length * ALIGN.length) := by
+    show (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (clauses_.length + 1) .Q)).length = _
+    rw [virtualPileTypes_length, List.length_replicate, virtualPileTypes_length]
+  constructor
+  · -- Backward (contrapositive)
+    intro hacc
+    exact Classical.byContradiction fun hno => by
+      have h_unsat := formulaWord_unsat_pos' n clauses_ last xs hn hxs_len hno
+      unfold accepts at hacc
+      rw [show (0 : Nat) = START_POS from rfl, h_trunc] at hacc
+      have h_ge : types.length ≤ applyWord (formulaWord n (clauses_ ++ [last]))
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+            (List.replicate (clauses_.length + 2) .Q))) START_POS := by
+        rw [h_len]; unfold CHAIN_DISQ at h_unsat; omega
+      rw [Nat.min_eq_right h_ge] at hacc
+      omega
+  · -- Forward
+    intro ⟨vars, hvars, hxs, hsat⟩
+    have h_sat := formulaWord_sat_pos' n clauses_ last xs vars hn hxs_len hvars hxs hsat
+    unfold accepts
+    rw [show (0 : Nat) = START_POS from rfl, h_trunc, h_sat]
+    have h_lt : clauses_.length * (xs.length * ALIGN.length) +
+        END_POS + n * ALIGN.length < types.length := by
+      rw [h_len, show (clauses_.length + 1) * (xs.length * ALIGN.length) =
+          clauses_.length * (xs.length * ALIGN.length) + xs.length * ALIGN.length from by
+        rw [Nat.add_mul, Nat.one_mul], hxs_len]
+      unfold END_POS ALIGN; simp; omega
+    rw [Nat.min_eq_left (Nat.le_of_lt h_lt)]
+    exact h_lt
+
 /-- Formula-level correctness: a machine compiled from virtualPileTypes ALIGN xs,
     replicated over m clauses, accepts formulaWord n clauses iff
     xs = embedVars(vars) ++ [Q] for some assignment vars satisfying the formula. -/
@@ -440,50 +523,6 @@ theorem formulaWord_correct (n : Nat) (clauses : List Clause)
         (List.replicate clauses.length PileType.Q)
     accepts types (formulaWord n clauses) ↔
       HasMatchingAssignment n xs (satisfiesFormula · clauses) := by
-  intro types
-  -- types_ext = types ++ one extra block
-  have h_decomp : virtualPileTypes (virtualPileTypes ALIGN xs)
-      (List.replicate (clauses.length + 1) .Q) =
-    types ++ virtualPileTypes ALIGN xs := by
-    show _ = virtualPileTypes (virtualPileTypes ALIGN xs)
-        (List.replicate clauses.length .Q) ++ virtualPileTypes ALIGN xs
-    rw [replicate_succ_append, virtualPileTypes_append]
-    simp [virtualPileTypes, List.flatMap_cons, List.flatMap_nil, applyPile]
-  -- Truncation: result on types = min(result on ext, types.length)
-  have h_trunc := applyWord_append_truncate (formulaWord n clauses)
-      types (virtualPileTypes ALIGN xs) 0 (Nat.zero_le _)
-  rw [show (0 : Nat) = START_POS from rfl, ← h_decomp] at h_trunc
-  -- types.length = clauses.length * block
-  have h_len : types.length = clauses.length * (xs.length * ALIGN.length) := by
-    show (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate clauses.length .Q)).length = _
-    rw [virtualPileTypes_length, List.length_replicate, virtualPileTypes_length]
-  constructor
-  · -- Backward (contrapositive): accepts → ∃ satisfying vars
-    intro hacc
-    exact Classical.byContradiction fun hno => by
-      have h_unsat := formulaWord_unsat_pos n clauses xs hn hxs_len hno hne
-      unfold accepts at hacc
-      rw [show (0 : Nat) = START_POS from rfl, h_trunc] at hacc
-      have h_ge : types.length ≤ applyWord (formulaWord n clauses)
-          (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
-            (List.replicate (clauses.length + 1) .Q))) START_POS := by
-        rw [h_len]; unfold CHAIN_DISQ at h_unsat; omega
-      rw [Nat.min_eq_right h_ge] at hacc
-      omega
-  · -- Forward: ∃ satisfying vars → accepts
-    intro ⟨vars, hvars, hxs, hsat⟩
-    have h_sat := formulaWord_sat_pos n clauses xs vars hn hxs_len hvars hxs hsat hne
-    unfold accepts
-    rw [show (0 : Nat) = START_POS from rfl, h_trunc, h_sat]
-    have h_lt : (clauses.length - 1) * (xs.length * ALIGN.length) +
-        END_POS + n * ALIGN.length < types.length := by
-      rw [h_len]
-      -- Decompose cl * block = (cl-1) * block + block so omega can cancel
-      have : clauses.length * (xs.length * ALIGN.length) =
-          (clauses.length - 1) * (xs.length * ALIGN.length) + xs.length * ALIGN.length := by
-        have h1 : (clauses.length - 1) + 1 = clauses.length := by
-          cases clauses <;> simp_all
-        rw [← h1, Nat.add_mul]; simp
-      rw [this, hxs_len]; unfold END_POS ALIGN; simp; omega
-    rw [Nat.min_eq_left (Nat.le_of_lt h_lt)]
-    exact h_lt
+  obtain ⟨init, last, rfl, hlen⟩ := list_split_last clauses hne
+  simp only [List.length_append, List.length_singleton] at *
+  exact formulaWord_correct' n init last xs hn hxs_len
