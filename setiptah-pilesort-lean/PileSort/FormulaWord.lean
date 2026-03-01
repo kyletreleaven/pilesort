@@ -497,11 +497,10 @@ theorem formulaWord_correct (n : Nat) (clauses : List Clause)
     (hn : n ≥ 1)
     (hxs_len : xs.length = n + 1)
     (hne : clauses ≠ []) :
-    let types := virtualPileTypes
-        (virtualPileTypes ALIGN xs)
-        (List.replicate clauses.length PileType.Q)
-    accepts types (formulaWord n clauses) ↔
-      HasMatchingAssignment n xs (satisfiesFormula · clauses) := by
+    accepts
+      (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate clauses.length PileType.Q))
+      (formulaWord n clauses)
+    ↔ HasMatchingAssignment n xs (satisfiesFormula · clauses) := by
   obtain ⟨init, last, rfl, hlen⟩ := list_split_last clauses hne
   simp only [List.length_append, List.length_singleton] at *
   exact formulaWord_correct' n init last xs hn hxs_len
