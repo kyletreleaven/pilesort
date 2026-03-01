@@ -99,7 +99,28 @@ theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS =
       xs.length * ALIGN.length +
         applyWord suffix (compile types') START_POS := by
-  sorry
+  simp only []
+  -- Split word: (clauseWord ++ NEXT) ++ suffix, then clauseWord ++ NEXT
+  rw [applyWord_append, applyWord_append,
+      clauseWord_start_sat_rep n c xs m hn hxs_len hm vars hvars hxs hsat,
+      next_correct_rep n xs m hxs_len hm]
+  -- Decompose types = first_block ++ types'
+  have h_decomp : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN xs ++
+        virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q) := by
+    match m, hm with
+    | m' + 2, _ =>
+      rw [List.replicate_succ,
+          show PileType.Q :: List.replicate (m' + 1) PileType.Q =
+               [PileType.Q] ++ List.replicate (m' + 1) PileType.Q from rfl,
+          virtualPileTypes_append]
+      simp [virtualPileTypes, applyPile]
+  rw [h_decomp]
+  -- Shift past first block via applyWord_compile_append_shift
+  have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
+    virtualPileTypes_length ALIGN xs
+  rw [← h_len, Nat.add_comm START_POS]
+  exact applyWord_compile_append_shift suffix (virtualPileTypes ALIGN xs) _ START_POS
 
 /-- clauseWord_start_nonsat in replicated form: clauseWord from START_POS on
     replicated types reaches ≥ CHAIN_DISQ + xs.length * ALIGN.length. -/
@@ -138,7 +159,49 @@ theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS ≥
       xs.length * ALIGN.length +
         applyWord suffix (compile types') CHAIN_DISQ := by
-  sorry
+  simp only []
+  -- Split word
+  rw [applyWord_append, applyWord_append]
+  -- clauseWord reaches ≥ CHAIN_DISQ + xs.length * ALIGN.length
+  have h_cw := clauseWord_start_nonsat_rep n c xs m hn hxs_len hm hno
+  -- NEXT only increases position (applyWord_ge)
+  have h_next : applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) START_POS ≤
+      applyWord NEXT
+        (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+        (applyWord (clauseWord n c)
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) START_POS) :=
+    applyWord_ge NEXT _ _
+  -- suffix is monotone: result ≥ applyWord suffix types (CHAIN_DISQ + xs.length * ALIGN.length)
+  have h_mono := applyWord_mono suffix
+    (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
+    (Nat.le_trans h_cw (Nat.le_trans h_next (Nat.le_refl _)))
+  -- Evaluate the lower bound via decomposition + shift
+  have h_decomp : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN xs ++
+        virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q) := by
+    match m, hm with
+    | m' + 2, _ =>
+      rw [List.replicate_succ,
+          show PileType.Q :: List.replicate (m' + 1) PileType.Q =
+               [PileType.Q] ++ List.replicate (m' + 1) PileType.Q from rfl,
+          virtualPileTypes_append]
+      simp [virtualPileTypes, applyPile]
+  have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
+    virtualPileTypes_length ALIGN xs
+  have h_shift : applyWord suffix
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      (CHAIN_DISQ + xs.length * ALIGN.length) =
+      xs.length * ALIGN.length +
+        applyWord suffix
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)))
+          CHAIN_DISQ := by
+    rw [h_decomp,
+        show CHAIN_DISQ + xs.length * ALIGN.length =
+          (virtualPileTypes ALIGN xs).length + CHAIN_DISQ from by rw [h_len]; omega,
+        applyWord_compile_append_shift, h_len]
+  rw [h_shift] at h_mono
+  exact h_mono
 
 /-- clauseWord ++ NEXT from START_POS on replicated types: if a matching assignment
     satisfies the clause, advances exactly one block; otherwise reaches ≥ CHAIN_DISQ + block.
