@@ -38,6 +38,54 @@ import PileSort.ClauseWord
 import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
 
+/-- clauseWord_start_sat in replicated form: clauseWord from START_POS on
+    replicated types reaches END_POS + n * ALIGN.length. -/
+theorem clauseWord_start_sat_rep (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (vars : List Bool) (hvars : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesClause vars c) :
+    applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      START_POS = END_POS + n * ALIGN.length := by
+  -- Convert to flat form and apply clauseWord_start_sat with A0=[]
+  have h_split : (List.replicate m xs).flatten =
+      xs ++ (List.replicate (m - 1) xs).flatten := by
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons]
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp, List.nil_append, h_split]
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, this]
+  rw [h_eq]
+  have := clauseWord_start_sat n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2
+    vars hvars hxs hsat
+  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at this
+  exact this
+
+/-- next_correct in replicated form: NEXT from END_POS + n * ALIGN.length on
+    replicated types reaches START_POS + xs.length * ALIGN.length. -/
+theorem next_correct_rep (n : Nat) (xs : List PileType)
+    (m : Nat)
+    (hxs_len : xs.length = n + 1) (hm : m ≥ 2) :
+    applyWord NEXT
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      (END_POS + n * ALIGN.length) = START_POS + xs.length * ALIGN.length := by
+  have h_split : (List.replicate m xs).flatten =
+      xs ++ (List.replicate (m - 1) xs).flatten := by
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons]
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp, h_split]
+  rw [h_eq]
+  have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by simp; omega
+  rw [next_correct (xs ++ (List.replicate (m - 1) xs).flatten) n hk, hxs_len]
+
 /-- Consumption form: clauseWord ++ NEXT with satisfying assignment consumes one
     block and hands the suffix the remaining replicates at START_POS. -/
 theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
@@ -52,6 +100,32 @@ theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
       xs.length * ALIGN.length +
         applyWord suffix (compile types') START_POS := by
   sorry
+
+/-- clauseWord_start_nonsat in replicated form: clauseWord from START_POS on
+    replicated types reaches ≥ CHAIN_DISQ + xs.length * ALIGN.length. -/
+theorem clauseWord_start_nonsat_rep (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesClause · c)) :
+    applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      START_POS ≥ CHAIN_DISQ + xs.length * ALIGN.length := by
+  have h_split : (List.replicate m xs).flatten =
+      xs ++ (List.replicate (m - 1) xs).flatten := by
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons]
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp, List.nil_append, h_split]
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, this]
+  rw [h_eq]
+  have := clauseWord_start_nonsat n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2 hno
+  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, Nat.add_zero] at this
+  rw [← hxs_len] at this
+  exact this
 
 /-- Consumption form: clauseWord ++ NEXT without satisfying assignment reaches
     penalty zone. Suffix sees remaining replicates from CHAIN_DISQ. -/
