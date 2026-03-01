@@ -119,6 +119,18 @@ theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
   | zero => rfl
   | succ m ih => exact congrArg (x :: ·) ih
 
+/-- Peeling one Q from the front of a replicated virtualPileTypes. -/
+theorem virtualPileTypes_replicate_Q_cons (inner : List PileType) (m : Nat) (hm : m ≥ 1) :
+    virtualPileTypes inner (List.replicate m .Q) =
+    inner ++ virtualPileTypes inner (List.replicate (m - 1) .Q) := by
+  match m, hm with
+  | m' + 1, _ =>
+    rw [List.replicate_succ,
+        show PileType.Q :: List.replicate m' PileType.Q =
+             [PileType.Q] ++ List.replicate m' PileType.Q from rfl,
+        virtualPileTypes_append]
+    simp [virtualPileTypes, applyPile]
+
 /-- Peeling one Q from the end of a replicated virtualPileTypes. -/
 theorem virtualPileTypes_replicate_Q_snoc (inner : List PileType) (m : Nat) :
     virtualPileTypes inner (List.replicate (m + 1) .Q) =
