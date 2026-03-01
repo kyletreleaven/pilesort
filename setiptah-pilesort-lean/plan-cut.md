@@ -32,19 +32,28 @@ renamed `testChain_nactd_old`.
   issues when composing multiple layers. May revisit after downstream
   lemmas are also restructured.
 
-## 4. Propagate to `clauseWord_start_nonsat` — NEXT
+## 4. Direction check — PAUSED
 
-Drop A0 param. Take `A1 ++ Q :: A2` structurally. The S case (~40 lines)
-vanishes because no caller passes A1 ending in S.
+Considered two approaches for simplifying the remaining proofs:
 
-Calls `not_hasMatchingAssignment_no_matchesLiteral` then
-`testChain_nactd_end` (sentinel form, already done).
+**Decompositional (top-down):** Make Q structural in signatures, pass
+list components as separate parameters. Eliminates the S case and
+some index boilerplate, but creates `cons_append`/`append_assoc`
+friction in Lean 4 and doesn't eliminate indices entirely (the
+semantics are inherently positional).
 
-## 5. Propagate to `clauseWord_start_sat`
+**Index-based (top-down):** Keep lists opaque with `types[i]` and
+`types.length`. Add `hQ : A1[n] = Q` as a hypothesis where needed
+(every caller has it) to eliminate the S case cheaply. Avoids list
+associativity issues. Indices are the natural language for the
+positional semantics (`matchesLiteral`, `testWord i clause`, etc.).
 
-Similarly, take `embedVars vars` and Q structurally.
+Leaning toward consistently index-based as the simpler path. The
+decompositional approach has caused more friction than expected
+(cons_append, append_assoc), and mixing the two approaches has been
+the main source of complexity.
 
-## 6. Cleanup
+## 5. Cleanup
 
-Delete all `_old` versions, `testChain_nactd_split`, `testChain_activate_end_split`,
-and any list helper lemmas that become unused.
+Delete all `_old` versions, unused helpers, and any lemmas superseded
+by whichever approach is chosen.
