@@ -148,20 +148,11 @@ theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
   simp only []
   -- Split word
   rw [applyWord_append, applyWord_append]
-  -- clauseWord reaches ≥ CHAIN_DISQ + xs.length * ALIGN.length
+  -- clauseWord ≥ bound, NEXT only increases, suffix is monotone
+  let vpt_full := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
   have h_cw := clauseWord_start_nonsat_rep n c xs m hn hxs_len hm hno
-  -- NEXT only increases position (applyWord_ge)
-  have h_next : applyWord (clauseWord n c)
-      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) START_POS ≤
-      applyWord NEXT
-        (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
-        (applyWord (clauseWord n c)
-          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) START_POS) :=
-    applyWord_ge NEXT _ _
-  -- suffix is monotone: result ≥ applyWord suffix types (CHAIN_DISQ + xs.length * ALIGN.length)
-  have h_mono := applyWord_mono suffix
-    (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
-    (Nat.le_trans h_cw (Nat.le_trans h_next (Nat.le_refl _)))
+  have h_mono := applyWord_mono suffix vpt_full
+    (Nat.le_trans h_cw (applyWord_ge NEXT vpt_full _))
   -- Evaluate the lower bound via decomposition + shift
   have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
     virtualPileTypes_length ALIGN xs
