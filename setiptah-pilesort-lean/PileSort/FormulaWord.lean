@@ -149,10 +149,11 @@ theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
   -- Split word
   rw [applyWord_append, applyWord_append]
   -- clauseWord ≥ bound, NEXT only increases, suffix is monotone
-  let vpt_full := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
   have h_cw := clauseWord_start_nonsat_rep n c xs m hn hxs_len hm hno
-  have h_mono := applyWord_mono suffix vpt_full
-    (Nat.le_trans h_cw (applyWord_ge NEXT vpt_full _))
+  have h_mono := applyWord_mono suffix
+    (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
+    (Nat.le_trans h_cw
+      (applyWord_ge NEXT (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)) _))
   -- Evaluate the lower bound via decomposition + shift
   have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
     virtualPileTypes_length ALIGN xs
