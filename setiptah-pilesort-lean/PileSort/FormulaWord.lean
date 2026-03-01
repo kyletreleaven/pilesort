@@ -38,6 +38,12 @@ import PileSort.ClauseWord
 import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
 
+private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
+    List.replicate (m + 1) x = List.replicate m x ++ [x] := by
+  induction m with
+  | zero => rfl
+  | succ m ih => exact congrArg (x :: ·) ih
+
 /-- clauseWord ++ NEXT from START_POS on replicated types: if a matching assignment
     satisfies the clause, advances exactly one block; otherwise reaches ≥ CHAIN_DISQ + block.
     Combines clauseWord_sat with next_correct. -/
@@ -360,12 +366,6 @@ theorem formulaState_eq (n : Nat) (xs : List PileType)
     rw [← h_shift]
     congr 1
     omega
-
-private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
-    List.replicate (m + 1) x = List.replicate m x ++ [x] := by
-  induction m with
-  | zero => rfl
-  | succ m ih => exact congrArg (x :: ·) ih
 
 /-- Satisfying case: on extended types (one vestigial block), applying formulaWord
     from START_POS lands at init.length * block + END_POS + n * ALIGN.length. -/
