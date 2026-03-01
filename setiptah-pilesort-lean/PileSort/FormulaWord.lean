@@ -35,6 +35,7 @@
 import PileSort.Mono
 import PileSort.Reduction
 import PileSort.ClauseWord
+import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
 
 /-- clauseWord ++ NEXT from START_POS on replicated types: if a matching assignment
