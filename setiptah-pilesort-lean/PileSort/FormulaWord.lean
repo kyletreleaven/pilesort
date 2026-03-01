@@ -38,8 +38,7 @@ import PileSort.ClauseWord
 import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
 
-/-- clauseWord_start_sat in replicated form: clauseWord from START_POS on
-    replicated types reaches END_POS + n * ALIGN.length. -/
+/-- ADAPTER: clauseWord_start_sat in replicated form. -/
 theorem clauseWord_start_sat_rep (n : Nat) (c : Clause) (xs : List PileType)
     (m : Nat)
     (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
@@ -67,8 +66,7 @@ theorem clauseWord_start_sat_rep (n : Nat) (c : Clause) (xs : List PileType)
   simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at this
   exact this
 
-/-- next_correct in replicated form: NEXT from END_POS + n * ALIGN.length on
-    replicated types reaches START_POS + xs.length * ALIGN.length. -/
+/-- ADAPTER: next_correct in replicated form. -/
 theorem next_correct_rep (n : Nat) (xs : List PileType)
     (m : Nat)
     (hxs_len : xs.length = n + 1) (hm : m ≥ 2) :
@@ -122,8 +120,7 @@ theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
   rw [← h_len, Nat.add_comm START_POS]
   exact applyWord_compile_append_shift suffix (virtualPileTypes ALIGN xs) _ START_POS
 
-/-- clauseWord_start_nonsat in replicated form: clauseWord from START_POS on
-    replicated types reaches ≥ CHAIN_DISQ + xs.length * ALIGN.length. -/
+/-- ADAPTER: clauseWord_start_nonsat in replicated form. -/
 theorem clauseWord_start_nonsat_rep (n : Nat) (c : Clause) (xs : List PileType)
     (m : Nat)
     (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
