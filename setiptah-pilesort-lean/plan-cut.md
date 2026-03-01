@@ -32,7 +32,7 @@ renamed `testChain_nactd_old`.
   issues when composing multiple layers. May revisit after downstream
   lemmas are also restructured.
 
-## 4. Direction check — PAUSED
+## 4. Direction check — RESOLVED
 
 Considered two approaches for simplifying the remaining proofs:
 
@@ -44,14 +44,36 @@ semantics are inherently positional).
 
 **Index-based (top-down):** Keep lists opaque with `types[i]` and
 `types.length`. Add `hQ : A1[n] = Q` as a hypothesis where needed
-(every caller has it) to eliminate the S case cheaply. Avoids list
-associativity issues. Indices are the natural language for the
-positional semantics (`matchesLiteral`, `testWord i clause`, etc.).
+to eliminate the S case cheaply. Avoids list associativity issues.
+Indices are the natural language for the positional semantics
+(`matchesLiteral`, `testWord i clause`, etc.).
 
 Leaning toward consistently index-based as the simpler path. The
 decompositional approach has caused more friction than expected
 (cons_append, append_assoc), and mixing the two approaches has been
 the main source of complexity.
+
+### `hQ` hypothesis — REJECTED
+
+Attempted adding `hQ : A1[n] = Q` to `clauseWord_start_nonsat` to
+eliminate the S case (~40 lines). The claim "every caller has it" was
+wrong: the penalty path (`formulaState_penalty_start` →
+`clauseWord_sat.2` / `clauseNext_sat.2`) works with arbitrary `xs`
+where `xs[n]` can be S. Threading `hQ` through the entire penalty
+path would require restructuring `clauseWord_sat`, `clauseNext_sat`,
+`formulaState_penalty_start`, `formulaState_penalty_all`,
+`formulaWord_unsat_pos`, and a top-level case split in
+`formulaWord_correct'` — too much churn for the benefit.
+
+### Top-down simplification of FormulaWord.lean — DONE
+
+Simplified `formulaWord_correct` by:
+- `clauses_ ++ [last]` decomposition (`formulaWord_correct'`) — eliminates
+  `clauses.length - 1` arithmetic
+- `accepts_iff_applyWord_ext` — absorbs truncation/min plumbing
+- Replication helper lemmas (`virtualPileTypes_replicate_Q_snoc`, etc.)
+  moved to `VirtualPileTypes.lean`
+- `formulaWord_correct` now delegates to `formulaWord_correct'`
 
 ## 5. Cleanup
 
