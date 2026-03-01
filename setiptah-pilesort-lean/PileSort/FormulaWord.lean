@@ -38,12 +38,6 @@ import PileSort.ClauseWord
 import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
 
-private theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
-    List.replicate (m + 1) x = List.replicate m x ++ [x] := by
-  induction m with
-  | zero => rfl
-  | succ m ih => exact congrArg (x :: ·) ih
-
 /-- clauseWord ++ NEXT from START_POS on replicated types: if a matching assignment
     satisfies the clause, advances exactly one block; otherwise reaches ≥ CHAIN_DISQ + block.
     Combines clauseWord_sat with next_correct. -/
@@ -475,18 +469,12 @@ theorem formulaWord_correct' (n : Nat) (clauses_ : List Clause) (last : Clause)
     accepts types (formulaWord n (clauses_ ++ [last])) ↔
       HasMatchingAssignment n xs (satisfiesFormula · (clauses_ ++ [last])) := by
   intro types
-  have h_decomp : virtualPileTypes (virtualPileTypes ALIGN xs)
-      (List.replicate (clauses_.length + 2) .Q) =
-    types ++ virtualPileTypes ALIGN xs := by
-    show _ = virtualPileTypes (virtualPileTypes ALIGN xs)
-        (List.replicate (clauses_.length + 1) .Q) ++ virtualPileTypes ALIGN xs
-    rw [replicate_succ_append, virtualPileTypes_append]
-    simp [virtualPileTypes, List.flatMap_cons, List.flatMap_nil, applyPile]
-  rw [accepts_iff_applyWord_ext _ _ (virtualPileTypes ALIGN xs), ← h_decomp,
+  rw [accepts_iff_applyWord_ext _ _ (virtualPileTypes ALIGN xs),
+      ← virtualPileTypes_replicate_Q_snoc,
+      show clauses_.length + 1 + 1 = clauses_.length + 2 from by omega,
       show (0 : Nat) = START_POS from rfl]
   have h_len : types.length = (clauses_.length + 1) * (xs.length * ALIGN.length) := by
-    show (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (clauses_.length + 1) .Q)).length = _
-    rw [virtualPileTypes_length, List.length_replicate, virtualPileTypes_length]
+    rw [virtualPileTypes_replicate_Q_length, virtualPileTypes_length]
   constructor
   · -- Backward: applyWord < length → HasMatchingAssignment
     intro h

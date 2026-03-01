@@ -112,3 +112,21 @@ theorem virtualPileTypes_getElem (pt1 pt2 : List PileType) (k j : Nat)
       simp only [hidx, getElem_append_add _ _ _ (by rw [virtualPileTypes_length]
                                                     exact block_index_bound hk' hj)]
       exact ih k' hk' (by rw [virtualPileTypes_length]; exact block_index_bound hk' hj)
+
+theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
+    List.replicate (m + 1) x = List.replicate m x ++ [x] := by
+  induction m with
+  | zero => rfl
+  | succ m ih => exact congrArg (x :: ·) ih
+
+/-- Peeling one Q from the end of a replicated virtualPileTypes. -/
+theorem virtualPileTypes_replicate_Q_snoc (inner : List PileType) (m : Nat) :
+    virtualPileTypes inner (List.replicate (m + 1) .Q) =
+    virtualPileTypes inner (List.replicate m .Q) ++ inner := by
+  rw [replicate_succ_append, virtualPileTypes_append]
+  simp [virtualPileTypes, List.flatMap_cons, List.flatMap_nil, applyPile]
+
+/-- Length of replicated virtualPileTypes. -/
+theorem virtualPileTypes_replicate_Q_length (inner : List PileType) (m : Nat) :
+    (virtualPileTypes inner (List.replicate m .Q)).length = m * inner.length := by
+  rw [virtualPileTypes_length, List.length_replicate]
