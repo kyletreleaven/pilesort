@@ -38,9 +38,37 @@ import PileSort.ClauseWord
 import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
 
+/-- Consumption form: clauseWord ++ NEXT with satisfying assignment consumes one
+    block and hands the suffix the remaining replicates at START_POS. -/
+theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (suffix : List Action)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (vars : List Bool) (hvars : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesClause vars c) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
+    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS =
+      xs.length * ALIGN.length +
+        applyWord suffix (compile types') START_POS := by
+  sorry
+
+/-- Consumption form: clauseWord ++ NEXT without satisfying assignment reaches
+    penalty zone. Suffix sees remaining replicates from CHAIN_DISQ. -/
+theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (suffix : List Action)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesClause · c)) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
+    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS ≥
+      xs.length * ALIGN.length +
+        applyWord suffix (compile types') CHAIN_DISQ := by
+  sorry
+
 /-- clauseWord ++ NEXT from START_POS on replicated types: if a matching assignment
     satisfies the clause, advances exactly one block; otherwise reaches ≥ CHAIN_DISQ + block.
-    Combines clauseWord_sat with next_correct. -/
+    Derives from the consumption forms with suffix = []. -/
 theorem clauseNext_sat (n : Nat) (c : Clause) (xs : List PileType)
     (m : Nat)
     (hn : n ≥ 1)
@@ -55,33 +83,20 @@ theorem clauseNext_sat (n : Nat) (c : Clause) (xs : List PileType)
     (¬ HasMatchingAssignment n xs (satisfiesClause · c) →
       CHAIN_DISQ + xs.length * ALIGN.length ≤
         applyWord (clauseWord n c ++ NEXT) (compile types) START_POS) := by
-  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
-      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
-    rw [virtualPileTypes_replicate_Q_comp]; congr 1
-    have : m = (m - 1) + 1 := by omega
-    rw [this, List.replicate_succ, List.flatten_cons]; simp
-  simp only [List.nil_append] at h_eq
-  rw [h_eq]
-  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
-    have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
-    rw [show m - 1 = (m - 2) + 1 from by omega, List.replicate_succ, List.flatten_cons]
-    simp [this]
-  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) (hn : n ≥ 1) hxs_len hA2
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, Nat.add_zero, List.nil_append] at hcw
-  have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by
-    simp; omega
+  simp only []
   constructor
   · intro vars hvars hxs hsat
-    rw [applyWord_append, hcw.1 vars hvars hxs hsat]
-    have hnext := next_correct (xs ++ (List.replicate (m - 1) xs).flatten) n hk
-    simp only [START_POS] at hnext ⊢
-    rw [hnext, hxs_len]; omega
+    have h := clauseNext_good_consumption n c xs m ([] : List Action) hn hxs_len hm vars hvars hxs hsat
+    simp only [] at h
+    rw [List.append_nil] at h
+    change _ = xs.length * ALIGN.length + START_POS at h
+    unfold START_POS at h; simp at h; exact h
   · intro hno
-    rw [applyWord_append]
-    calc CHAIN_DISQ + xs.length * ALIGN.length
-        = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
-      _ ≤ applyWord (clauseWord n c) _ START_POS := hcw.2.1 hno
-      _ ≤ applyWord NEXT _ _ := applyWord_ge NEXT _ _
+    have h := clauseNext_bad_consumption n c xs m ([] : List Action) hn hxs_len hm hno
+    simp only [] at h
+    rw [List.append_nil] at h
+    change _ ≥ xs.length * ALIGN.length + CHAIN_DISQ at h
+    omega
 
 /-- If all init clauses are satisfied by a matching assignment, formulaState
     accumulates blocks cleanly and the last clause runs from START_POS.
