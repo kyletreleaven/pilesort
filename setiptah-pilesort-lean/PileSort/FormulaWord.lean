@@ -448,7 +448,7 @@ theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
   rw [List.dropLast_concat]
 
 /-- Peeling one Q from the front of a replicated virtualPileTypes. -/
-private theorem virtualPileTypes_replicate_Q_cons (inner : List PileType) (m : Nat) :
+private theorem virtualPileTypes_replicate_Q_cons' (inner : List PileType) (m : Nat) :
     virtualPileTypes inner (List.replicate (m + 1) .Q) =
     inner ++ virtualPileTypes inner (List.replicate m .Q) := by
   simp [virtualPileTypes, List.replicate_succ, List.flatMap_cons, applyPile]
@@ -486,7 +486,7 @@ theorem formulaState_eq (n : Nat) (xs : List PileType)
       virtualPileTypes ALIGN xs ++
         virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (rest.length + 2) .Q) := by
       show virtualPileTypes _ (List.replicate (rest.length + 2 + 1) .Q) = _
-      rw [virtualPileTypes_replicate_Q_cons]
+      rw [virtualPileTypes_replicate_Q_cons']
     rw [h_types]
     have hmid : xs.length * ALIGN.length ≤
         applyWord (clauseWord n c ++ NEXT)
