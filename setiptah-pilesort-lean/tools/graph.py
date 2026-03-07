@@ -31,8 +31,9 @@ def lean_extract() -> str:
         capture_output=True,
         text=True,
     )
-    if result.returncode != 0:
+    if result.stderr:
         sys.stderr.write(result.stderr)
+    if result.returncode != 0:
         sys.exit(result.returncode)
     return result.stdout
 

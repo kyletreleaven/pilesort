@@ -32,21 +32,9 @@ def baseName : Name → String
   | .str _ s => s
   | n => n.toString
 
-/-- Filter out compiler-generated auxiliary names.
-    Catches: _cstage, _closed_ (start with _), and auto-generated eq_1, proof_2, etc.
-    (a word followed by _ and pure digits, with no other underscores in the suffix). -/
-def isUserFacing (n : Name) : Bool :=
-  let s := baseName n
-  if s.startsWith "_" then false
-  else
-    -- Check for auto-generated pattern: trailing _<digits>
-    -- e.g. "eq_1", "proof_2", "match_1"
-    match s.splitOn "_" with
-    | parts =>
-      match parts.getLast? with
-      | some last => !(last.all Char.isDigit && last.length > 0 && parts.length >= 2
-                       && ["eq", "proof", "match", "aux", "rec"].contains parts.head!)
-      | none => true
+/-- True iff the theorem was explicitly written by the user (has a source range). -/
+def isExplicit (env : Environment) (n : Name) : Bool :=
+  (declRangeExt.find? env n).isSome
 
 /-- Wrap a string in DOT double-quotes, escaping internal quotes. -/
 def dq (s : String) : String := "\"" ++ s.replace "\"" "\\\"" ++ "\""
@@ -58,7 +46,7 @@ def main : IO Unit := do
   -- Collect all project nodes, sorted for deterministic output.
   let mut nodes : Array (Name × ConstantInfo) := #[]
   for (n, info) in env.constants do
-    if isProjectConst env n && isWanted info && isUserFacing n then
+    if isProjectConst env n && isWanted info && isExplicit env n then
       nodes := nodes.push (n, info)
   nodes := nodes.qsort (fun (a, _) (b, _) => a.toString < b.toString)
 
