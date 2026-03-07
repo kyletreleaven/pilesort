@@ -32,9 +32,21 @@ def baseName : Name → String
   | .str _ s => s
   | n => n.toString
 
-/-- Filter out compiler-generated auxiliary definitions (_cstage, _closed_, etc.). -/
+/-- Filter out compiler-generated auxiliary names.
+    Catches: _cstage, _closed_ (start with _), and auto-generated eq_1, proof_2, etc.
+    (a word followed by _ and pure digits, with no other underscores in the suffix). -/
 def isUserFacing (n : Name) : Bool :=
-  !(baseName n).startsWith "_"
+  let s := baseName n
+  if s.startsWith "_" then false
+  else
+    -- Check for auto-generated pattern: trailing _<digits>
+    -- e.g. "eq_1", "proof_2", "match_1"
+    match s.splitOn "_" with
+    | parts =>
+      match parts.getLast? with
+      | some last => !(last.all Char.isDigit && last.length > 0 && parts.length >= 2
+                       && ["eq", "proof", "match", "aux", "rec"].contains parts.head!)
+      | none => true
 
 /-- Wrap a string in DOT double-quotes, escaping internal quotes. -/
 def dq (s : String) : String := "\"" ++ s.replace "\"" "\\\"" ++ "\""
