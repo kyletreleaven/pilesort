@@ -79,3 +79,51 @@ Simplified `formulaWord_correct` by:
 
 Delete all `_old` versions, unused helpers, and any lemmas superseded
 by whichever approach is chosen.
+
+---
+
+## Gadget lemma restructuring — DONE
+
+Split `activation_correct` into three lemmas matching the structure of
+`testWord_consumption_*`, using a membership hypothesis `w ∈ [POS, NEG, DK]`
+rather than a conjunction or `Fin 3` index:
+
+- `activation_correct_actd {w} (hw) (st nt)` — equality, any word
+- `activation_correct_nactd {w} (hw) (st nt)` — conditional, any word
+- `activation_correct_disq {w} (hw) (st nt)` — inequality, any word
+
+Bridge lemmas added to `TestConsume.lean`:
+- `testWord_mem` — `testWord i clause ∈ [POS, NEG, DK]`
+- `testWord_litMatches` — links `litMatches` to the `(w=POS∧st=Q)∨(w=NEG∧st=S)` condition
+
+`testWord_consumption_actd` and `testWord_consumption_disq` now use the
+named gadget lemmas directly (via membership proof `by unfold testWord; split <;> simp`).
+`testWord_consumption_nactd` composes `activation_correct_nactd`,
+`testWord_mem`, and `testWord_litMatches` via `rw` + `simp only`.
+
+Next: do the same for `EndActivation.lean` / `endTestWord_consumption_*`.
+
+---
+
+## Dep graph tool — DONE (with known limitation)
+
+`tools/graph.lean` + `tools/graph.py`: extracts theorem dependency graph
+from elaborated Lean environment, renders via Graphviz.
+
+**Known limitation:** lemmas used only as `simp only [lemma]` arguments
+do not appear in `getUsedConstants` on the proof term. The `Syntax`/`InfoTree`
+(which does contain these names) is not persisted to `.olean` — it is only
+available during elaboration. Workarounds:
+
+- **Option A (done where easy):** replace `simp only [lemma]` with `rw [lemma]`
+  or `exact ... lemma ...` to make the reference explicit in the proof term.
+  Applied to `satisfiesClause_iff_matchesLiteral` (now uses `exact exists_congr`).
+  Not worth the complexity for cases like `testWord_litMatches` (inside `ite`).
+
+- **Option B (future, if needed):** augment `graph.lean` with a source-text
+  pass extracting names from `simp [...]` calls. Straightforward regex over
+  `.lean` files, but brittle.
+
+- **Option C (future, if annoying):** run the extractor as an elaboration plugin
+  (e.g., a `MetaM` command during `lake build`) to access `InfoTree` directly.
+  More robust but more complex to set up.
