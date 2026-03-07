@@ -11,6 +11,7 @@
 -/
 import PileSort.Mono
 import PileSort.Reduction
+import PileSort.Gadgets.Activation
 import PileSort.Gadgets.StartClause
 
 def litMatches (lp : LitPresence) (x : PileType) : Prop :=
@@ -48,17 +49,14 @@ theorem testWord_consumption_actd
       (compile (virtualPileTypes ALIGN (x :: rest))) ACTD =
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) ACTD
     := by
-  -- 1. Gadget helper: ACTD → ACTD + m on two-element machine, for any word
-  have gadget : ∀ (lp : LitPresence) (st nt : PileType),
-      applyWord (match lp with | .pos => POS | .neg => NEG | .absent => DK)
-        (compile (virtualPileTypes ALIGN [st, nt])) ACTD = ACTD + ALIGN.length := by decide
+  -- 1. Gadget: ACTD → ACTD + m for any word in {POS, NEG, DK}  (activation_correct_actd)
   -- 2. Decompose rest = y :: rest'
   obtain ⟨y, rest', rfl⟩ : ∃ y rest', rest = y :: rest' := by
     match rest, hrest with | y :: rest', _ => exact ⟨y, rest', rfl⟩
   -- Specialize to testWord
   have hgadget : applyWord (testWord i clause)
       (compile (virtualPileTypes ALIGN [x, y])) ACTD = ACTD + ALIGN.length := by
-    unfold testWord; exact gadget (clause.getD i .absent) x y
+    unfold testWord; split <;> exact activation_correct_actd (by simp) x y
   -- 3. Lift to full machine via gadget_lift_eq (A=[], window=[x,y], B=rest')
   have hlift := gadget_lift_eq (testWord i clause) [] [x, y] rest' ACTD (ACTD + ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
@@ -83,19 +81,14 @@ theorem testWord_consumption_disq
       (compile (virtualPileTypes ALIGN (x :: rest))) CLAUSE_DISQ ≥
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CLAUSE_DISQ
     := by
-  -- 1. Gadget helper: CLAUSE_DISQ → ≥ CLAUSE_DISQ + m on two-element machine
-  have gadget : ∀ (lp : LitPresence) (st nt : PileType),
-      CLAUSE_DISQ + ALIGN.length ≤
-        applyWord (match lp with | .pos => POS | .neg => NEG | .absent => DK)
-          (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ := by decide
+  -- 1. Gadget: CLAUSE_DISQ → ≥ CLAUSE_DISQ + m for any word in {POS, NEG, DK}  (activation_correct_disq)
   -- 2. Decompose rest = y :: rest'
   obtain ⟨y, rest', rfl⟩ : ∃ y rest', rest = y :: rest' := by
     match rest, hrest with | y :: rest', _ => exact ⟨y, rest', rfl⟩
   -- Specialize to testWord
-  have hgadget : CLAUSE_DISQ + ALIGN.length ≤
-      applyWord (testWord i clause)
-        (compile (virtualPileTypes ALIGN [x, y])) CLAUSE_DISQ := by
-    unfold testWord; exact gadget (clause.getD i .absent) x y
+  have hgadget : applyWord (testWord i clause)
+      (compile (virtualPileTypes ALIGN [x, y])) CLAUSE_DISQ ≥ CLAUSE_DISQ + ALIGN.length := by
+    unfold testWord; split <;> exact activation_correct_disq (by simp) x y
   -- 3. Lift to full machine via gadget_lift_ge (A=[], window=[x,y], B=rest')
   have hlift := gadget_lift_ge (testWord i clause) [] [x, y] rest' CLAUSE_DISQ
     (CLAUSE_DISQ + ALIGN.length)
