@@ -24,15 +24,8 @@ def isProjectConst (env : Environment) (n : Name) : Bool :=
 /-- Include theorems and definitions; skip constructors, recursors, instances, etc. -/
 def isWanted (info : ConstantInfo) : Bool :=
   match info with
-  | .thmInfo _  => true
-  | .defnInfo _ => true
+  | .thmInfo _ => true
   | _ => false
-
-/-- DOT node shape: box for theorems, ellipse for defs. -/
-def nodeShape (info : ConstantInfo) : String :=
-  match info with
-  | .thmInfo _  => "box"
-  | _ => "ellipse"
 
 /-- Last component of a dotted name. -/
 def baseName : Name → String
@@ -92,10 +85,9 @@ def main : IO Unit := do
     IO.println ("    label=" ++ dq (baseName m) ++ ";")
     IO.println "    style=rounded;"
     for n in ns do
-      let sh := (env.find? n).map nodeShape |>.getD "box"
       let nq := dq n.toString
       let lq := dq (baseName n)
-      IO.println ("    " ++ nq ++ " [label=" ++ lq ++ " shape=" ++ sh ++ "];")
+      IO.println ("    " ++ nq ++ " [label=" ++ lq ++ "];")
     IO.println "  }"
     ci := ci + 1
 
