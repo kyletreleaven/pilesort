@@ -40,14 +40,12 @@ theorem activation_correct :
       activationProp DK st nt ([NACTD, ACTD, CLAUSE_DISQ].get sp))
   := by decide
 
-/-- From ACTD, all three words land at ACTD + n. -/
-theorem activation_correct_actd :
-    (∀ (st nt : PileType), applyWord POS (compile (virtualPileTypes ALIGN [st, nt])) ACTD =
-        ACTD + ALIGN.length) ∧
-    (∀ (st nt : PileType), applyWord NEG (compile (virtualPileTypes ALIGN [st, nt])) ACTD =
-        ACTD + ALIGN.length) ∧
-    (∀ (st nt : PileType), applyWord DK (compile (virtualPileTypes ALIGN [st, nt])) ACTD =
-        ACTD + ALIGN.length) := by decide
+/-- From ACTD, any word in {POS, NEG, DK} lands at ACTD + n. -/
+theorem activation_correct_actd
+    {w : List Action} (hw : w ∈ [POS, NEG, DK]) (st nt : PileType) :
+    applyWord w (compile (virtualPileTypes ALIGN [st, nt])) ACTD = ACTD + ALIGN.length := by
+  simp only [List.mem_cons, List.mem_singleton, List.not_mem_nil, or_false] at hw
+  rcases hw with rfl | rfl | rfl <;> decide +revert
 
 /-- From NACTD, POS activates iff st = Q, NEG activates iff st = S, DK never activates. -/
 theorem activation_correct_nactd :
@@ -58,11 +56,9 @@ theorem activation_correct_nactd :
     (∀ (st nt : PileType), applyWord DK (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
         NACTD + ALIGN.length) := by decide
 
-/-- From CLAUSE_DISQ, all three words incur a penalty: endpoint ≥ CLAUSE_DISQ + n. -/
-theorem activation_correct_disq :
-    (∀ (st nt : PileType), CLAUSE_DISQ + ALIGN.length ≤
-        applyWord POS (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ) ∧
-    (∀ (st nt : PileType), CLAUSE_DISQ + ALIGN.length ≤
-        applyWord NEG (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ) ∧
-    (∀ (st nt : PileType), CLAUSE_DISQ + ALIGN.length ≤
-        applyWord DK (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ) := by decide
+/-- From CLAUSE_DISQ, any word in {POS, NEG, DK} incurs a penalty: endpoint ≥ CLAUSE_DISQ + n. -/
+theorem activation_correct_disq
+    {w : List Action} (hw : w ∈ [POS, NEG, DK]) (st nt : PileType) :
+    applyWord w (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ ≥ CLAUSE_DISQ + ALIGN.length := by
+  simp only [List.mem_cons, List.mem_singleton, List.not_mem_nil, or_false] at hw
+  rcases hw with rfl | rfl | rfl <;> decide +revert
