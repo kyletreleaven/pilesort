@@ -1,3 +1,18 @@
+/-
+  Adapter lemmas lifting clauseWord_correct to the replicated-types form used
+  by FormulaWord.lean.
+
+  ## Design note: `hQ` hypothesis rejected
+
+  An attempted simplification added `hQ : A1[n] = Q` to `clauseWord_start_nonsat`
+  to eliminate the S case (~40 lines of case analysis). This was rejected because
+  the penalty path (`formulaState_penalty_start` → `clauseWord_sat.2` /
+  `clauseNext_sat.2`) is called with arbitrary `xs` where `xs[n]` can be S.
+  Threading `hQ` through would have required restructuring `clauseWord_sat`,
+  `clauseNext_sat`, `formulaState_penalty_start`, `formulaState_penalty_all`,
+  `formulaWord_unsat_pos`, and a top-level case split in `formulaWord_correct'`
+  — net complexity increase rather than decrease.
+-/
 import PileSort.ClauseWord
 
 /-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
