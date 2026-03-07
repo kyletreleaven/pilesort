@@ -49,7 +49,8 @@ theorem matchesLiteral_embedVar (b : Bool) (i : Nat) (clause : Clause) :
 theorem satisfiesClause_iff_matchesLiteral (vars : List Bool) (clause : Clause) :
     satisfiesClause vars clause ↔
       ∃ i, i < vars.length ∧ matchesLiteral (embedVar (vars.getD i false)) i clause := by
-  simp only [satisfiesClause, matchesLiteral_embedVar]
+  simp only [satisfiesClause]
+  exact exists_congr fun i => and_congr_right' (matchesLiteral_embedVar _ i clause).symm
 
 /-- ACTD is a trap: from ACTD, testWords stay at exactly ACTD after shifting.
     Mirrors testChain_disq but uses the ACTD equality case. -/
