@@ -108,6 +108,19 @@ theorem testWord_consumption_disq
             applyWord_compile_append_shift, virtualPileTypes_length]; simp
     _ ≤ _ := applyWord_mono suffix (virtualPileTypes ALIGN (x :: y :: rest')) hlift
 
+/-- testWord always produces a word from {POS, NEG, DK}. -/
+theorem testWord_mem (i : Nat) (clause : Clause) : testWord i clause ∈ [POS, NEG, DK] := by
+  unfold testWord; split <;> simp
+
+/-- The activation condition for testWord from NACTD is exactly litMatches. -/
+theorem testWord_litMatches (i : Nat) (clause : Clause) (st : PileType) :
+    litMatches (clause.getD i .absent) st ↔
+    (testWord i clause = POS ∧ st = .Q) ∨ (testWord i clause = NEG ∧ st = .S) := by
+  cases h : clause.getD i .absent <;>
+    simp_all [litMatches, testWord,
+      show POS ≠ NEG from by decide, show NEG ≠ POS from by decide,
+      show DK ≠ POS from by decide, show DK ≠ NEG from by decide]
+
 /-- From NACTD: activates (→ ACTD) if literal i matches x, else stays NACTD. -/
 theorem testWord_consumption_nactd
     (i : Nat) (clause : Clause) (suffix : List Action)
@@ -117,11 +130,9 @@ theorem testWord_consumption_nactd
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest))
       (if matchesLiteral x i clause then ACTD else NACTD)
     := by
-  -- 1. Gadget helper: NACTD → ACTD or NACTD depending on litMatches
-  have gadget : ∀ (lp : LitPresence) (st nt : PileType),
-      applyWord (match lp with | .pos => POS | .neg => NEG | .absent => DK)
-        (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
-      (if litMatches lp st then ACTD else NACTD) + ALIGN.length := by decide
+  -- 1. Gadget: NACTD activation condition is (w=POS∧st=Q)∨(w=NEG∧st=S)  (activation_correct_nactd)
+  --    testWord ∈ {POS,NEG,DK}  (testWord_mem)
+  --    Bridge: activation condition = litMatches = matchesLiteral  (testWord_litMatches)
   -- 2. Decompose rest = y :: rest'
   obtain ⟨y, rest', rfl⟩ : ∃ y rest', rest = y :: rest' := by
     match rest, hrest with | y :: rest', _ => exact ⟨y, rest', rfl⟩
@@ -129,7 +140,8 @@ theorem testWord_consumption_nactd
   have hgadget : applyWord (testWord i clause)
       (compile (virtualPileTypes ALIGN [x, y])) NACTD =
     (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length := by
-    unfold testWord matchesLiteral; exact gadget (clause.getD i .absent) x y
+    rw [activation_correct_nactd (testWord_mem i clause) x y]
+    simp only [matchesLiteral, testWord_litMatches]
   -- 3. Lift to full machine via gadget_lift_eq (A=[], window=[x,y], B=rest')
   have hr : (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length <
       (virtualPileTypes ALIGN [x, y]).length := by

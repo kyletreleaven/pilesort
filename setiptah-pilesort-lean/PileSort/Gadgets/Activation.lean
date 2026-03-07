@@ -47,14 +47,13 @@ theorem activation_correct_actd
   simp only [List.mem_cons, List.mem_singleton, List.not_mem_nil, or_false] at hw
   rcases hw with rfl | rfl | rfl <;> decide +revert
 
-/-- From NACTD, POS activates iff st = Q, NEG activates iff st = S, DK never activates. -/
-theorem activation_correct_nactd :
-    (∀ (st nt : PileType), applyWord POS (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
-        (if st = .Q then ACTD else NACTD) + ALIGN.length) ∧
-    (∀ (st nt : PileType), applyWord NEG (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
-        (if st = .S then ACTD else NACTD) + ALIGN.length) ∧
-    (∀ (st nt : PileType), applyWord DK (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
-        NACTD + ALIGN.length) := by decide
+/-- From NACTD, any word in {POS, NEG, DK} activates iff (POS∧st=Q) or (NEG∧st=S). -/
+theorem activation_correct_nactd
+    {w : List Action} (hw : w ∈ [POS, NEG, DK]) (st nt : PileType) :
+    applyWord w (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
+    (if (w = POS ∧ st = .Q) ∨ (w = NEG ∧ st = .S) then ACTD else NACTD) + ALIGN.length := by
+  simp only [List.mem_cons, List.mem_singleton, List.not_mem_nil, or_false] at hw
+  rcases hw with rfl | rfl | rfl <;> decide +revert
 
 /-- From CLAUSE_DISQ, any word in {POS, NEG, DK} incurs a penalty: endpoint ≥ CLAUSE_DISQ + n. -/
 theorem activation_correct_disq
