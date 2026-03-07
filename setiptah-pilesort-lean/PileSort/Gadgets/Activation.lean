@@ -39,3 +39,30 @@ theorem activation_correct :
     (∀ (st nt : PileType) (sp : Fin 3),
       activationProp DK st nt ([NACTD, ACTD, CLAUSE_DISQ].get sp))
   := by decide
+
+/-- From ACTD, all three words land at ACTD + n. -/
+theorem activation_correct_actd :
+    (∀ (st nt : PileType), applyWord POS (compile (virtualPileTypes ALIGN [st, nt])) ACTD =
+        ACTD + ALIGN.length) ∧
+    (∀ (st nt : PileType), applyWord NEG (compile (virtualPileTypes ALIGN [st, nt])) ACTD =
+        ACTD + ALIGN.length) ∧
+    (∀ (st nt : PileType), applyWord DK (compile (virtualPileTypes ALIGN [st, nt])) ACTD =
+        ACTD + ALIGN.length) := by decide
+
+/-- From NACTD, POS activates iff st = Q, NEG activates iff st = S, DK never activates. -/
+theorem activation_correct_nactd :
+    (∀ (st nt : PileType), applyWord POS (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
+        (if st = .Q then ACTD else NACTD) + ALIGN.length) ∧
+    (∀ (st nt : PileType), applyWord NEG (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
+        (if st = .S then ACTD else NACTD) + ALIGN.length) ∧
+    (∀ (st nt : PileType), applyWord DK (compile (virtualPileTypes ALIGN [st, nt])) NACTD =
+        NACTD + ALIGN.length) := by decide
+
+/-- From CLAUSE_DISQ, all three words incur a penalty: endpoint ≥ CLAUSE_DISQ + n. -/
+theorem activation_correct_disq :
+    (∀ (st nt : PileType), CLAUSE_DISQ + ALIGN.length ≤
+        applyWord POS (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ) ∧
+    (∀ (st nt : PileType), CLAUSE_DISQ + ALIGN.length ≤
+        applyWord NEG (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ) ∧
+    (∀ (st nt : PileType), CLAUSE_DISQ + ALIGN.length ≤
+        applyWord DK (compile (virtualPileTypes ALIGN [st, nt])) CLAUSE_DISQ) := by decide
