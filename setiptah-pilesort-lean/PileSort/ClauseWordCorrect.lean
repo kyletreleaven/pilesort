@@ -241,6 +241,44 @@ theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
       _ = applyWord _ _ ACTD := htc.symm
       _ ≤ applyWord _ _ NACTD := hmono
 
+open Classical in
+/-- Consumption form of clauseWord from START_POS with suffix:
+    - Sat case:   result = applyWord suffix machine (END_POS + n*m)
+                  (END_POS is inside A1's block so no further shift is possible)
+    - Nonsat case: result ≥ (n+1)*m + applyWord suffix A2_machine CHAIN_DISQ
+                  (clauseWord reaches ≥ CHAIN_DISQ + (n+1)*m, which is exactly the A1/A2 boundary) -/
+theorem clauseWord_start_consumption (n : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType)
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
+    let machine := compile (virtualPileTypes ALIGN (A1 ++ A2))
+    if HasMatchingAssignment n A1 (satisfiesClause · clause) then
+      applyWord (clauseWord n clause ++ suffix) machine START_POS =
+        applyWord suffix machine (END_POS + n * ALIGN.length)
+    else
+      applyWord (clauseWord n clause ++ suffix) machine START_POS ≥
+        (n + 1) * ALIGN.length +
+          applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
+  simp only []
+  rcases Classical.em (HasMatchingAssignment n A1 (satisfiesClause · clause)) with h | h
+  · rw [if_pos h]
+    obtain ⟨vars, hvars, hA1eq, hsat⟩ := h
+    rw [applyWord_append, clauseWord_start_sat n clause A1 A2 hn hA1 hA2 vars hvars hA1eq hsat]
+  · rw [if_neg h]
+    -- Nonsat case: clauseWord reaches ≥ CHAIN_DISQ + (n+1)*m, shift to A2 machine
+    rw [applyWord_append]
+    have hcw := clauseWord_start_nonsat n clause A1 A2 hn hA1 hA2 h
+    have hshift : applyWord suffix (compile (virtualPileTypes ALIGN (A1 ++ A2)))
+          (CHAIN_DISQ + (n + 1) * ALIGN.length) =
+        (n + 1) * ALIGN.length +
+          applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
+      rw [virtualPileTypes_append,
+          show CHAIN_DISQ + (n + 1) * ALIGN.length =
+            (virtualPileTypes ALIGN A1).length + CHAIN_DISQ from by
+            rw [virtualPileTypes_length, hA1]; omega,
+          applyWord_compile_append_shift, virtualPileTypes_length, hA1]
+    rw [← hshift]
+    exact applyWord_mono suffix _ hcw
+
 /-- Chaining testWords from CLAUSE_DISQ: each step shifts by one block and preserves ≥ CLAUSE_DISQ.
     After k steps on range' start k, the result is ≥ k * m + (suffix result on dropped types).
 
