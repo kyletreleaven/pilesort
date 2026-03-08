@@ -338,30 +338,11 @@ theorem formulaState_penalty_all (n : Nat) (xs : List PileType)
     omega
   · exact formulaState_penalty_start n xs clauses_ last hn hxs_len hno_init
 
-theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
-    formulaWord n (init ++ [last]) =
-    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last := by
-  unfold formulaWord
-  rw [List.flatMap_append]
-  simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
-  rw [← List.append_assoc]
-  show ((init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last ++ NEXT).dropLast =
-    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last
-  unfold NEXT
-  rw [List.dropLast_concat]
-
 /-- Peeling one Q from the front of a replicated virtualPileTypes. -/
 private theorem virtualPileTypes_replicate_Q_cons' (inner : List PileType) (m : Nat) :
     virtualPileTypes inner (List.replicate (m + 1) .Q) =
     inner ++ virtualPileTypes inner (List.replicate m .Q) := by
   simp [virtualPileTypes, List.replicate_succ, List.flatMap_cons, applyPile]
-
-/-- Peeling the first clause off a formulaWord. -/
-private theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (last : Clause) :
-    formulaWord n ((c :: rest) ++ [last]) =
-    (clauseWord n c ++ NEXT) ++ formulaWord n (rest ++ [last]) := by
-  rw [formulaWord_split, formulaWord_split]
-  simp [List.flatMap_cons, List.append_assoc]
 
 /-- formulaState_eq: The tail-recursive formulaState computation equals
     the direct application of formulaWord to the compiled machine. -/

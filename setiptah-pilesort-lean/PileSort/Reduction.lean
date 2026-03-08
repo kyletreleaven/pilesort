@@ -53,6 +53,25 @@ def clauseWord (n : Nat) (clause : Clause) : List Action :=
 def formulaWord (n : Nat) (clauses : List Clause) : List Action :=
   (clauses.flatMap (fun c => clauseWord n c ++ NEXT)).dropLast
 
+theorem formulaWord_split (n : Nat) (init : List Clause) (last : Clause) :
+    formulaWord n (init ++ [last]) =
+    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last := by
+  unfold formulaWord
+  rw [List.flatMap_append]
+  simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
+  rw [← List.append_assoc]
+  show ((init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last ++ NEXT).dropLast =
+    (init.flatMap (fun c => clauseWord n c ++ NEXT)) ++ clauseWord n last
+  unfold NEXT
+  rw [List.dropLast_concat]
+
+/-- Peeling the first clause off a formulaWord. -/
+theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (last : Clause) :
+    formulaWord n ((c :: rest) ++ [last]) =
+    (clauseWord n c ++ NEXT) ++ formulaWord n (rest ++ [last]) := by
+  rw [formulaWord_split, formulaWord_split]
+  simp [List.flatMap_cons, List.append_assoc]
+
 /-- A clause is satisfied by a variable assignment if some in-range literal matches.
     Out-of-range indices (≥ vars.length) are inert. -/
 def satisfiesClause (vars : List Bool) (clause : Clause) : Prop :=
