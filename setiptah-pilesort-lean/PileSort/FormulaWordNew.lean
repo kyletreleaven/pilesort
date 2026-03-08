@@ -258,3 +258,42 @@ theorem clauseNext_chain_consumption (n : Nat) (c : Clause) (xs : List PileType)
         applyWord_compile_append_shift, h_len]
   rw [h_shift] at h_mono
   exact h_mono
+
+/-- Chain form: formulaWord from any s ≥ CHAIN_DISQ reaches the out-of-bounds zone,
+    regardless of clause content. Proved by induction on clauses_ using
+    clauseWord_chain_consumption (base) and clauseNext_chain_consumption (step). -/
+theorem formulaWord_chain_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
+    (xs : List PileType) (s : Nat)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
+    (hs : CHAIN_DISQ ≤ s) :
+    applyWord (formulaWord n (clauses_ ++ [last]))
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+        (List.replicate (clauses_.length + 2) .Q))) s ≥
+      (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
+  induction clauses_ generalizing s with
+  | nil =>
+    simp only [List.nil_append, List.length_nil, Nat.zero_add, Nat.one_mul]
+    have hfw : formulaWord n [last] = clauseWord n last := by
+      rw [show [last] = [] ++ [last] from rfl, formulaWord_split]; simp
+    rw [hfw, virtualPileTypes_replicate_peel ALIGN xs 2 (by omega)]
+    simp only [show (2 : Nat) - 1 = 1 from rfl, List.replicate_succ, List.replicate_zero,
+               List.flatten_cons, List.flatten_nil, List.append_nil]
+    have hxs_ne : xs ≠ [] := by intro h; simp [h] at hxs_len
+    have h := clauseWord_chain_consumption n last [] xs xs hn hxs_len hxs_ne
+    simp only [List.append_nil] at h
+    have hnil : applyWord ([] : List Action) (compile (virtualPileTypes ALIGN xs)) CHAIN_DISQ
+        = CHAIN_DISQ := rfl
+    rw [hnil, ← hxs_len] at h
+    exact Nat.le_trans h (applyWord_mono _ _ hs)
+  | cons c rest ih =>
+    simp only [List.length_cons]
+    rw [formulaWord_cons]
+    have h_chain := clauseNext_chain_consumption n c xs (rest.length + 3)
+      (formulaWord n (rest ++ [last])) s hn hxs_len (by omega) hs
+    simp only [show rest.length + 3 - 1 = rest.length + 2 from by omega] at h_chain
+    have h_ih := ih CHAIN_DISQ (by omega)
+    have hfact : (rest.length + 2) * (xs.length * ALIGN.length) =
+        xs.length * ALIGN.length + (rest.length + 1) * (xs.length * ALIGN.length) := by
+      rw [show rest.length + 2 = 1 + (rest.length + 1) from by omega, Nat.add_mul, Nat.one_mul]
+    rw [hfact]
+    exact Nat.le_trans (Nat.add_le_add_left h_ih _) h_chain
