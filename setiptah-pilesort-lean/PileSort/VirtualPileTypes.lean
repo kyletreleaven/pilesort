@@ -142,3 +142,14 @@ theorem virtualPileTypes_replicate_Q_snoc (inner : List PileType) (m : Nat) :
 theorem virtualPileTypes_replicate_Q_length (inner : List PileType) (m : Nat) :
     (virtualPileTypes inner (List.replicate m .Q)).length = m * inner.length := by
   rw [virtualPileTypes_length, List.length_replicate]
+
+/-- Peeling one block from a two-level replicated virtualPileTypes:
+    the outer Q-replication is converted to flat form with the first pt2-block
+    separated from the remaining (m-1) repetitions. -/
+theorem virtualPileTypes_replicate_peel (pt1 pt2 : List PileType) (m : Nat) (hm : m ≥ 1) :
+    virtualPileTypes (virtualPileTypes pt1 pt2) (List.replicate m .Q) =
+    virtualPileTypes pt1 (pt2 ++ (List.replicate (m - 1) pt2).flatten) := by
+  rw [virtualPileTypes_replicate_Q_comp]
+  congr 1
+  match m, hm with
+  | m' + 1, _ => simp [List.replicate_succ, List.flatten_cons]

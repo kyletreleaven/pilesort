@@ -93,14 +93,10 @@ theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
         applyWord suffix (compile types') START_POS := by
   simp only []
   rw [applyWord_append, applyWord_append]
-  -- (a) convert replicated → flat via virtualPileTypes_replicate_Q_comp
-  have h_split : (List.replicate m xs).flatten =
-      xs ++ (List.replicate (m - 1) xs).flatten := by
-    match m, hm with
-    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons]
+  -- (a) convert replicated → flat via virtualPileTypes_replicate_peel
   have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
-      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) := by
-    rw [virtualPileTypes_replicate_Q_comp, h_split]
+      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) :=
+    virtualPileTypes_replicate_peel ALIGN xs m (by omega)
   have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
     have hxs_ne : xs ≠ [] := by intro hx; simp [hx] at hxs_len
     match m, hm with
