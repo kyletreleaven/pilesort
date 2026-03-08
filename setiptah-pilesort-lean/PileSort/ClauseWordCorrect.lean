@@ -18,32 +18,23 @@ import PileSort.ClauseWord
 /-- Preamble: clauseWord from START_POS reduces to testWords ++ endTestWord from NACTD,
     after factoring out A0 and applying start_clause_start. -/
 theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
-    (A0 A1 A2 : List PileType)
+    (A1 A2 : List PileType)
     (hA1 : A1.length = n + 1) :
     applyWord (clauseWord n clause)
-      (compile (virtualPileTypes ALIGN (A0 ++ A1 ++ A2))) (START_POS + A0.length * ALIGN.length) =
-    A0.length * ALIGN.length +
-      applyWord ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
-        endTestWord (n - 1) clause)
-        (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD := by
-  -- 1. Factor out A0
-  rw [show A0 ++ A1 ++ A2 = A0 ++ (A1 ++ A2) from List.append_assoc ..,
-      virtualPileTypes_append,
-      show START_POS + A0.length * ALIGN.length =
-        (virtualPileTypes ALIGN A0).length + START_POS from by
-        rw [virtualPileTypes_length]; omega,
-      applyWord_compile_append_shift, virtualPileTypes_length]
-  -- 2. Unfold clauseWord, reassociate as START_CLAUSE ++ rest
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) START_POS =
+    applyWord ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
+      endTestWord (n - 1) clause)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD := by
+  -- 1. Unfold clauseWord, reassociate as START_CLAUSE ++ rest
   unfold clauseWord
   rw [show START_CLAUSE ++ (List.range (n - 1)).flatMap (fun i => testWord i clause) ++
         endTestWord (n - 1) clause =
       START_CLAUSE ++ ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
         endTestWord (n - 1) clause) from by simp [List.append_assoc]]
-  -- 3. A1 is nonempty; start_clause_start → NACTD
+  -- 2. A1 is nonempty; start_clause_start → NACTD
   obtain ⟨t, rest, rfl⟩ : ∃ t rest, A1 = t :: rest := by
     match A1, hA1 with | a :: as, _ => exact ⟨a, as, rfl⟩
-  rw [List.cons_append,
-      start_clause_start _ t (rest ++ A2)]
+  rw [List.cons_append, start_clause_start _ t (rest ++ A2)]
 
 
 /-- When A1 ends in Q and has no matching satisfying assignment,
@@ -121,19 +112,16 @@ theorem satisfiesClause_first_matchesLiteral
 /-- clauseWord from START_POS: if a satisfying assignment matches A1, reaches END_POS;
     otherwise reaches the penalty zone. -/
 theorem clauseWord_start_sat (n : Nat) (clause : Clause)
-    (A0 A1 A2 : List PileType)
+    (A1 A2 : List PileType)
     (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
-    let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
-    let k := A0.length
-    let m := ALIGN.length
+    let types := virtualPileTypes ALIGN (A1 ++ A2)
     ∀ vars : List Bool, vars.length = n → A1 = embedVars vars ++ [PileType.Q] →
       satisfiesClause vars clause →
-      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
-        END_POS + (k + n) * m := by
+      applyWord (clauseWord n clause) (compile types) START_POS = END_POS + n * ALIGN.length := by
   simp only []
   intro vars hvars hA1eq hsat
   -- 1. Preamble: reduce to NACTD on testWords ++ endTestWord
-  rw [clauseWord_start_preamble n clause A0 A1 A2 hA1]
+  rw [clauseWord_start_preamble n clause A1 A2 hA1]
   -- 2. Find first activation index
   obtain ⟨⟨i₀, hi₀v⟩, hml_ev, hno_ev⟩ :=
     satisfiesClause_first_matchesLiteral vars clause hsat
@@ -163,14 +151,13 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
     (embedVars vars ++ [PileType.Q]) A2
     (by simp [hevlen]; omega) hA2 hQ (by omega) hml hno
   simp only [show applyWord [] _ END_POS = END_POS from rfl] at htse
-  rw [htse, show n - 1 + 1 = n from by omega, Nat.add_mul]
-  omega
+  rw [htse, show n - 1 + 1 = n from by omega]; omega
 
 /-- clauseWord from START_POS without satisfying assignment → penalty.
 
     Proof:
-    1. Factor out A0 via applyWord_compile_append_shift. Unfold clauseWord.
-       start_clause_start → NACTD on A1 ++ A2, applying testWords(0..n-2) ++ endTestWord(n-1).
+    1. Unfold clauseWord. start_clause_start → NACTD on A1 ++ A2,
+       applying testWords(0..n-2) ++ endTestWord(n-1).
     2. Case split on A1[n] (last element):
        2a. A1[n] = Q: Every PileType is Q or S, so A1 = embedVars vars ++ [Q] for unique vars.
            ¬HasMatchingAssignment → ¬satisfiesClause vars clause.
@@ -180,24 +167,18 @@ theorem clauseWord_start_sat (n : Nat) (clause : Clause)
            testChain_actd for n-1 steps + endTestWord_consumption ACTD with y≠Q → ≥ nextBad.
            Total: (n-1)*m + 2*m + CHAIN_DISQ = (n+1)*m + CHAIN_DISQ. -/
 theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
-    (A0 A1 A2 : List PileType)
+    (A1 A2 : List PileType)
     (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
-    let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
-    let k := A0.length
-    let m := ALIGN.length
+    let types := virtualPileTypes ALIGN (A1 ++ A2)
     ¬ HasMatchingAssignment n A1 (satisfiesClause · clause) →
-      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
-        CHAIN_DISQ + (k + n + 1) * m := by
+      applyWord (clauseWord n clause) (compile types) START_POS ≥
+        CHAIN_DISQ + (n + 1) * ALIGN.length := by
   simp only []
   intro hno
-  rw [clauseWord_start_preamble n clause A0 A1 A2 hA1]
-  -- Goal: A0.length * m + applyWord (testWords ++ endTestWord) (vpt (A1 ++ A2)) NACTD
-  --       ≥ CHAIN_DISQ + (A0.length + n + 1) * m
-  -- Suffices to show inner ≥ (n+1)*m + CHAIN_DISQ
+  rw [clauseWord_start_preamble n clause A1 A2 hA1]
   suffices h : applyWord ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
       endTestWord (n - 1) clause) (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD ≥
-      (n + 1) * ALIGN.length + CHAIN_DISQ by
-    rw [show A0.length + n + 1 = A0.length + (n + 1) from by omega, Nat.add_mul]; omega
+      (n + 1) * ALIGN.length + CHAIN_DISQ by omega
   -- Case split on last element of A1
   cases ht : A1[n]'(by omega) with
   | Q =>
@@ -361,59 +342,37 @@ theorem clauseWord_chain_consumption (n : Nat) (clause : Clause) (suffix : List 
 /-- clauseWord from CHAIN_DISQ: penalty propagates unconditionally.
 
     English proof:
-    1. Factor out A0 via applyWord_compile_append_shift:
-       goal reduces to k*m + inner ≥ CHAIN_DISQ + (k+n+1)*m,
-       i.e., inner ≥ CHAIN_DISQ + (n+1)*m.
-    2. Apply clauseWord_chain_consumption (with empty suffix) on A1 ++ A2:
-       inner ≥ (n+1)*m + applyWord [] (compile (vpt ALIGN A2)) CHAIN_DISQ
-            = (n+1)*m + CHAIN_DISQ. ∎ -/
+    Apply clauseWord_chain_consumption (with empty suffix) on A1 ++ A2:
+    result ≥ (n+1)*m + CHAIN_DISQ. ∎ -/
 theorem clauseWord_chain (n : Nat) (clause : Clause)
-    (A0 A1 A2 : List PileType)
+    (A1 A2 : List PileType)
     (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
-    let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
-    let k := A0.length
-    let m := ALIGN.length
-    applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
-      CHAIN_DISQ + (k + n + 1) * m := by
-  simp only []
-  -- 1. Factor out A0
-  rw [show A0 ++ A1 ++ A2 = A0 ++ (A1 ++ A2) from List.append_assoc ..,
-      virtualPileTypes_append,
-      show CHAIN_DISQ + A0.length * ALIGN.length =
-        (virtualPileTypes ALIGN A0).length + CHAIN_DISQ from by
-        rw [virtualPileTypes_length]; omega,
-      applyWord_compile_append_shift, virtualPileTypes_length]
-  -- 2. Apply clauseWord_chain_consumption with empty suffix
+    applyWord (clauseWord n clause) (compile (virtualPileTypes ALIGN (A1 ++ A2))) CHAIN_DISQ ≥
+      CHAIN_DISQ + (n + 1) * ALIGN.length := by
   have hcc := clauseWord_chain_consumption n clause [] A1 A2 hn hA1 hA2
-  rw [List.append_nil, show applyWord ([] : List Action)
-    (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ = CHAIN_DISQ from rfl] at hcc
-  -- hcc: applyWord clauseWord ... CHAIN_DISQ ≥ (n+1)*ALIGN.length + CHAIN_DISQ
-  -- Goal: A0*AL + applyWord clauseWord ... CHAIN_DISQ ≥ CHAIN_DISQ + (A0+n+1)*AL
-  -- 3. Arithmetic: (A0+n+1)*AL = A0*AL + (n+1)*AL, then omega combines with hcc
-  rw [show A0.length + n + 1 = A0.length + (n + 1) from by omega, Nat.add_mul]
+  simp only [List.append_nil,
+    show applyWord ([] : List Action) (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ = CHAIN_DISQ
+      from rfl] at hcc
   omega
 
 /-- Combined clauseWord correctness, assembling start and chain parts. -/
 theorem clauseWord_correct (n : Nat) (clause : Clause)
-    (A0 A1 A2 : List PileType)
+    (A1 A2 : List PileType)
     (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
-    let types := virtualPileTypes ALIGN (A0 ++ A1 ++ A2)
-    let k := A0.length
-    let m := ALIGN.length
+    let types := virtualPileTypes ALIGN (A1 ++ A2)
     (∀ vars : List Bool, vars.length = n → A1 = embedVars vars ++ [PileType.Q] →
       satisfiesClause vars clause →
-      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) =
-        END_POS + (k + n) * m)
+      applyWord (clauseWord n clause) (compile types) START_POS = END_POS + n * ALIGN.length)
     ∧
     (¬ HasMatchingAssignment n A1 (satisfiesClause · clause) →
-      applyWord (clauseWord n clause) (compile types) (START_POS + k * m) ≥
-        CHAIN_DISQ + (k + n + 1) * m)
+      applyWord (clauseWord n clause) (compile types) START_POS ≥
+        CHAIN_DISQ + (n + 1) * ALIGN.length)
     ∧
-    applyWord (clauseWord n clause) (compile types) (CHAIN_DISQ + k * m) ≥
-      CHAIN_DISQ + (k + n + 1) * m :=
-  ⟨clauseWord_start_sat n clause A0 A1 A2 hn hA1 hA2,
-   clauseWord_start_nonsat n clause A0 A1 A2 hn hA1 hA2,
-   clauseWord_chain n clause A0 A1 A2 hn hA1 hA2⟩
+    applyWord (clauseWord n clause) (compile types) CHAIN_DISQ ≥
+      CHAIN_DISQ + (n + 1) * ALIGN.length :=
+  ⟨clauseWord_start_sat n clause A1 A2 hn hA1 hA2,
+   clauseWord_start_nonsat n clause A1 A2 hn hA1 hA2,
+   clauseWord_chain n clause A1 A2 hn hA1 hA2⟩
 
 /-- clauseWord from START_POS on replicated types: if a matching assignment satisfies the
     clause, reaches END_POS + n * ALIGN.length; otherwise reaches ≥ CHAIN_DISQ + block.
@@ -432,25 +391,22 @@ theorem clauseWord_sat (n : Nat) (c : Clause) (xs : List PileType)
       CHAIN_DISQ + xs.length * ALIGN.length ≤
         applyWord (clauseWord n c) (compile types) START_POS) := by
   have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
-      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
+      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) := by
     rw [virtualPileTypes_replicate_Q_comp]; congr 1
     have : m = (m - 1) + 1 := by omega
     rw [this, List.replicate_succ, List.flatten_cons]; simp
   rw [h_eq]
   have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
-    have : m - 1 ≥ 1 := by omega
     have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
     rw [show m - 1 = (m - 2) + 1 from by omega, List.replicate_succ, List.flatten_cons]
     simp [this]
-  have hcw := clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
+  have hcw := clauseWord_correct n c xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2
   constructor
   · exact hcw.1
   · intro hno
-    have := hcw.2.1 hno
     calc CHAIN_DISQ + xs.length * ALIGN.length
         = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
-      _ ≤ _ := this
+      _ ≤ _ := hcw.2.1 hno
 
 /-- clauseWord from ≥ CHAIN_DISQ on replicated types always reaches ≥ CHAIN_DISQ + block.
     Repackages clauseWord_correct part 3 for the List.replicate m .Q form. -/
@@ -461,23 +417,18 @@ theorem clauseWord_penalty (n : Nat) (c : Clause) (xs : List PileType)
     CHAIN_DISQ + xs.length * ALIGN.length ≤
       applyWord (clauseWord n c)
         (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))) s := by
-  -- Rewrite types to clauseWord_correct form
   have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
-      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
+      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) := by
     rw [virtualPileTypes_replicate_Q_comp]; congr 1
     have : m = (m - 1) + 1 := by omega
     rw [this, List.replicate_succ, List.flatten_cons]; simp
   rw [h_eq]
-  -- clauseWord_correct part 3 with A0=[], A1=xs, A2=remaining
   have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
     have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
     rw [show m - 1 = (m - 2) + 1 from by omega, List.replicate_succ, List.flatten_cons]
     simp [this]
-  have hcw := (clauseWord_correct n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2).2.2
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at hcw
-  -- mono: result(s) ≥ result(CHAIN_DISQ) ≥ bound
+  have hcw := (clauseWord_correct n c xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2).2.2
   calc CHAIN_DISQ + xs.length * ALIGN.length
       = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
     _ ≤ applyWord (clauseWord n c) _ CHAIN_DISQ := hcw
-    _ ≤ applyWord (clauseWord n c) _ s :=
-        applyWord_mono (clauseWord n c) _ hs
+    _ ≤ applyWord (clauseWord n c) _ s := applyWord_mono (clauseWord n c) _ hs

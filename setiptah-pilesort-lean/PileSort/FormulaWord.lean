@@ -48,23 +48,18 @@ theorem clauseWord_start_sat_rep (n : Nat) (c : Clause) (xs : List PileType)
     applyWord (clauseWord n c)
       (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
       START_POS = END_POS + n * ALIGN.length := by
-  -- Convert to flat form and apply clauseWord_start_sat with A0=[]
-  have h_split : (List.replicate m xs).flatten =
-      xs ++ (List.replicate (m - 1) xs).flatten := by
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp]; congr 1
     match m, hm with
     | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons]
-  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
-      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
-    rw [virtualPileTypes_replicate_Q_comp, List.nil_append, h_split]
   have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
     have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
     match m, hm with
     | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, this]
   rw [h_eq]
-  have := clauseWord_start_sat n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2
+  exact clauseWord_start_sat n c xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2
     vars hvars hxs hsat
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add] at this
-  exact this
 
 /-- ADAPTER: next_correct in replicated form. -/
 theorem next_correct_rep (n : Nat) (xs : List PileType)
@@ -117,22 +112,20 @@ theorem clauseWord_start_nonsat_rep (n : Nat) (c : Clause) (xs : List PileType)
     applyWord (clauseWord n c)
       (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
       START_POS ≥ CHAIN_DISQ + xs.length * ALIGN.length := by
-  have h_split : (List.replicate m xs).flatten =
-      xs ++ (List.replicate (m - 1) xs).flatten := by
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp]; congr 1
     match m, hm with
     | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons]
-  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
-      virtualPileTypes ALIGN ([] ++ xs ++ (List.replicate (m - 1) xs).flatten) := by
-    rw [virtualPileTypes_replicate_Q_comp, List.nil_append, h_split]
   have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
     have : xs ≠ [] := by intro hx; simp [hx] at hxs_len
     match m, hm with
     | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, this]
   rw [h_eq]
-  have := clauseWord_start_nonsat n c [] xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2 hno
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, Nat.add_zero] at this
-  rw [← hxs_len] at this
-  exact this
+  have h := clauseWord_start_nonsat n c xs ((List.replicate (m - 1) xs).flatten) hn hxs_len hA2 hno
+  calc CHAIN_DISQ + xs.length * ALIGN.length
+      = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
+    _ ≤ _ := h
 
 /-- Consumption form: clauseWord ++ NEXT without satisfying assignment reaches
     penalty zone. Suffix sees remaining replicates from CHAIN_DISQ. -/
