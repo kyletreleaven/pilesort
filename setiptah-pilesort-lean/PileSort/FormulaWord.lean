@@ -39,6 +39,49 @@ import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
 import PileSort.FormulaWordNew
 
+/-- Sat form: formulaWord from START_POS reaches exact position when vars satisfies the formula.
+    Proved by induction on clauses_ using clauseNext_good_consumption (step) and
+    clauseWord_start_consumption sat branch (base). -/
+theorem formulaWord_sat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
+    (xs : List PileType) (vars : List Bool)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
+    (hvars : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesFormula vars (clauses_ ++ [last])) :
+    applyWord (formulaWord n (clauses_ ++ [last]))
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
+        (List.replicate (clauses_.length + 2) .Q))) START_POS =
+      clauses_.length * (xs.length * ALIGN.length) + END_POS + n * ALIGN.length := by
+  induction clauses_ with
+  | nil =>
+    simp only [List.nil_append, List.length_nil, Nat.zero_mul, Nat.zero_add]
+    have hfw : formulaWord n [last] = clauseWord n last := by
+      rw [show [last] = [] ++ [last] from rfl, formulaWord_split]; simp
+    rw [hfw, virtualPileTypes_replicate_peel ALIGN xs 2 (by omega)]
+    have hxs_ne : xs ≠ [] := by intro h; simp [h] at hxs_len
+    have hA2 : (List.replicate 1 xs).flatten ≠ [] := by
+      simp [List.replicate_succ, List.flatten_cons, hxs_ne]
+    have hsat_last : satisfiesClause vars last := hsat last (by simp)
+    have hhas : HasMatchingAssignment n xs (satisfiesClause · last) :=
+      ⟨vars, hvars, hxs, hsat_last⟩
+    have h := clauseWord_start_consumption n last [] xs _ hn hxs_len hA2
+    rw [if_pos hhas, List.append_nil] at h
+    simpa using h
+  | cons c rest ih =>
+    simp only [List.length_cons]
+    rw [formulaWord_cons]
+    have hsat_c : satisfiesClause vars c := hsat c (List.mem_cons_self c _)
+    have hsat_rest : satisfiesFormula vars (rest ++ [last]) :=
+      fun cl hmem => hsat cl (List.mem_cons_of_mem c hmem)
+    have h_good := clauseNext_good_consumption n c xs (rest.length + 3)
+      (formulaWord n (rest ++ [last])) hn hxs_len (by omega) vars hvars hxs hsat_c
+    simp only [show rest.length + 3 - 1 = rest.length + 2 from by omega] at h_good
+    rw [h_good, ih hsat_rest]
+    have hfact : (rest.length + 1) * (xs.length * ALIGN.length) =
+        xs.length * ALIGN.length + rest.length * (xs.length * ALIGN.length) := by
+      rw [show rest.length + 1 = 1 + rest.length from by omega, Nat.add_mul, Nat.one_mul]
+    omega
+
 /-- ADAPTER: clauseWord_start_sat in replicated form. -/
 theorem clauseWord_start_sat_rep (n : Nat) (c : Clause) (xs : List PileType)
     (m : Nat)
@@ -454,20 +497,6 @@ theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
   -- 4. Combine
   simp [List.length_append] at h_pen ⊢; omega
 
-/-- Decomposed form of formulaWord_sat_pos. -/
-theorem formulaWord_sat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
-    (xs : List PileType) (vars : List Bool)
-    (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
-    (hvars : vars.length = n) (hxs : xs = embedVars vars ++ [PileType.Q])
-    (hsat : satisfiesFormula vars (clauses_ ++ [last])) :
-    applyWord (formulaWord n (clauses_ ++ [last]))
-      (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
-        (List.replicate (clauses_.length + 2) .Q))) START_POS =
-      clauses_.length * (xs.length * ALIGN.length) + END_POS + n * ALIGN.length := by
-  have := formulaWord_sat_pos n (clauses_ ++ [last]) xs vars hn hxs_len hvars hxs hsat (by simp)
-  simp only [show (clauses_ ++ [last]).length + 1 = clauses_.length + 2 from by simp,
-             show (clauses_ ++ [last]).length - 1 = clauses_.length from by simp] at this
-  exact this
 
 /-- Decomposed form of formulaWord_unsat_pos. -/
 theorem formulaWord_unsat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
