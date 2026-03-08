@@ -103,43 +103,6 @@ theorem clauseWord_start_nonsat_rep (n : Nat) (c : Clause) (xs : List PileType)
       = CHAIN_DISQ + (n + 1) * ALIGN.length := by rw [hxs_len]
     _ ≤ _ := h
 
-/-- Consumption form: clauseWord ++ NEXT without satisfying assignment reaches
-    penalty zone. Suffix sees remaining replicates from CHAIN_DISQ. -/
-theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
-    (m : Nat) (suffix : List Action)
-    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
-    (hno : ¬ HasMatchingAssignment n xs (satisfiesClause · c)) :
-    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
-    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
-    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS ≥
-      xs.length * ALIGN.length +
-        applyWord suffix (compile types') CHAIN_DISQ := by
-  simp only []
-  -- Split word
-  rw [applyWord_append, applyWord_append]
-  -- clauseWord ≥ bound, NEXT only increases, suffix is monotone
-  have h_cw := clauseWord_start_nonsat_rep n c xs m hn hxs_len hm hno
-  have h_mono := applyWord_mono suffix
-    (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
-    (Nat.le_trans h_cw
-      (applyWord_ge NEXT (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)) _))
-  -- Evaluate the lower bound via decomposition + shift
-  have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
-    virtualPileTypes_length ALIGN xs
-  have h_shift : applyWord suffix
-      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
-      (CHAIN_DISQ + xs.length * ALIGN.length) =
-      xs.length * ALIGN.length +
-        applyWord suffix
-          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)))
-          CHAIN_DISQ := by
-    rw [virtualPileTypes_replicate_Q_cons _ _ (by omega : m ≥ 1),
-        show CHAIN_DISQ + xs.length * ALIGN.length =
-          (virtualPileTypes ALIGN xs).length + CHAIN_DISQ from by rw [h_len]; omega,
-        applyWord_compile_append_shift, h_len]
-  rw [h_shift] at h_mono
-  exact h_mono
-
 /-- clauseWord ++ NEXT from START_POS on replicated types: if a matching assignment
     satisfies the clause, advances exactly one block; otherwise reaches ≥ CHAIN_DISQ + block.
     Derives from the consumption forms with suffix = []. -/

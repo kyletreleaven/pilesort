@@ -16,7 +16,7 @@
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile (vpt (vpt ALIGN xs) (replicate m Q))) START_POS
     = xs.length * m + applyWord suffix (compile (vpt (vpt ALIGN xs) (replicate (m-1) Q))) START_POS
 
-  **2. Nonsat (from START_POS, no satisfying assignment):** TODO
+  **2. Nonsat (from START_POS, no satisfying assignment):** DONE
   `clauseNext_bad_consumption` (to be proved):
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile (vpt (vpt ALIGN xs) (replicate m Q))) START_POS
     ≥ xs.length * m + applyWord suffix (compile (vpt (vpt ALIGN xs) (replicate (m-1) Q))) CHAIN_DISQ
@@ -118,3 +118,49 @@ theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
       virtualPileTypes_append,
       applyWord_compile_append_shift suffix (virtualPileTypes ALIGN xs) _ START_POS,
       virtualPileTypes_length, hxs_len, ← virtualPileTypes_replicate_Q_comp]
+
+/-- Consumption form: clauseWord ++ NEXT without satisfying assignment reaches
+    penalty zone. Suffix sees remaining replicates from CHAIN_DISQ. -/
+theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (suffix : List Action)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesClause · c)) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
+    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS ≥
+      xs.length * ALIGN.length +
+        applyWord suffix (compile types') CHAIN_DISQ := by
+  simp only []
+  -- Split word
+  rw [applyWord_append, applyWord_append]
+  -- (a) clauseWord ≥ bound on replicated machine via flat conversion
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have hxs_ne : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, hxs_ne]
+  have h_cw : applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      START_POS ≥ CHAIN_DISQ + xs.length * ALIGN.length := by
+    rw [virtualPileTypes_replicate_peel ALIGN xs m (by omega)]
+    have h := clauseWord_start_nonsat n c xs _ hn hxs_len hA2 hno
+    rw [hxs_len]; exact h
+  have h_mono := applyWord_mono suffix
+    (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
+    (Nat.le_trans h_cw
+      (applyWord_ge NEXT (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)) _))
+  -- Evaluate the lower bound via decomposition + shift
+  have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
+    virtualPileTypes_length ALIGN xs
+  have h_shift : applyWord suffix
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      (CHAIN_DISQ + xs.length * ALIGN.length) =
+      xs.length * ALIGN.length +
+        applyWord suffix
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)))
+          CHAIN_DISQ := by
+    rw [virtualPileTypes_replicate_Q_cons _ _ (by omega : m ≥ 1),
+        show CHAIN_DISQ + xs.length * ALIGN.length =
+          (virtualPileTypes ALIGN xs).length + CHAIN_DISQ from by rw [h_len]; omega,
+        applyWord_compile_append_shift, h_len]
+  rw [h_shift] at h_mono
+  exact h_mono
