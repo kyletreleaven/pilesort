@@ -27,10 +27,8 @@ renamed `testChain_nactd_old`.
 - `testChain_activate_end_new` — 6-segment sentinel form (new)
 - `testChain_sat_end_lt_new` — signature with `sorry`
 
-### Parked
-- `testChain_sat_end_lt_new` proof — ran into `cons_append`/`append_assoc`
-  issues when composing multiple layers. May revisit after downstream
-  lemmas are also restructured.
+### Parked / removed
+- `testChain_sat_end_lt_new` — removed (no longer present; superseded or abandoned).
 
 ## 4. Direction check — RESOLVED
 
@@ -80,6 +78,9 @@ Simplified `formulaWord_correct` by:
 Delete all `_old` versions, unused helpers, and any lemmas superseded
 by whichever approach is chosen.
 
+**Status:** `_old` lemmas (`testChain_nactd_old`, `testChain_nactd_end_old`,
+`testChain_sat_end_eq_old`) are still in use — not yet deletable.
+
 ---
 
 ## Gadget lemma restructuring — DONE
@@ -100,8 +101,6 @@ Bridge lemmas added to `TestConsume.lean`:
 named gadget lemmas directly (via membership proof `by unfold testWord; split <;> simp`).
 `testWord_consumption_nactd` composes `activation_correct_nactd`,
 `testWord_mem`, and `testWord_litMatches` via `rw` + `simp only`.
-
-Next: do the same for `EndActivation.lean` / `endTestWord_consumption_*`.
 
 ---
 
@@ -127,3 +126,14 @@ available during elaboration. Workarounds:
 - **Option C (future, if annoying):** run the extractor as an elaboration plugin
   (e.g., a `MetaM` command during `lake build`) to access `InfoTree` directly.
   More robust but more complex to set up.
+
+---
+
+## TODO
+
+- **Rework `EndActivation.lean`** analogously to `Activation.lean`: replace
+  `endActivationProp` + omnibus `end_activation_correct` with three split lemmas
+  by starting position (`end_activation_correct_actd`, `_nactd`, `_disq`), using
+  membership hypothesis `{w} (hw : w ∈ [ENDPOS, ENDNEG, ENDDK])`. Then update
+  `endTestWord_consumption_*` in `TestConsume.lean` to use the named lemmas
+  (eliminating the inline `have gadget := by decide` blocks).

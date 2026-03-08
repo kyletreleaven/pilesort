@@ -160,7 +160,12 @@ theorem testWord_consumption_nactd
       applyWord_compile_append_shift, virtualPileTypes_length,
       show [x].length = 1 from rfl, Nat.one_mul]
 
-/-- Combined testWord consumption (all three starting states). -/
+/-- Combined testWord consumption (all three starting states).
+
+TODO: This is just a bundler and should be replaced at all call sites
+  with the appropriate individual lemma(s).
+
+-/
 theorem testWord_consumption
     (i : Nat) (clause : Clause) (suffix : List Action)
     (x : PileType) (rest : List PileType) (hrest : rest ≠ []) :

@@ -1,7 +1,14 @@
 /-
-  Lifting lemma: promotes gadget results proved by `decide` on small
-  machines to corresponding results on any machine that contains the
-  gadget's types as a contiguous window.
+  Lifting lemmas: promote gadget results proved by `decide` on a small
+  window machine to any larger machine that has the window as a prefix.
+
+  Both lemmas take `(window B : List PileType)` — the window the gadget
+  was designed for and the remainder. All known call sites use a fixed
+  small window (e.g. `[st, nt]` or `[st, nt, e2]`) with `B` being the
+  arbitrary tail; there is no need for a leading `A` prefix segment.
+  Call sites bridge the `window ++ B` conclusion to `x :: y :: rest`
+  form via `simp only [List.cons_append, List.nil_append]` or
+  `simp only [List.singleton_append]`.
 -/
 import PileSort.Mono
 import PileSort.VirtualPileTypes
