@@ -15,7 +15,12 @@ theorem applyPile_align_endpos (x : PileType) :
     (applyPile x ALIGN)[END_POS] = PileType.S := by
   cases x <;> decide
 
-/-- NEXT advances from END_POS + k*m to START_POS + (k+1)*m. -/
+/-- NEXT advances from END_POS + k*m to START_POS + (k+1)*m.
+
+TODO: This could be re-proved in terms of a "decide" lemma;
+  like other low-level gadgets.
+
+-/
 theorem next_correct (xs : List PileType) (k : Nat) (hk : k < xs.length) :
     let types := virtualPileTypes ALIGN xs
     let m := ALIGN.length
