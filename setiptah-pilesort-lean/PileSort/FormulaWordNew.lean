@@ -21,7 +21,7 @@
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile (vpt (vpt ALIGN xs) (replicate m Q))) START_POS
     ≥ xs.length * m + applyWord suffix (compile (vpt (vpt ALIGN xs) (replicate (m-1) Q))) CHAIN_DISQ
 
-  **3. Chain (from any s ≥ CHAIN_DISQ, no clause condition):** TODO
+  **3. Chain (from any s ≥ CHAIN_DISQ, no clause condition):** DONE
   `clauseNext_chain_consumption` (to be proved, using clauseWord_chain_consumption):
     CHAIN_DISQ ≤ s →
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile (vpt (vpt ALIGN xs) (replicate m Q))) s
@@ -149,6 +149,61 @@ theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
     (Nat.le_trans h_cw
       (applyWord_ge NEXT (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)) _))
   -- Evaluate the lower bound via decomposition + shift
+  have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
+    virtualPileTypes_length ALIGN xs
+  have h_shift : applyWord suffix
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      (CHAIN_DISQ + xs.length * ALIGN.length) =
+      xs.length * ALIGN.length +
+        applyWord suffix
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)))
+          CHAIN_DISQ := by
+    rw [virtualPileTypes_replicate_Q_cons _ _ (by omega : m ≥ 1),
+        show CHAIN_DISQ + xs.length * ALIGN.length =
+          (virtualPileTypes ALIGN xs).length + CHAIN_DISQ from by rw [h_len]; omega,
+        applyWord_compile_append_shift, h_len]
+  rw [h_shift] at h_mono
+  exact h_mono
+
+/-- Consumption form: clauseWord ++ NEXT from any s ≥ CHAIN_DISQ (no clause condition).
+    Suffix sees remaining replicates from CHAIN_DISQ. -/
+theorem clauseNext_chain_consumption (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (suffix : List Action) (s : Nat)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (hs : CHAIN_DISQ ≤ s) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
+    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) s ≥
+      xs.length * ALIGN.length +
+        applyWord suffix (compile types') CHAIN_DISQ := by
+  simp only []
+  rw [applyWord_append, applyWord_append]
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have hxs_ne : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, hxs_ne]
+  -- clauseWord from CHAIN_DISQ reaches ≥ CHAIN_DISQ + xs.length * ALIGN.length
+  have h_cw : applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      CHAIN_DISQ ≥ CHAIN_DISQ + xs.length * ALIGN.length := by
+    rw [virtualPileTypes_replicate_peel ALIGN xs m (by omega)]
+    have h := clauseWord_chain_consumption n c [] xs _ hn hxs_len hA2
+    simp only [List.append_nil] at h
+    have hnil : applyWord ([] : List Action) (compile (virtualPileTypes ALIGN (List.replicate (m - 1) xs).flatten)) CHAIN_DISQ = CHAIN_DISQ := rfl
+    rw [hnil] at h
+    rw [hxs_len]
+    omega
+  -- Monotone in starting state: bound holds from s ≥ CHAIN_DISQ
+  have h_cw_s : applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      s ≥ CHAIN_DISQ + xs.length * ALIGN.length :=
+    Nat.le_trans h_cw (applyWord_mono (clauseWord n c) _ hs)
+  -- NEXT only increases, suffix is monotone
+  have h_mono := applyWord_mono suffix
+    (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
+    (Nat.le_trans h_cw_s
+      (applyWord_ge NEXT (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)) _))
+  -- Evaluate the lower bound via decomposition + shift (same as clauseNext_bad_consumption)
   have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
     virtualPileTypes_length ALIGN xs
   have h_shift : applyWord suffix
