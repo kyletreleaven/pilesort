@@ -498,7 +498,11 @@ theorem formulaWord_unsat_pos (n : Nat) (clauses : List Clause)
   simp [List.length_append] at h_pen ⊢; omega
 
 
-/-- Decomposed form of formulaWord_unsat_pos. -/
+/-- Nonsat form: formulaWord from START_POS reaches the out-of-bounds zone when no assignment
+    satisfies the formula. Proved by induction on clauses_ using:
+    - clauseWord_start_consumption nonsat branch (base),
+    - clauseNext_bad_consumption + formulaWord_chain_pos' (step, c-nonsat),
+    - clauseNext_good_consumption + not_satisfiesFormula_rest + IH (step, c-sat). -/
 theorem formulaWord_unsat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
     (xs : List PileType)
     (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
@@ -507,10 +511,47 @@ theorem formulaWord_unsat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause
       (compile (virtualPileTypes (virtualPileTypes ALIGN xs)
         (List.replicate (clauses_.length + 2) .Q))) START_POS ≥
       (clauses_.length + 1) * (xs.length * ALIGN.length) + CHAIN_DISQ := by
-  have := formulaWord_unsat_pos n (clauses_ ++ [last]) xs hn hxs_len hno (by simp)
-  simp only [show (clauses_ ++ [last]).length + 1 = clauses_.length + 2 from by simp,
-             show (clauses_ ++ [last]).length = clauses_.length + 1 from by simp] at this
-  exact this
+  induction clauses_ with
+  | nil =>
+    simp only [List.nil_append, List.length_nil, Nat.zero_add, Nat.one_mul]
+    have hfw : formulaWord n [last] = clauseWord n last := by
+      rw [show [last] = [] ++ [last] from rfl, formulaWord_split]; simp
+    rw [hfw, virtualPileTypes_replicate_peel ALIGN xs 2 (by omega)]
+    simp only [show (2 : Nat) - 1 = 1 from rfl, List.replicate_succ, List.replicate_zero,
+               List.flatten_cons, List.flatten_nil, List.append_nil]
+    have hxs_ne : xs ≠ [] := by intro h; simp [h] at hxs_len
+    have hno_last : ¬ HasMatchingAssignment n xs (satisfiesClause · last) := by
+      intro ⟨vars, hvars, hxs', hsat'⟩
+      exact hno ⟨vars, hvars, hxs', by simp [satisfiesFormula, hsat']⟩
+    have h := clauseWord_start_consumption n last [] xs xs hn hxs_len hxs_ne
+    rw [if_neg hno_last, List.append_nil] at h
+    have hnil : applyWord ([] : List Action) (compile (virtualPileTypes ALIGN xs)) CHAIN_DISQ
+        = CHAIN_DISQ := rfl
+    rw [hnil, ← hxs_len] at h
+    exact h
+  | cons c rest ih =>
+    simp only [List.length_cons, show rest.length + 1 + 2 = rest.length + 3 from by omega]
+    rw [formulaWord_cons]
+    have hfact : (rest.length + 1 + 1) * (xs.length * ALIGN.length) =
+        xs.length * ALIGN.length + (rest.length + 1) * (xs.length * ALIGN.length) := by
+      rw [show rest.length + 1 + 1 = 1 + (rest.length + 1) from by omega, Nat.add_mul, Nat.one_mul]
+    rcases Classical.em (HasMatchingAssignment n xs (satisfiesClause · c)) with hc | hc
+    · -- c-sat: clauseNext_good_consumption, then IH Lemma 2 for rest ++ [last]
+      obtain ⟨vars', hvars', hxs', hsat_c⟩ := hc
+      have h_good := clauseNext_good_consumption n c xs (rest.length + 3)
+        (formulaWord n (rest ++ [last])) hn hxs_len (by omega) vars' hvars' hxs' hsat_c
+      simp only [show rest.length + 3 - 1 = rest.length + 2 from by omega] at h_good
+      rw [h_good]
+      have hno' : ¬ HasMatchingAssignment n xs (satisfiesFormula · (rest ++ [last])) :=
+        not_satisfiesFormula_rest n xs c (rest ++ [last]) hno ⟨vars', hvars', hxs', hsat_c⟩
+      have h_ih := ih hno'
+      omega
+    · -- c-nonsat: clauseNext_bad_consumption, then formulaWord_chain_pos'
+      have h_bad := clauseNext_bad_consumption n c xs (rest.length + 3)
+        (formulaWord n (rest ++ [last])) hn hxs_len (by omega) hc
+      simp only [show rest.length + 3 - 1 = rest.length + 2 from by omega] at h_bad
+      have h_chain := formulaWord_chain_pos' n rest last xs CHAIN_DISQ hn hxs_len (by omega)
+      omega
 
 /-- accepts on types is equivalent to applyWord on extended types being < types.length. -/
 theorem accepts_iff_applyWord_ext (word : List Action) (types extra : List PileType) :
