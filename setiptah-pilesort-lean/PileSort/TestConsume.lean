@@ -39,7 +39,7 @@ theorem matchesLiteral_eq_litMatches (x : PileType) (i : Nat) (clause : Clause) 
        This avoids case-splitting on the word; the ACTD branch of activationProp
        fires regardless of which word is used.
     2. Since rest ≠ [], write rest = y :: rest'. Lift to the full machine via
-       `gadget_lift_eq` with A=[], window=[x,y], B=rest'.
+       `gadget_lift_eq` with window=[x,y], B=rest'.
     3. `applyWord_append` splits testWord ++ suffix, substitute the gadget result,
        then `applyWord_compile_append_shift` shifts past the consumed block. -/
 theorem testWord_consumption_actd
@@ -57,13 +57,12 @@ theorem testWord_consumption_actd
   have hgadget : applyWord (testWord i clause)
       (compile (virtualPileTypes ALIGN [x, y])) ACTD = ACTD + ALIGN.length := by
     unfold testWord; split <;> exact activation_correct_actd (by simp) x y
-  -- 3. Lift to full machine via gadget_lift_eq (A=[], window=[x,y], B=rest')
-  have hlift := gadget_lift_eq (testWord i clause) [] [x, y] rest' ACTD (ACTD + ALIGN.length)
+  -- 3. Lift to full machine via gadget_lift_eq (window=[x,y], B=rest')
+  have hlift := gadget_lift_eq (testWord i clause) [x, y] rest' ACTD (ACTD + ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
     hgadget
     (by simp [virtualPileTypes_length]; decide)
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
-      List.cons_append] at hlift
+  simp only [List.cons_append, List.nil_append] at hlift
   -- 4. Split word ++ suffix, substitute, shift past first block
   rw [applyWord_append, hlift,
       show (x :: y :: rest' : List PileType) = [x] ++ (y :: rest') from rfl,
@@ -89,13 +88,12 @@ theorem testWord_consumption_disq
   have hgadget : applyWord (testWord i clause)
       (compile (virtualPileTypes ALIGN [x, y])) CLAUSE_DISQ ≥ CLAUSE_DISQ + ALIGN.length := by
     unfold testWord; split <;> exact activation_correct_disq (by simp) x y
-  -- 3. Lift to full machine via gadget_lift_ge (A=[], window=[x,y], B=rest')
-  have hlift := gadget_lift_ge (testWord i clause) [] [x, y] rest' CLAUSE_DISQ
+  -- 3. Lift to full machine via gadget_lift_ge (window=[x,y], B=rest')
+  have hlift := gadget_lift_ge (testWord i clause) [x, y] rest' CLAUSE_DISQ
     (CLAUSE_DISQ + ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
     hgadget
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
-      List.cons_append] at hlift
+  simp only [List.cons_append, List.nil_append] at hlift
   -- 4. Split word ++ suffix, apply mono, shift past first block
   rw [applyWord_append]
   calc ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (y :: rest'))) CLAUSE_DISQ
@@ -142,16 +140,15 @@ theorem testWord_consumption_nactd
     (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length := by
     rw [activation_correct_nactd (testWord_mem i clause) x y]
     simp only [matchesLiteral, testWord_litMatches]
-  -- 3. Lift to full machine via gadget_lift_eq (A=[], window=[x,y], B=rest')
+  -- 3. Lift to full machine via gadget_lift_eq (window=[x,y], B=rest')
   have hr : (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length <
       (virtualPileTypes ALIGN [x, y]).length := by
     simp [virtualPileTypes_length]; split <;> decide
-  have hlift := gadget_lift_eq (testWord i clause) [] [x, y] rest' NACTD
+  have hlift := gadget_lift_eq (testWord i clause) [x, y] rest' NACTD
     ((if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
     hgadget hr
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
-      List.cons_append] at hlift
+  simp only [List.cons_append, List.nil_append] at hlift
   -- 4. Split word ++ suffix, substitute, shift past first block
   rw [applyWord_append, hlift,
       show (x :: y :: rest' : List PileType) = [x] ++ (y :: rest') from rfl,
@@ -205,13 +202,12 @@ theorem endTestWord_consumption_disq
       applyWord (endTestWord i clause)
         (compile (virtualPileTypes ALIGN [x, y, z])) CLAUSE_DISQ := by
     unfold endTestWord; exact gadget (clause.getD i .absent) x y z
-  -- 3. Lift to full machine via gadget_lift_ge (A=[], window=[x,y,z], B=rest')
-  have hlift := gadget_lift_ge (endTestWord i clause) [] [x, y, z] rest'
+  -- 3. Lift to full machine via gadget_lift_ge (window=[x,y,z], B=rest')
+  have hlift := gadget_lift_ge (endTestWord i clause) [x, y, z] rest'
     CLAUSE_DISQ (CHAIN_DISQ + 2 * ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
     hgadget
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
-      List.cons_append] at hlift
+  simp only [List.cons_append, List.nil_append] at hlift
   -- 4. Split word ++ suffix, apply mono, shift past two blocks
   rw [applyWord_append]
   calc 2 * ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (z :: rest'))) CHAIN_DISQ
@@ -246,14 +242,13 @@ theorem endTestWord_consumption_actd_good
       (compile (virtualPileTypes ALIGN [x, PileType.Q, z])) ACTD =
     END_POS + ALIGN.length := by
     unfold endTestWord; exact gadget (clause.getD i .absent) x z
-  -- 3. Lift to full machine via gadget_lift_eq (A=[], window=[x,Q,z], B=rest')
-  have hlift := gadget_lift_eq (endTestWord i clause) [] [x, PileType.Q, z] rest'
+  -- 3. Lift to full machine via gadget_lift_eq (window=[x,Q,z], B=rest')
+  have hlift := gadget_lift_eq (endTestWord i clause) [x, PileType.Q, z] rest'
     ACTD (END_POS + ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
     hgadget
     (by simp [virtualPileTypes_length]; decide)
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
-      List.cons_append] at hlift
+  simp only [List.cons_append, List.nil_append] at hlift
   -- 4. Split word ++ suffix, substitute, shift past one block
   rw [applyWord_append, hlift,
       show (x :: PileType.Q :: z :: rest' : List PileType) = [x] ++ (PileType.Q :: z :: rest') from rfl,
@@ -287,13 +282,12 @@ theorem endTestWord_consumption_actd_bad
       applyWord (endTestWord i clause)
         (compile (virtualPileTypes ALIGN [x, PileType.S, z])) ACTD := by
     unfold endTestWord; exact gadget (clause.getD i .absent) x z
-  -- 3. Lift via gadget_lift_ge (A=[], window=[x,S,z], B=rest')
-  have hlift := gadget_lift_ge (endTestWord i clause) [] [x, PileType.S, z] rest'
+  -- 3. Lift via gadget_lift_ge (window=[x,S,z], B=rest')
+  have hlift := gadget_lift_ge (endTestWord i clause) [x, PileType.S, z] rest'
     ACTD (CHAIN_DISQ + 2 * ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
     hgadget
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
-      List.cons_append] at hlift
+  simp only [List.cons_append, List.nil_append] at hlift
   -- 4. Split word ++ suffix, apply mono, shift past two blocks
   rw [applyWord_append]
   calc 2 * ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (z :: rest'))) CHAIN_DISQ
@@ -333,14 +327,13 @@ theorem endTestWord_consumption_nactd_good
     have hg := gadget (clause.getD i .absent) x z
     rw [if_pos (show litMatches (clause.getD i .absent) x from hlit)] at hg
     unfold endTestWord; exact hg
-  -- 3. Lift to full machine via gadget_lift_eq (A=[], window=[x,Q,z], B=rest')
-  have hlift := gadget_lift_eq (endTestWord i clause) [] [x, PileType.Q, z] rest'
+  -- 3. Lift to full machine via gadget_lift_eq (window=[x,Q,z], B=rest')
+  have hlift := gadget_lift_eq (endTestWord i clause) [x, PileType.Q, z] rest'
     NACTD (END_POS + ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
     hgadget
     (by simp [virtualPileTypes_length]; decide)
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
-      List.cons_append] at hlift
+  simp only [List.cons_append, List.nil_append] at hlift
   -- 4. Split word ++ suffix, substitute, shift past one block
   rw [applyWord_append, hlift,
       show (x :: PileType.Q :: z :: rest' : List PileType) = [x] ++ (PileType.Q :: z :: rest') from rfl,
@@ -374,13 +367,12 @@ theorem endTestWord_consumption_nactd_bad
     have hg := gadget (clause.getD i .absent) x z
     rw [if_neg (show ¬litMatches (clause.getD i .absent) x from hlit)] at hg
     unfold endTestWord; exact hg
-  -- 3. Lift via gadget_lift_ge (A=[], window=[x,Q,z], B=rest')
-  have hlift := gadget_lift_ge (endTestWord i clause) [] [x, PileType.Q, z] rest'
+  -- 3. Lift via gadget_lift_ge (window=[x,Q,z], B=rest')
+  have hlift := gadget_lift_ge (endTestWord i clause) [x, PileType.Q, z] rest'
     NACTD (CHAIN_DISQ + 2 * ALIGN.length)
     (by simp [virtualPileTypes_length]; decide)
     hgadget
-  simp only [List.length_nil, Nat.zero_mul, Nat.zero_add, List.nil_append,
-      List.cons_append] at hlift
+  simp only [List.cons_append, List.nil_append] at hlift
   -- 4. Split word ++ suffix, apply mono, shift past two blocks
   rw [applyWord_append]
   calc 2 * ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (z :: rest'))) CHAIN_DISQ

@@ -24,7 +24,7 @@ theorem start_clause_correct_disq (t : PileType) :
 /-- Lifted START_CLAUSE from START_POS: on any machine t :: B, reaches NACTD. -/
 theorem start_clause_lifted_eq (t : PileType) (B : List PileType) :
     applyWord START_CLAUSE (compile (virtualPileTypes ALIGN (t :: B))) START_POS = NACTD :=
-  gadget_lift_eq START_CLAUSE [] [t] B START_POS NACTD
+  gadget_lift_eq START_CLAUSE [t] B START_POS NACTD
     (by simp [virtualPileTypes_length]; decide)
     (start_clause_correct_start t)
     (by simp [virtualPileTypes_length]; decide)
@@ -32,7 +32,7 @@ theorem start_clause_lifted_eq (t : PileType) (B : List PileType) :
 /-- Lifted START_CLAUSE from CHAIN_DISQ: on any machine t :: B, reaches ≥ CLAUSE_DISQ. -/
 theorem start_clause_lifted_ge (t : PileType) (B : List PileType) :
     CLAUSE_DISQ ≤ applyWord START_CLAUSE (compile (virtualPileTypes ALIGN (t :: B))) CHAIN_DISQ :=
-  gadget_lift_ge START_CLAUSE [] [t] B CHAIN_DISQ CLAUSE_DISQ
+  gadget_lift_ge START_CLAUSE [t] B CHAIN_DISQ CLAUSE_DISQ
     (by simp [virtualPileTypes_length]; decide)
     (start_clause_correct_disq t)
 
