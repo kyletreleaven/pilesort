@@ -450,23 +450,6 @@ theorem testChain_sat_end_eq (j : Nat) (clause : Clause) (suffix : List Action)
     rw [Nat.add_mul, Nat.one_mul]]
   omega
 
-/-- Case i₀ < k in sentinel form: activation during a regular testWord.
-    A1_pre = non-matching prefix, x = matching activation site,
-    A1_post = remaining variables (including endTestWord variable), Q = sentinel.
-    Proof deferred until testChain_activate_end gets sentinel form. -/
-theorem testChain_sat_end_lt_new (j : Nat) (clause : Clause) (suffix : List Action)
-    (A1_pre : List PileType) (x : PileType) (A1_post : List PileType) (A2 : List PileType)
-    (hA2 : A2 ≠ [])
-    (hne : A1_post ≠ [])
-    (hml : matchesLiteral x (j + A1_pre.length) clause)
-    (hno : ∀ i (hi : i < A1_pre.length), ¬matchesLiteral A1_pre[i] (j + i) clause) :
-    applyWord ((List.range' j (A1_pre.length + A1_post.length)).flatMap (fun i => testWord i clause) ++
-              endTestWord (j + (A1_pre.length + A1_post.length)) clause ++ suffix)
-      (compile (virtualPileTypes ALIGN (A1_pre ++ x :: A1_post ++ PileType.Q :: A2))) NACTD =
-    (A1_pre.length + A1_post.length + 1) * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  sorry
-
 /-- Case i₀ = k: activation at the endTestWord (old form). -/
 theorem testChain_sat_end_eq_old (k j : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ [])
