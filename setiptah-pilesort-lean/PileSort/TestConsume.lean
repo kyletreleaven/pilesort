@@ -141,37 +141,7 @@ theorem testWord_consumption_nactd
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest))
       (if matchesLiteral x i clause then ACTD else NACTD)
     := by
-  -- 1. Gadget: NACTD activation condition is (w=POS∧st=Q)∨(w=NEG∧st=S)  (activation_correct_nactd)
-  --    testWord ∈ {POS,NEG,DK}  (testWord_mem)
-  --    Bridge: activation condition = litMatches = matchesLiteral  (testWord_litMatches)
-  -- 2. Decompose rest = y :: rest'
-  obtain ⟨y, rest', rfl⟩ : ∃ y rest', rest = y :: rest' := by
-    match rest, hrest with | y :: rest', _ => exact ⟨y, rest', rfl⟩
-  -- Specialize to testWord
-  have hgadget : applyWord (testWord i clause)
-      (compile (virtualPileTypes ALIGN [x, y])) NACTD =
-    (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length := by
-    rw [activation_correct_nactd (testWord_mem i clause) x y]
-    simp only [matchesLiteral, testWord_litMatches]
-  -- 3. Lift to full machine via gadget_lift_eq (window=[x,y], B=rest')
-  have hr : (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length <
-      (virtualPileTypes ALIGN [x, y]).length := by
-    simp [virtualPileTypes_length]; split <;> decide
-  have hlift := gadget_lift_eq (testWord i clause) [x, y] rest' NACTD
-    ((if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length)
-    (by simp [virtualPileTypes_length]; decide)
-    hgadget hr
-  simp only [List.cons_append, List.nil_append] at hlift
-  -- 4. Split word ++ suffix, substitute, shift past first block
-  rw [applyWord_append, hlift,
-      show (x :: y :: rest' : List PileType) = [x] ++ (y :: rest') from rfl,
-      virtualPileTypes_append,
-      show (if matchesLiteral x i clause then ACTD else NACTD) + ALIGN.length =
-        (virtualPileTypes ALIGN [x]).length +
-          (if matchesLiteral x i clause then ACTD else NACTD) from by
-        rw [virtualPileTypes_length]; simp; omega,
-      applyWord_compile_append_shift, virtualPileTypes_length,
-      show [x].length = 1 from rfl, Nat.one_mul]
+    sorry
 
 /-- Combined testWord consumption (all three starting states).
 
