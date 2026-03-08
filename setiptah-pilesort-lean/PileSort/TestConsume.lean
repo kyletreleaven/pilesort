@@ -119,6 +119,19 @@ theorem testWord_litMatches (i : Nat) (clause : Clause) (st : PileType) :
       show POS ≠ NEG from by decide, show NEG ≠ POS from by decide,
       show DK ≠ POS from by decide, show DK ≠ NEG from by decide]
 
+/-- endTestWord always produces a word from {ENDPOS, ENDNEG, ENDDK}. -/
+theorem endTestWord_mem (i : Nat) (clause : Clause) : endTestWord i clause ∈ [ENDPOS, ENDNEG, ENDDK] := by
+  unfold endTestWord; split <;> simp
+
+/-- The activation condition for endTestWord from NACTD is exactly litMatches. -/
+theorem endTestWord_litMatches (i : Nat) (clause : Clause) (st : PileType) :
+    litMatches (clause.getD i .absent) st ↔
+    (endTestWord i clause = ENDPOS ∧ st = .Q) ∨ (endTestWord i clause = ENDNEG ∧ st = .S) := by
+  cases h : clause.getD i .absent <;>
+    simp_all [litMatches, endTestWord,
+      show ENDPOS ≠ ENDNEG from by decide, show ENDNEG ≠ ENDPOS from by decide,
+      show ENDDK ≠ ENDPOS from by decide, show ENDDK ≠ ENDNEG from by decide]
+
 /-- From NACTD: activates (→ ACTD) if literal i matches x, else stays NACTD. -/
 theorem testWord_consumption_nactd
     (i : Nat) (clause : Clause) (suffix : List Action)
@@ -194,19 +207,14 @@ theorem endTestWord_consumption_disq
       (compile (virtualPileTypes ALIGN (x :: y :: rest))) CLAUSE_DISQ ≥
     2 * ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CHAIN_DISQ
     := by
-  -- 1. Gadget helper: CLAUSE_DISQ → ≥ CHAIN_DISQ + 2*m on three-element machine
-  have gadget : ∀ (lp : LitPresence) (st nt1 nt2 : PileType),
-      CHAIN_DISQ + 2 * ALIGN.length ≤
-        applyWord (match lp with | .pos => ENDPOS | .neg => ENDNEG | .absent => ENDDK)
-          (compile (virtualPileTypes ALIGN [st, nt1, nt2])) CLAUSE_DISQ := by decide
-  -- 2. Decompose rest = z :: rest'
+  -- 1. Decompose rest = z :: rest'
   obtain ⟨z, rest', rfl⟩ : ∃ z rest', rest = z :: rest' := by
     match rest, hrest with | z :: rest', _ => exact ⟨z, rest', rfl⟩
-  -- Specialize to endTestWord
+  -- Specialize to endTestWord via end_activation_correct_disq
   have hgadget : CHAIN_DISQ + 2 * ALIGN.length ≤
       applyWord (endTestWord i clause)
-        (compile (virtualPileTypes ALIGN [x, y, z])) CLAUSE_DISQ := by
-    unfold endTestWord; exact gadget (clause.getD i .absent) x y z
+        (compile (virtualPileTypes ALIGN [x, y, z])) CLAUSE_DISQ :=
+    end_activation_correct_disq (endTestWord_mem i clause) x y z
   -- 3. Lift to full machine via gadget_lift_ge (window=[x,y,z], B=rest')
   have hlift := gadget_lift_ge (endTestWord i clause) [x, y, z] rest'
     CLAUSE_DISQ (CHAIN_DISQ + 2 * ALIGN.length)
@@ -234,19 +242,15 @@ theorem endTestWord_consumption_actd_good
       (compile (virtualPileTypes ALIGN (x :: PileType.Q :: rest))) ACTD =
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: rest))) END_POS
     := by
-  -- 1. Gadget helper: ACTD → END_POS + m on [st, Q, nt2]
-  have gadget : ∀ (lp : LitPresence) (st nt2 : PileType),
-      applyWord (match lp with | .pos => ENDPOS | .neg => ENDNEG | .absent => ENDDK)
-        (compile (virtualPileTypes ALIGN [st, PileType.Q, nt2])) ACTD =
-      END_POS + ALIGN.length := by decide
-  -- 2. Decompose rest = z :: rest'
+  -- 1. Decompose rest = z :: rest'
   obtain ⟨z, rest', rfl⟩ : ∃ z rest', rest = z :: rest' := by
     match rest, hrest with | z :: rest', _ => exact ⟨z, rest', rfl⟩
-  -- Specialize to endTestWord
+  -- Specialize via end_activation_correct_actd (et = Q branch)
   have hgadget : applyWord (endTestWord i clause)
       (compile (virtualPileTypes ALIGN [x, PileType.Q, z])) ACTD =
     END_POS + ALIGN.length := by
-    unfold endTestWord; exact gadget (clause.getD i .absent) x z
+    have h := end_activation_correct_actd (endTestWord_mem i clause) x PileType.Q z
+    rw [if_pos rfl] at h; exact h
   -- 3. Lift to full machine via gadget_lift_eq (window=[x,Q,z], B=rest')
   have hlift := gadget_lift_eq (endTestWord i clause) [x, PileType.Q, z] rest'
     ACTD (END_POS + ALIGN.length)
@@ -274,19 +278,15 @@ theorem endTestWord_consumption_actd_bad
   -- y ≠ Q means y = S
   have hy : y = PileType.S := by cases y <;> simp_all
   subst hy
-  -- 1. Gadget helper: ACTD → ≥ CHAIN_DISQ + 2*m on [st, S, nt2]
-  have gadget : ∀ (lp : LitPresence) (st nt2 : PileType),
-      CHAIN_DISQ + 2 * ALIGN.length ≤
-        applyWord (match lp with | .pos => ENDPOS | .neg => ENDNEG | .absent => ENDDK)
-          (compile (virtualPileTypes ALIGN [st, PileType.S, nt2])) ACTD := by decide
-  -- 2. Decompose rest = z :: rest'
+  -- 1. Decompose rest = z :: rest'
   obtain ⟨z, rest', rfl⟩ : ∃ z rest', rest = z :: rest' := by
     match rest, hrest with | z :: rest', _ => exact ⟨z, rest', rfl⟩
-  -- Specialize to endTestWord
+  -- Specialize via end_activation_correct_actd (et = S branch)
   have hgadget : CHAIN_DISQ + 2 * ALIGN.length ≤
       applyWord (endTestWord i clause)
         (compile (virtualPileTypes ALIGN [x, PileType.S, z])) ACTD := by
-    unfold endTestWord; exact gadget (clause.getD i .absent) x z
+    have h := end_activation_correct_actd (endTestWord_mem i clause) x PileType.S z
+    rw [if_neg (by decide)] at h; exact h
   -- 3. Lift via gadget_lift_ge (window=[x,S,z], B=rest')
   have hlift := gadget_lift_ge (endTestWord i clause) [x, PileType.S, z] rest'
     ACTD (CHAIN_DISQ + 2 * ALIGN.length)
@@ -315,23 +315,15 @@ theorem endTestWord_consumption_nactd_good
       (compile (virtualPileTypes ALIGN (x :: PileType.Q :: rest))) NACTD =
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: rest))) END_POS
     := by
-  -- 1. Gadget helper: when litMatches, NACTD → END_POS + m on [st, Q, nt2]
-  have gadget : ∀ (lp : LitPresence) (st nt2 : PileType),
-      if litMatches lp st then
-        applyWord (match lp with | .pos => ENDPOS | .neg => ENDNEG | .absent => ENDDK)
-          (compile (virtualPileTypes ALIGN [st, PileType.Q, nt2])) NACTD =
-        END_POS + ALIGN.length
-      else True := by decide
-  -- 2. Decompose rest = z :: rest'
+  -- 1. Decompose rest = z :: rest'
   obtain ⟨z, rest', rfl⟩ : ∃ z rest', rest = z :: rest' := by
     match rest, hrest with | z :: rest', _ => exact ⟨z, rest', rfl⟩
-  -- Specialize to endTestWord, using matchesLiteral hypothesis
+  -- Specialize via end_activation_correct_nactd (et = Q, activation matches)
   have hgadget : applyWord (endTestWord i clause)
       (compile (virtualPileTypes ALIGN [x, PileType.Q, z])) NACTD =
     END_POS + ALIGN.length := by
-    have hg := gadget (clause.getD i .absent) x z
-    rw [if_pos (show litMatches (clause.getD i .absent) x from hlit)] at hg
-    unfold endTestWord; exact hg
+    have h := end_activation_correct_nactd (endTestWord_mem i clause) x PileType.Q z
+    rw [if_pos ⟨rfl, (endTestWord_litMatches i clause x).mp hlit⟩] at h; exact h
   -- 3. Lift to full machine via gadget_lift_eq (window=[x,Q,z], B=rest')
   have hlift := gadget_lift_eq (endTestWord i clause) [x, PileType.Q, z] rest'
     NACTD (END_POS + ALIGN.length)
@@ -356,22 +348,16 @@ theorem endTestWord_consumption_nactd_bad
       (compile (virtualPileTypes ALIGN (x :: PileType.Q :: rest))) NACTD ≥
     2 * ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest)) CHAIN_DISQ
     := by
-  -- 1. Gadget helper: when ¬litMatches, NACTD → ≥ CHAIN_DISQ + 2*m on [st, Q, nt2]
-  have gadget : ∀ (lp : LitPresence) (st nt2 : PileType),
-      if litMatches lp st then True
-      else CHAIN_DISQ + 2 * ALIGN.length ≤
-        applyWord (match lp with | .pos => ENDPOS | .neg => ENDNEG | .absent => ENDDK)
-          (compile (virtualPileTypes ALIGN [st, PileType.Q, nt2])) NACTD := by decide
-  -- 2. Decompose rest = z :: rest'
+  -- 1. Decompose rest = z :: rest'
   obtain ⟨z, rest', rfl⟩ : ∃ z rest', rest = z :: rest' := by
     match rest, hrest with | z :: rest', _ => exact ⟨z, rest', rfl⟩
-  -- Specialize to endTestWord, using ¬matchesLiteral hypothesis
+  -- Specialize via end_activation_correct_nactd (et = Q, activation doesn't match)
   have hgadget : CHAIN_DISQ + 2 * ALIGN.length ≤
       applyWord (endTestWord i clause)
         (compile (virtualPileTypes ALIGN [x, PileType.Q, z])) NACTD := by
-    have hg := gadget (clause.getD i .absent) x z
-    rw [if_neg (show ¬litMatches (clause.getD i .absent) x from hlit)] at hg
-    unfold endTestWord; exact hg
+    have h := end_activation_correct_nactd (endTestWord_mem i clause) x PileType.Q z
+    rw [if_neg (fun ⟨_, hact⟩ => hlit ((endTestWord_litMatches i clause x).mpr hact))] at h
+    exact h
   -- 3. Lift via gadget_lift_ge (window=[x,Q,z], B=rest')
   have hlift := gadget_lift_ge (endTestWord i clause) [x, PileType.Q, z] rest'
     NACTD (CHAIN_DISQ + 2 * ALIGN.length)

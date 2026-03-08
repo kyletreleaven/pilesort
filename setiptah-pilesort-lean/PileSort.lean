@@ -7,7 +7,6 @@ import PileSort.Gadgets.Next
 import PileSort.Gadgets.ForceQ
 import PileSort.Mono
 import PileSort.Gadgets.Activation
-import PileSort.Gadgets.EndActivation
 import PileSort.Gadgets.Alignment
 import PileSort.Gadgets.Lifting
 import PileSort.Reduction

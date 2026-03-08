@@ -22,11 +22,3 @@ not in the proof path of `formulaWord_correct`.
 `testChain_nactd_old`, `testChain_nactd_end_old`, `testChain_sat_end_eq_old`
 are still in use — check whether they can now be deleted.
 
-## TODO
-
-- **Rework `EndActivation.lean`** analogously to `Activation.lean`: replace
-  `endActivationProp` + omnibus `end_activation_correct` with three split lemmas
-  by starting position (`end_activation_correct_actd`, `_nactd`, `_disq`), using
-  membership hypothesis `{w} (hw : w ∈ [ENDPOS, ENDNEG, ENDDK])`. Then update
-  `endTestWord_consumption_*` in `TestConsume.lean` to use the named lemmas
-  (eliminating the inline `have gadget := by decide` blocks).
