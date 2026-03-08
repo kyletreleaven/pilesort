@@ -75,6 +75,7 @@ def main : IO Unit := do
   -- Emit DOT.
   IO.println "digraph pilesort {"
   IO.println "  rankdir=BT;"
+  -- IO.println "  newrank=true;"
   IO.println "  node [fontname=monospace fontsize=10];"
   IO.println "  graph [fontname=monospace fontsize=12];"
   IO.println ""
