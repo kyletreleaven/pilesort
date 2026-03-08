@@ -11,27 +11,28 @@
 
   All three consume exactly one replication, leaving `m - 1` copies:
 
-  **1. Sat (from START_POS, satisfying assignment exists):**
-  Already exists as `clauseNext_good_consumption`:
+  **1. Sat (from START_POS, satisfying assignment exists):** DONE
+  `clauseNext_good_consumption` (proved below):
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile (vpt (vpt ALIGN xs) (replicate m Q))) START_POS
     = xs.length * m + applyWord suffix (compile (vpt (vpt ALIGN xs) (replicate (m-1) Q))) START_POS
 
-  **2. Nonsat (from START_POS, no satisfying assignment):**
-  Essentially already `clauseNext_bad_consumption`:
+  **2. Nonsat (from START_POS, no satisfying assignment):** TODO
+  `clauseNext_bad_consumption` (to be proved):
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile (vpt (vpt ALIGN xs) (replicate m Q))) START_POS
     ≥ xs.length * m + applyWord suffix (compile (vpt (vpt ALIGN xs) (replicate (m-1) Q))) CHAIN_DISQ
 
-  **3. Chain (from any s ≥ CHAIN_DISQ, no clause condition):**
-  New lemma, follows from clauseWord_chain_consumption:
+  **3. Chain (from any s ≥ CHAIN_DISQ, no clause condition):** TODO
+  `clauseNext_chain_consumption` (to be proved, using clauseWord_chain_consumption):
     CHAIN_DISQ ≤ s →
     applyWord (clauseWord n c ++ NEXT ++ suffix) (compile (vpt (vpt ALIGN xs) (replicate m Q))) s
     ≥ xs.length * m + applyWord suffix (compile (vpt (vpt ALIGN xs) (replicate (m-1) Q))) CHAIN_DISQ
 
-  Each follows the same 4-step pattern established in clauseNext_good_consumption:
+  Each follows the same 4-step pattern:
   (a) convert replicated → flat via virtualPileTypes_replicate_Q_comp,
   (b) apply the flat clauseWord consumption lemma,
   (c) handle NEXT (exact via next_correct, or monotone via applyWord_ge),
-  (d) peel one block via virtualPileTypes_replicate_Q_cons + applyWord_compile_append_shift.
+  (d) virtualPileTypes_append + applyWord_compile_append_shift to shift past the
+      xs block, then ← virtualPileTypes_replicate_Q_comp to recover types'.
 
   ## The direct proof of formulaWord_correct'
 
@@ -76,3 +77,48 @@
 -/
 import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
+
+/-- Consumption form: clauseWord ++ NEXT with satisfying assignment consumes one
+    block and hands the suffix the remaining replicates at START_POS. -/
+theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (suffix : List Action)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (vars : List Bool) (hvars : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesClause vars c) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
+    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS =
+      xs.length * ALIGN.length +
+        applyWord suffix (compile types') START_POS := by
+  simp only []
+  rw [applyWord_append, applyWord_append]
+  -- (a) convert replicated → flat via virtualPileTypes_replicate_Q_comp
+  have h_split : (List.replicate m xs).flatten =
+      xs ++ (List.replicate (m - 1) xs).flatten := by
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons]
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) := by
+    rw [virtualPileTypes_replicate_Q_comp, h_split]
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have hxs_ne : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, hxs_ne]
+  rw [h_eq]
+  -- (b) apply clauseWord_start_sat on flat machine
+  have hcw : applyWord (clauseWord n c)
+      (compile (virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten))) START_POS =
+      END_POS + n * ALIGN.length :=
+    clauseWord_start_sat n c xs _ hn hxs_len hA2 vars hvars hxs hsat
+  rw [hcw]
+  -- (c) apply next_correct on flat machine
+  have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by simp; omega
+  rw [next_correct (xs ++ (List.replicate (m - 1) xs).flatten) n hk, hxs_len]
+  -- (d) shift suffix past xs block, then convert A2 back to types'
+  rw [show START_POS + (n + 1) * ALIGN.length =
+      (virtualPileTypes ALIGN xs).length + START_POS from by
+        rw [virtualPileTypes_length, hxs_len]; omega,
+      virtualPileTypes_append,
+      applyWord_compile_append_shift suffix (virtualPileTypes ALIGN xs) _ START_POS,
+      virtualPileTypes_length, hxs_len, ← virtualPileTypes_replicate_Q_comp]

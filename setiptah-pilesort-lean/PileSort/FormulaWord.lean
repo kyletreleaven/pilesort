@@ -37,6 +37,7 @@ import PileSort.Reduction
 import PileSort.ClauseWord
 import PileSort.ClauseWordCorrect
 import PileSort.Gadgets.Next
+import PileSort.FormulaWordNew
 
 /-- ADAPTER: clauseWord_start_sat in replicated form. -/
 theorem clauseWord_start_sat_rep (n : Nat) (c : Clause) (xs : List PileType)
@@ -78,31 +79,6 @@ theorem next_correct_rep (n : Nat) (xs : List PileType)
   rw [h_eq]
   have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by simp; omega
   rw [next_correct (xs ++ (List.replicate (m - 1) xs).flatten) n hk, hxs_len]
-
-/-- Consumption form: clauseWord ++ NEXT with satisfying assignment consumes one
-    block and hands the suffix the remaining replicates at START_POS. -/
-theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
-    (m : Nat) (suffix : List Action)
-    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
-    (vars : List Bool) (hvars : vars.length = n)
-    (hxs : xs = embedVars vars ++ [PileType.Q])
-    (hsat : satisfiesClause vars c) :
-    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
-    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
-    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS =
-      xs.length * ALIGN.length +
-        applyWord suffix (compile types') START_POS := by
-  simp only []
-  -- Split word: (clauseWord ++ NEXT) ++ suffix, then clauseWord ++ NEXT
-  rw [applyWord_append, applyWord_append,
-      clauseWord_start_sat_rep n c xs m hn hxs_len hm vars hvars hxs hsat,
-      next_correct_rep n xs m hxs_len hm]
-  -- Decompose types = first_block ++ types', shift past first block
-  rw [virtualPileTypes_replicate_Q_cons _ _ (by omega : m ≥ 1)]
-  have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
-    virtualPileTypes_length ALIGN xs
-  rw [← h_len, Nat.add_comm START_POS]
-  exact applyWord_compile_append_shift suffix (virtualPileTypes ALIGN xs) _ START_POS
 
 /-- ADAPTER: clauseWord_start_nonsat in replicated form. -/
 theorem clauseWord_start_nonsat_rep (n : Nat) (c : Clause) (xs : List PileType)
