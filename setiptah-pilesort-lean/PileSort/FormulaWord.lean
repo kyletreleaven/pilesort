@@ -1,36 +1,24 @@
 /-
-  Formula-level correctness theorems for the SAT-to-pile-sort reduction.
+  Formula-level correctness: acceptance ↔ satisfying assignment.
 
-  Composes gadget theorems (clauseWord_correct) into the full
-  formulaWord_correct: acceptance ↔ satisfying assignment.
+  ## Module contents
 
-  ## Proof strategy
+  **`formulaWord_sat_pos'`** and **`formulaWord_unsat_pos'`**: direct inductive
+  proofs on `clauses_ ++ [last]`, using only consumption-form corollaries from
+  `FormulaWordNew` (`clauseNext_good_consumption`, `clauseNext_bad_consumption`,
+  `formulaWord_chain_pos'`) and `clauseWord_start_consumption` for the base case.
+  The machine carries `clauses_.length + 2` vestigial Q-replications throughout;
+  each consumption corollary peels one, leaving exactly the right amount for the IH.
 
-  The proof is organized around `formulaState`, a tail-recursive computation
-  that mirrors the clause-by-clause structure of `formulaWord`. The key
-  connection is `formulaState_eq`: formulaState equals applyWord(formulaWord)
-  on types with one vestigial block (clauses_.length + 2 Q-replications).
+  **`not_satisfiesFormula_rest`**: when no assignment satisfies `c :: rest` but
+  some assignment satisfies `c`, then no assignment satisfies `rest`. Uses
+  `embedVars_injective` since `xs` uniquely determines `vars`.
 
-  Two lemmas about formulaState capture the full behavior:
+  **`formulaWord_correct'`**: derives the acceptance iff from the two pos lemmas,
+  absorbing the truncation plumbing via `accepts_iff_applyWord_ext`.
 
-  1. **formulaState_penalty**: If `start ≥ CHAIN_DISQ`, then formulaState
-     ends at `≥ CHAIN_DISQ` (plus accumulated blocks). Each clause's
-     clauseWord_correct part 3 keeps the state above CHAIN_DISQ, and
-     the block accumulation adds init.length * block on top.
-
-  2. **formulaState_sat**: If `start = START_POS`, then:
-     - If all clauses in init are satisfied, the inner start stays at
-       START_POS after each clause (clauseWord_correct part 1 + NEXT).
-       The last clause then runs from START_POS.
-     - If some clause in init is unsatisfied, clauseWord_correct part 2
-       bumps the inner start to ≥ CHAIN_DISQ, and formulaState_penalty
-       handles the remaining clauses.
-
-  These give formulaWord_correct via formulaState_eq + truncation:
-  - Forward: all satisfied → formulaState ends at END_POS + n*ALIGN.length
-    in the last block, which is < block, so total < types.length → accepted.
-  - Backward: some unsatisfied → formulaState ≥ CHAIN_DISQ + all blocks
-    ≥ types.length → truncation gives sink → not accepted.
+  **`formulaWord_correct`**: wraps `formulaWord_correct'` after splitting the
+  non-empty clause list as `init ++ [last]`.
 -/
 import PileSort.Mono
 import PileSort.Reduction
