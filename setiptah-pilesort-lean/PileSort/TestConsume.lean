@@ -141,7 +141,37 @@ theorem testWord_consumption_nactd
     ALIGN.length + applyWord suffix (compile (virtualPileTypes ALIGN rest))
       (if matchesLiteral x i clause then ACTD else NACTD)
     := by
-    sorry
+  obtain ⟨y, rest', rfl⟩ : ∃ y rest', rest = y :: rest' := by
+    match rest, hrest with | y :: rest', _ => exact ⟨y, rest', rfl⟩
+  by_cases h : matchesLiteral x i clause
+  · have hact : applyWord (testWord i clause) (compile (virtualPileTypes ALIGN [x, y])) NACTD =
+        ACTD + ALIGN.length := by
+      rw [activation_correct_nactd (testWord_mem i clause) x y, if_pos]
+      simp only [matchesLiteral, testWord_litMatches] at h; exact h
+    have hlift := gadget_lift_eq (testWord i clause) [x, y] rest' NACTD (ACTD + ALIGN.length)
+        (by simp [virtualPileTypes_length]; decide) hact (by simp [virtualPileTypes_length]; decide)
+    simp only [List.cons_append, List.nil_append] at hlift
+    rw [applyWord_append, hlift,
+        show (x :: y :: rest' : List PileType) = [x] ++ (y :: rest') from rfl,
+        virtualPileTypes_append,
+        show ACTD + ALIGN.length = (virtualPileTypes ALIGN [x]).length + ACTD from by
+          rw [virtualPileTypes_length]; simp; unfold ALIGN; omega,
+        applyWord_compile_append_shift, virtualPileTypes_length, if_pos h]
+    simp
+  · have hact : applyWord (testWord i clause) (compile (virtualPileTypes ALIGN [x, y])) NACTD =
+        NACTD + ALIGN.length := by
+      rw [activation_correct_nactd (testWord_mem i clause) x y, if_neg]
+      simp only [matchesLiteral, testWord_litMatches] at h; exact h
+    have hlift := gadget_lift_eq (testWord i clause) [x, y] rest' NACTD (NACTD + ALIGN.length)
+        (by simp [virtualPileTypes_length]; decide) hact (by simp [virtualPileTypes_length]; decide)
+    simp only [List.cons_append, List.nil_append] at hlift
+    rw [applyWord_append, hlift,
+        show (x :: y :: rest' : List PileType) = [x] ++ (y :: rest') from rfl,
+        virtualPileTypes_append,
+        show NACTD + ALIGN.length = (virtualPileTypes ALIGN [x]).length + NACTD from by
+          rw [virtualPileTypes_length]; simp; unfold ALIGN; omega,
+        applyWord_compile_append_shift, virtualPileTypes_length, if_neg h]
+    simp
 
 /-- Combined testWord consumption (all three starting states).
 
