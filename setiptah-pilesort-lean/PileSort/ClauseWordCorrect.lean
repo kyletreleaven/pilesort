@@ -224,8 +224,8 @@ theorem clauseWord_start_nonsat (n : Nat) (clause : Clause)
       (endTestWord (n - 1) clause) (A1 ++ A2) (by simp [hA1]; omega)
     rw [list_drop_append_two_last A1 A2 n hA1 hn] at htc
     -- Steps 3-4: endTestWord_consumption ACTD with y = S ≠ Q
-    have hend := (endTestWord_consumption (n - 1) clause []
-      (A1[n - 1]'(by omega)) (A1[n]'(by omega)) A2 hA2).2
+    have hend := endTestWord_consumption_actd (n - 1) clause []
+      (A1[n - 1]'(by omega)) (A1[n]'(by omega)) A2 hA2
     simp only [ht, show PileType.S = PileType.Q ↔ False from by decide,
       false_iff, ite_false, List.append_nil,
       show applyWord ([] : List Action) (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ = CHAIN_DISQ from rfl] at hend
@@ -299,9 +299,9 @@ theorem testChain_disq : ∀ (k : Nat) (start : Nat) (clause : Clause)
     simp only [List.length_cons] at htypes
     have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
     rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
-    have htw := (testWord_consumption start clause
+    have htw := testWord_consumption_disq start clause
       ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
-      x rest hrest).2.1
+      x rest hrest
     have hih := testChain_disq k (start + 1) clause suffix rest (by omega)
     show _ >= (k + 1) * ALIGN.length + applyWord suffix
       (compile (virtualPileTypes ALIGN (List.drop k rest))) CLAUSE_DISQ
@@ -327,8 +327,8 @@ theorem testChain_disq_end' (k j : Nat) (clause : Clause) (suffix : List Action)
   rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
   have htc := testChain_disq k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega)
   rw [list_drop_append_two A1 A2 k hA1] at htc
-  -- 2. endTestWord_consumption CLAUSE_DISQ case
-  have hend := (endTestWord_consumption (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2).1
+  -- 2. endTestWord_consumption_disq
+  have hend := endTestWord_consumption_disq (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2
   -- 3. Combine: htc ≥ k*m + hend, hend ≥ 2*m + suffix result
   show _ ≥ (k + 2) * ALIGN.length + _
   rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by

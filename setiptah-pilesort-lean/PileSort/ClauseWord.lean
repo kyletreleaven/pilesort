@@ -66,9 +66,9 @@ theorem testChain_actd : ∀ (k : Nat) (start : Nat) (clause : Clause)
     simp only [List.length_cons] at htypes
     have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
     rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
-    have htw := (testWord_consumption start clause
+    have htw := testWord_consumption_actd start clause
       ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
-      x rest hrest).1
+      x rest hrest
     have hih := testChain_actd k (start + 1) clause suffix rest (by omega)
     show _ = (k + 1) * ALIGN.length + applyWord suffix
       (compile (virtualPileTypes ALIGN (List.drop k rest))) ACTD
@@ -87,9 +87,9 @@ theorem testChain_actd_cons : ∀ (A1 A2 : List PileType)
     rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
     have hrest_ne : rest ++ A2 ≠ [] := by
       cases rest <;> simp [hA2]
-    have htw := (testWord_consumption start clause
+    have htw := testWord_consumption_actd start clause
       ((List.range' (start + 1) rest.length).flatMap (fun i => testWord i clause) ++ suffix)
-      a (rest ++ A2) hrest_ne).1
+      a (rest ++ A2) hrest_ne
     have hih := testChain_actd_cons rest A2 (start + 1) clause suffix hA2
     simp only [List.cons_append] at htw ⊢
     rw [htw, hih]
@@ -111,9 +111,9 @@ theorem testChain_actd_end_new (j : Nat) (clause : Clause) (suffix : List Action
   have htc := testChain_actd_cons A1 (x :: PileType.Q :: A2) j clause
     (endTestWord (j + A1.length) clause ++ suffix) (by simp)
   rw [htc]
-  have hend := (endTestWord_consumption (j + A1.length) clause suffix x PileType.Q A2 hA2).2
+  have hend := endTestWord_consumption_actd (j + A1.length) clause suffix x PileType.Q A2 hA2
   rw [if_pos rfl] at hend
-  rw [hend.1]
+  rw [hend]
   rw [show (A1.length + 1) * ALIGN.length = A1.length * ALIGN.length + ALIGN.length from by
     rw [Nat.add_mul, Nat.one_mul]]
   omega
@@ -132,11 +132,11 @@ theorem testChain_actd_end (k j : Nat) (clause : Clause) (suffix : List Action)
   rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
   have htc := testChain_actd k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega)
   rw [list_drop_append_two A1 A2 k hA1] at htc
-  -- 2. endTestWord_consumption ACTD case with y = Q
-  have hend_raw := (endTestWord_consumption (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2).2
+  -- 2. endTestWord_consumption_actd with y = Q
+  have hend_raw := endTestWord_consumption_actd (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2
   rw [hQ, if_pos rfl] at hend_raw
   -- 3. Combine via rw
-  rw [htc, show A1[k + 1] = PileType.Q from hQ, hend_raw.1]
+  rw [htc, show A1[k + 1] = PileType.Q from hQ, hend_raw]
   show k * ALIGN.length + (ALIGN.length + _) = (k + 1) * ALIGN.length + _
   rw [show (k + 1) * ALIGN.length = k * ALIGN.length + ALIGN.length from by
     rw [Nat.add_mul, Nat.one_mul], Nat.add_assoc]
@@ -158,11 +158,11 @@ theorem testChain_activate_end_new (j : Nat) (clause : Clause) (suffix : List Ac
         ((List.range' (j + 1) A1_mid.length).flatMap (fun i => testWord i clause) ++
           endTestWord (j + A1_mid.length + 1) clause ++ suffix) from by
     rw [List.range'_succ, List.flatMap_cons]; simp only [List.append_assoc]]
-  -- 2. testWord_consumption NACTD with matching literal → ACTD
-  have htw := (testWord_consumption j clause
+  -- 2. testWord_consumption_nactd with matching literal → ACTD
+  have htw := testWord_consumption_nactd j clause
     ((List.range' (j + 1) A1_mid.length).flatMap (fun i => testWord i clause) ++
       endTestWord (j + A1_mid.length + 1) clause ++ suffix)
-    x (A1_mid ++ y :: PileType.Q :: A2) (by simp)).2.2
+    x (A1_mid ++ y :: PileType.Q :: A2) (by simp)
   rw [if_pos hlit] at htw
   simp only [List.cons_append] at htw ⊢
   rw [htw]
@@ -199,14 +199,14 @@ theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Acti
     rw [List.range'_succ, List.flatMap_cons]; simp [List.append_assoc]]
   -- Normalize (a :: rest) ++ A2 to a :: (rest ++ A2)
   simp only [List.cons_append]
-  -- 2. testWord_consumption NACTD case with matching literal → ACTD
+  -- 2. testWord_consumption_nactd with matching literal → ACTD
   have hrest_ne : rest ++ A2 ≠ [] := by
     have : rest.length = k + 2 := by simp at hA1; omega
     simp [show rest ≠ [] from by intro h; simp [h] at this]
-  have htw := (testWord_consumption j clause
+  have htw := testWord_consumption_nactd j clause
     ((List.range' (j + 1) k).flatMap (fun i => testWord i clause) ++
       endTestWord (j + k + 1) clause ++ suffix)
-    a (rest ++ A2) hrest_ne).2.2
+    a (rest ++ A2) hrest_ne
   rw [if_pos hlit] at htw
   rw [htw]
   -- 3. testChain_actd_end on tail
@@ -239,9 +239,9 @@ theorem testChain_nactd_old : ∀ (k : Nat) (start : Nat) (clause : Clause)
     rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
     have hno0 : ¬matchesLiteral x start clause := by
       have := hno 0 (by omega); simp at this; exact this
-    have htw := (testWord_consumption start clause
+    have htw := testWord_consumption_nactd start clause
       ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
-      x rest hrest).2.2
+      x rest hrest
     rw [if_neg hno0] at htw
     have hih := testChain_nactd_old k (start + 1) clause suffix rest (by omega) (by
       intro i hi
@@ -270,9 +270,9 @@ theorem testChain_nactd : ∀ (A1 A2 : List PileType)
       simpa using hno 0 (by simp)
     have hrest_ne : rest ++ A2 ≠ [] := by simp [show rest ++ A2 ≠ [] from by
       cases rest <;> simp [hA2]]
-    have htw := (testWord_consumption start clause
+    have htw := testWord_consumption_nactd start clause
       ((List.range' (start + 1) rest.length).flatMap (fun i => testWord i clause) ++ suffix)
-      a (rest ++ A2) hrest_ne).2.2
+      a (rest ++ A2) hrest_ne
     rw [if_neg hno0] at htw
     have hih := testChain_nactd rest A2 (start + 1) clause suffix hA2 (by
       intro i hi
@@ -344,10 +344,9 @@ theorem testChain_nactd_end_old (k j : Nat) (clause : Clause) (suffix : List Act
     rw [List.getElem_append_left (by omega)]
     exact hno i hi)
   rw [list_drop_append_two A1 A2 k hA1, show A1[k + 1] = PileType.Q from hQ] at htc
-  -- 2. endTestWord_consumption NACTD case with y=Q, ¬matchesLiteral
-  have hend_raw := (endTestWord_consumption (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2).2
-  rw [hQ, if_pos rfl] at hend_raw
-  rw [if_neg hno_end] at hend_raw
+  -- 2. endTestWord_consumption_nactd with y=Q, ¬matchesLiteral
+  have hend_raw := endTestWord_consumption_nactd (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2
+  rw [hQ, if_neg (by simp [hno_end])] at hend_raw
   -- 3. Combine
   show _ ≥ (k + 2) * ALIGN.length + _
   rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
@@ -370,9 +369,9 @@ theorem testChain_nactd_end (j : Nat) (clause : Clause) (suffix : List Action)
   have htc := testChain_nactd A1 (x :: PileType.Q :: A2) j clause
     (endTestWord (j + A1.length) clause ++ suffix) (by simp) hno
   rw [htc]
-  -- 2. endTestWord_consumption NACTD case with y=Q, ¬matchesLiteral
-  have hend := (endTestWord_consumption (j + A1.length) clause suffix x PileType.Q A2 hA2).2
-  rw [if_pos rfl, if_neg hno_end] at hend
+  -- 2. endTestWord_consumption_nactd with y=Q, ¬matchesLiteral
+  have hend := endTestWord_consumption_nactd (j + A1.length) clause suffix x PileType.Q A2 hA2
+  rw [if_neg (by simp [hno_end])] at hend
   -- 3. Combine
   rw [show (A1.length + 2) * ALIGN.length = A1.length * ALIGN.length + 2 * ALIGN.length from by
     rw [Nat.add_mul]]; omega
@@ -440,11 +439,11 @@ theorem testChain_sat_end_eq (j : Nat) (clause : Clause) (suffix : List Action)
   have htcn := testChain_nactd A1 (x :: PileType.Q :: A2) j clause
     (endTestWord (j + A1.length) clause ++ suffix) (by simp) hno
   rw [htcn]
-  -- 2. endTestWord_consumption NACTD with matchesLiteral and y=Q
-  have hend := (endTestWord_consumption (j + A1.length) clause suffix
-    x PileType.Q A2 hA2).2
-  rw [if_pos rfl, if_pos hml] at hend
-  rw [hend.2]
+  -- 2. endTestWord_consumption_nactd with matchesLiteral and y=Q
+  have hend := endTestWord_consumption_nactd (j + A1.length) clause suffix
+    x PileType.Q A2 hA2
+  rw [if_pos ⟨rfl, hml⟩] at hend
+  rw [hend]
   -- 3. Arithmetic
   rw [show (A1.length + 1) * ALIGN.length = A1.length * ALIGN.length + ALIGN.length from by
     rw [Nat.add_mul, Nat.one_mul]]
@@ -470,11 +469,11 @@ theorem testChain_sat_end_eq_old (k j : Nat) (clause : Clause) (suffix : List Ac
   -- 2. Rewrite A1.drop k as [A1[k], A1[k+1]], then A1[k+1] → Q, normalize list append
   rw [list_drop_two A1 k hA1, show A1[k + 1] = PileType.Q from hQ]
   simp only [List.cons_append, List.nil_append]
-  -- 3. endTestWord_consumption NACTD with matchesLiteral and y=Q
-  have hend := (endTestWord_consumption (j + k) clause suffix
-    (A1[k]'(by omega)) PileType.Q A2 hA2).2
-  rw [if_pos rfl, if_pos hml] at hend
-  rw [hend.2]
+  -- 3. endTestWord_consumption_nactd with matchesLiteral and y=Q
+  have hend := endTestWord_consumption_nactd (j + k) clause suffix
+    (A1[k]'(by omega)) PileType.Q A2 hA2
+  rw [if_pos ⟨rfl, hml⟩] at hend
+  rw [hend]
   -- 4. Arithmetic: k * m + m = (k+1) * m
   rw [show (k + 1) * ALIGN.length = k * ALIGN.length + ALIGN.length from by
     rw [Nat.add_mul, Nat.one_mul]]
