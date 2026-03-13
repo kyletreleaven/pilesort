@@ -118,7 +118,7 @@ no longer on the proof path of `formulaWord_correct`:
 
 ## Progress
 
-- [ ] **Step 1a** — Move `testChain_actd_cons` to `TestChain.lean`
+- [x] **Step 1a** — Move `testChain_actd_cons` to `TestChain.lean`
 - [ ] **Step 1b** — New `testChain_disq` (A1++A2 form) in `TestChain.lean`
 - [ ] **Step 1c** — New combined `testChain_nactd` in `TestChain.lean`
 - [ ] **Step 2a** — Re-prove `clauseWord_start_consumption` using Step 1 lemmas
