@@ -3,6 +3,8 @@ import PileSort.Reduction
 import PileSort.Gadgets.StartClause
 import PileSort.TestConsume
 
+open Classical
+
 /-- ACTD in consumption form: from ACTD, testWords shift past A1 and stay ACTD. -/
 theorem testChain_actd_cons : ∀ (A1 A2 : List PileType)
     (start : Nat) (clause : Clause) (suffix : List Action), A2 ≠ [] →
@@ -47,3 +49,54 @@ theorem testChain_disq_cons : ∀ (A1 A2 : List PileType)
     simp only [List.cons_append] at htw ⊢
     show _ ≥ (rest.length + 1) * ALIGN.length + _
     rw [Nat.add_mul, Nat.one_mul]; omega
+
+/-- NACTD combined: from NACTD, testWords shift past A1, landing at ACTD if some A1[i]
+    matches, NACTD otherwise. -/
+theorem testChain_nactd_cons : ∀ (A1 A2 : List PileType)
+    (start : Nat) (clause : Clause) (suffix : List Action), A2 ≠ [] →
+    applyWord ((List.range' start A1.length).flatMap (fun i => testWord i clause) ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) NACTD =
+    A1.length * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2))
+        (if ∃ i : Fin A1.length, matchesLiteral A1[i] (start + ↑i) clause then ACTD else NACTD)
+  | [], _, _, _, _, _ => by
+    rw [if_neg (fun ⟨i, _⟩ => i.elim0)]
+    simp
+  | a :: rest, A2, start, clause, suffix, hA2 => by
+    show applyWord ((List.range' start (rest.length + 1)).flatMap _ ++ suffix) _ _ = _
+    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
+    have hrest_ne : rest ++ A2 ≠ [] := by cases rest <;> simp [hA2]
+    have htw := testWord_consumption_nactd start clause
+      ((List.range' (start + 1) rest.length).flatMap (fun i => testWord i clause) ++ suffix)
+      a (rest ++ A2) hrest_ne
+    simp only [List.cons_append] at htw ⊢
+    rcases Classical.em (matchesLiteral a start clause) with hlit | hlit
+    · -- head activates: NACTD → ACTD, tail stays ACTD via testChain_actd_cons
+      rw [if_pos hlit] at htw
+      rw [htw, testChain_actd_cons rest A2 (start + 1) clause suffix hA2]
+      have hex : ∃ i : Fin (a :: rest).length, matchesLiteral (a :: rest)[i] (start + ↑i) clause :=
+        ⟨⟨0, by simp⟩, by simp [hlit]⟩
+      rw [if_pos hex]
+      simp only [List.length_cons]
+      show ALIGN.length + (rest.length * ALIGN.length + _) = (rest.length + 1) * ALIGN.length + _
+      rw [Nat.add_mul, Nat.one_mul]; omega
+    · -- head doesn't activate: stays NACTD, existential collapses to tail
+      rw [if_neg hlit] at htw
+      rw [htw, testChain_nactd_cons rest A2 (start + 1) clause suffix hA2]
+      have heq : (∃ i : Fin (rest.length + 1), matchesLiteral (a :: rest)[i] (start + ↑i) clause) ↔
+                 (∃ i : Fin rest.length, matchesLiteral rest[i] (start + 1 + ↑i) clause) := by
+        constructor
+        · rintro ⟨⟨i, hi⟩, hm⟩
+          cases i with
+          | zero => simp only [List.getElem_cons_zero, Nat.add_zero] at hm; exact absurd hm hlit
+          | succ j =>
+            exact ⟨⟨j, by simp at hi; omega⟩, by
+              simp only [List.getElem_cons_succ] at hm
+              rwa [show start + (j + 1) = start + 1 + j from by omega] at hm⟩
+        · rintro ⟨⟨j, hj⟩, hm⟩
+          refine ⟨⟨j + 1, by omega⟩, ?_⟩
+          simp only [List.getElem_cons_succ]
+          rwa [show start + (j + 1) = start + 1 + j from by omega]
+      simp only [List.length_cons, heq]
+      show ALIGN.length + (rest.length * ALIGN.length + _) = (rest.length + 1) * ALIGN.length + _
+      rw [Nat.add_mul, Nat.one_mul]; omega
