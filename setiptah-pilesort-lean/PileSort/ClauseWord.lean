@@ -4,22 +4,7 @@ import PileSort.Reduction
 import PileSort.Gadgets.StartClause
 import PileSort.TestConsume
 import PileSort.TestChain
-
-/-- When A1 has exactly k+2 elements, dropping the first k gives the last two. -/
-theorem list_drop_two {α : Type} (A1 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
-    A1.drop k = [A1[k]'(by omega), A1[k + 1]'(by omega)] := by
-  have hdlen : (A1.drop k).length = 2 := by rw [List.length_drop, hA1]; omega
-  match h : A1.drop k, hdlen with
-  | [a, b], _ =>
-    simp; constructor
-    · have := List.getElem_drop (i := k) (j := 0) (h := by omega) A1; simp [h] at this; exact this
-    · have := List.getElem_drop (i := k) (j := 1) (h := by omega) A1; simp [h] at this; exact this
-
-theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
-    (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by
-  rw [List.drop_append_eq_append_drop,
-      show k - A1.length = 0 from by omega, List.drop_zero,
-      list_drop_two A1 k hA1]; simp
+import PileSort.ClauseWordNew
 
 theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
     ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
@@ -27,13 +12,6 @@ theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
   | x :: y :: rest, _ => by
     have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
     exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
-
-theorem list_drop_append_two_last {α : Type} (A1 A2 : List α) (n : Nat)
-    (hA1 : A1.length = n + 1) (hn : n ≥ 1) :
-    (A1 ++ A2).drop (n - 1) = A1[n - 1]'(by omega) :: A1[n]'(by omega) :: A2 := by
-  have h := list_drop_append_two A1 A2 (n - 1) (by omega)
-  simp only [show n - 1 + 1 = n from by omega] at h
-  exact h
 
 /-- There exists a Boolean assignment of length n whose embedding matches xs
     and that satisfies predicate P (typically satisfiesClause or satisfiesFormula). -/
