@@ -83,7 +83,7 @@ def main : IO Unit := do
   let mut ci := 0
   for (m, ns) in byMod do
     IO.println ("  subgraph cluster_" ++ toString ci ++ " {")
-    IO.println ("    label=" ++ dq (baseName m) ++ ";")
+    IO.println ("    label=" ++ dq m.toString ++ ";")
     IO.println "    style=rounded;"
     for n in ns do
       let nq := dq n.toString
