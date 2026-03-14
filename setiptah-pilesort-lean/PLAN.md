@@ -39,37 +39,31 @@ from a given starting state, in consumption form.  Already proved:
 
 Still needed: NACTD end-capped lemmas.
 
-### NACTD end-capped: 2 vs 3 lemmas
+### NACTD end-capped: 4 lemmas (2/3 compromise)
 
-The NACTD case has three outcome sub-cases:
+We considered two approaches:
 
-1. **Chain activates + Q sentinel** → END_POS  (use `testChain_actd_end_new` after chain)
-2. **No chain activation + Q sentinel + end matches** → END_POS  (`endTestWord_consumption_nactd` sat branch)
-3. **No chain activation + Q sentinel + no end match** → ≥ CHAIN_DISQ
-4. **Non-Q sentinel** (regardless of chain) → ≥ CHAIN_DISQ  (use `testChain_actd_end_disq` or `applyWord_mono` + end lemma)
+- **3 lemmas**: one focused lemma per outcome sub-case, each with a clean single
+  hypothesis.  Maps 1-1 onto the branches of `clauseWord_start_nonsat_cons` (Q
+  case, S case) and `clauseWord_start_sat_cons`, but leaves an internal Q/S split
+  in the clauseWord nonsat proof.
 
-**Option A — 3 lemmas** (split disq by sentinel type):
+- **2 lemmas**: combine the two disq cases into one, absorbing the Q/S split
+  internally.  Gives a cleaner clauseWord nonsat proof (no case split needed), but
+  makes the combined disq lemma internally more complex.
+
+The right choice depends on whether the combined disq proof is unwieldy — which
+we don't know until we try.  Rather than commit, we provide all three focused
+lemmas *plus* a trivial combined one:
+
 - `testChain_nactd_end_endpos`: Q sentinel + any activation → = END_POS
-- `testChain_nactd_end_disq_nomatch`: Q sentinel + no activation anywhere → ≥ CHAIN_DISQ
+- `testChain_nactd_end_disq_nomatch`: Q sentinel + no match anywhere → ≥ CHAIN_DISQ
 - `testChain_nactd_end_disq_noQ`: non-Q sentinel → ≥ CHAIN_DISQ
+- `testChain_nactd_end_disq`: trivially delegates to the two disq lemmas above
 
-  Pro: each lemma has a single clean hypothesis; maps 1-1 onto the three branches
-  of `clauseWord_start_nonsat_cons` (Q case, S case) and `clauseWord_start_sat_cons`.
-  Con: `clauseWord_start_nonsat_cons` still requires an internal Q/S case split.
-
-**Option B — 2 lemmas** (combine disq cases):
-- `testChain_nactd_end_endpos`: Q sentinel + any activation → = END_POS
-- `testChain_nactd_end_disq`: no activation OR non-Q sentinel → ≥ CHAIN_DISQ
-  (handles Q/S split internally)
-
-  Pro: `clauseWord_start_nonsat_cons` needs no case split — applies `testChain_nactd_end_disq`
-  directly from the `¬HasMatchingAssignment` hypothesis.
-  Con: `testChain_nactd_end_disq` is internally more complex (two sub-cases).
-
-**Verdict: open.**  Option B gives cleaner clauseWord proofs; Option A spreads
-complexity more evenly.  The right choice depends on whether the combined disq
-proof is unwieldy.  Recommend trying Option B first; fall back to A if the
-internal case split in `testChain_nactd_end_disq` proves painful.
+This way the focused lemmas exist regardless, and `testChain_nactd_end_disq` is
+cheap to add (two-line proof).  Call sites can use whichever form fits best, and
+we get empirical evidence for the 2- vs 3-lemma question without any throwaway work.
 
 ## Step 2: clauseWord consumption-form lemmas
 
