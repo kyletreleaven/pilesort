@@ -137,8 +137,8 @@ no longer on the proof path of `formulaWord_correct`:
   - [x] `testChain_disq_end'` (migrated + reproved from `testChain_disq_cons`)
   - [x] `testChain_actd_end_new` (migrated from `ClauseWord.lean`)
   - [x] `testChain_actd_end_disq` (new)
-  - [ ] `testChain_nactd_end_endpos` (NACTD → END\_POS)
-  - [ ] `testChain_nactd_end_disq` (NACTD → ≥ CHAIN\_DISQ; see plan above)
+  - [x] `testChain_nactd_end_endpos` (NACTD → END\_POS)
+  - [x] `testChain_nactd_end_disq` (NACTD → ≥ CHAIN\_DISQ; see plan above)
 - [ ] **Step 2a** — Re-prove `clauseWord_start_consumption` using TestChain lemmas
   - [x] `clauseWord_start_nonsat_cons` (in `ClauseWordNew.lean`)
   - [ ] `clauseWord_start_sat_cons`
