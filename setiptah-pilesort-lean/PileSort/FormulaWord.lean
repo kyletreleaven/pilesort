@@ -30,7 +30,7 @@ import PileSort.FormulaWordNew
 /-- Sat form: formulaWord from START_POS reaches exact position when vars satisfies the formula.
     Proved by induction on clauses_ using clauseNext_good_consumption (step) and
     clauseWord_start_consumption sat branch (base). -/
-theorem formulaWord_sat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
+theorem formulaWord_from_start_sat' (n : Nat) (clauses_ : List Clause) (last : Clause)
     (xs : List PileType) (vars : List Bool)
     (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
     (hvars : vars.length = n)
@@ -95,7 +95,7 @@ theorem not_satisfiesFormula_rest (n : Nat) (xs : List PileType)
     - clauseWord_start_consumption nonsat branch (base),
     - clauseNext_bad_consumption + formulaWord_chain_pos' (step, c-nonsat),
     - clauseNext_good_consumption + not_satisfiesFormula_rest + IH (step, c-sat). -/
-theorem formulaWord_unsat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause)
+theorem formulaWord_from_start_unsat' (n : Nat) (clauses_ : List Clause) (last : Clause)
     (xs : List PileType)
     (hn : n ≥ 1) (hxs_len : xs.length = n + 1)
     (hno : ¬ HasMatchingAssignment n xs (satisfiesFormula · (clauses_ ++ [last]))) :
@@ -146,7 +146,7 @@ theorem formulaWord_unsat_pos' (n : Nat) (clauses_ : List Clause) (last : Clause
       omega
 
 /-- accepts on types is equivalent to applyWord on extended types being < types.length. -/
-theorem accepts_iff_applyWord_ext (word : List Action) (types extra : List PileType) :
+theorem accepts_iff_applyWord_contained (word : List Action) (types extra : List PileType) :
     accepts types word ↔
       applyWord word (compile (types ++ extra)) 0 < types.length := by
   unfold accepts
@@ -164,7 +164,7 @@ theorem formulaWord_correct' (n : Nat) (clauses_ : List Clause) (last : Clause)
     accepts types (formulaWord n (clauses_ ++ [last])) ↔
       HasMatchingAssignment n xs (satisfiesFormula · (clauses_ ++ [last])) := by
   intro types
-  rw [accepts_iff_applyWord_ext _ _ (virtualPileTypes ALIGN xs),
+  rw [accepts_iff_applyWord_contained _ _ (virtualPileTypes ALIGN xs),
       ← virtualPileTypes_replicate_Q_snoc,
       show clauses_.length + 1 + 1 = clauses_.length + 2 from by omega,
       show (0 : Nat) = START_POS from rfl]
@@ -174,11 +174,11 @@ theorem formulaWord_correct' (n : Nat) (clauses_ : List Clause) (last : Clause)
   · -- Backward: applyWord < length → HasMatchingAssignment
     intro h
     exact Classical.byContradiction fun hno => by
-      have := formulaWord_unsat_pos' n clauses_ last xs hn hxs_len hno
+      have := formulaWord_from_start_unsat' n clauses_ last xs hn hxs_len hno
       rw [h_len] at h; unfold CHAIN_DISQ at this; omega
   · -- Forward: HasMatchingAssignment → applyWord < length
     intro ⟨vars, hvars, hxs, hsat⟩
-    rw [formulaWord_sat_pos' n clauses_ last xs vars hn hxs_len hvars hxs hsat, h_len,
+    rw [formulaWord_from_start_sat' n clauses_ last xs vars hn hxs_len hvars hxs hsat, h_len,
         show (clauses_.length + 1) * (xs.length * ALIGN.length) =
           clauses_.length * (xs.length * ALIGN.length) + xs.length * ALIGN.length from by
           rw [Nat.add_mul, Nat.one_mul], hxs_len]
