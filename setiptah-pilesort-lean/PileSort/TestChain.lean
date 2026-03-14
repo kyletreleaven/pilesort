@@ -228,6 +228,31 @@ theorem testChain_actd_end_disq (j : Nat) (clause : Clause) (suffix : List Actio
     rw [Nat.add_mul]]
   omega
 
+/-- From NACTD, non-Q sentinel: chain + endTestWord reaches penalty regardless of activation.
+    Case splits on whether chain activates:
+    - ACTD branch: delegates to testChain_actd_end_disq (empty prefix).
+    - NACTD branch: endTestWord_consumption_nactd else branch (et ≠ Q). -/
+theorem testChain_nactd_end_disq_noQ (j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 : List PileType) (x et : PileType) (A2 : List PileType) (hA2 : A2 ≠ [])
+    (het : et ≠ PileType.Q) :
+    (A1.length + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ ≤
+    applyWord ((List.range' j A1.length).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + A1.length) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ x :: et :: A2))) NACTD := by
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htcn := testChain_nactd_cons A1 (x :: et :: A2) j clause
+    (endTestWord (j + A1.length) clause ++ suffix) (by simp)
+  rw [htcn, show (A1.length + 2) * ALIGN.length = A1.length * ALIGN.length + 2 * ALIGN.length from by
+    rw [Nat.add_mul]]
+  rcases Classical.em (∃ i : Fin A1.length, matchesLiteral A1[i] (j + ↑i) clause) with hact | hnoact
+  · rw [if_pos hact]
+    have hend := testChain_actd_end_disq (j + A1.length) clause suffix [] x et A2 hA2 het
+    simp at hend; omega
+  · rw [if_neg hnoact]
+    have hend := endTestWord_consumption_nactd (j + A1.length) clause suffix x et A2 hA2
+    rw [if_neg (fun ⟨heq, _⟩ => het heq)] at hend; omega
+
 /-- From NACTD at activation site, sentinel form (6 segments).
     x activates (NACTD → ACTD), A1_mid stays ACTD, y is endTestWord variable, Q is sentinel. -/
 theorem testChain_activate_end_new (j : Nat) (clause : Clause) (suffix : List Action)
