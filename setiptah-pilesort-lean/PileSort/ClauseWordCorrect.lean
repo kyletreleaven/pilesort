@@ -37,43 +37,6 @@ theorem clauseWord_start_preamble (n : Nat) (clause : Clause)
   rw [List.cons_append, start_clause_start _ t (rest ++ A2)]
 
 
-/-- When A1 ends in Q and has no matching satisfying assignment,
-    no matchesLiteral fires at any index. -/
-theorem not_hasMatchingAssignment_no_matchesLiteral
-    (n : Nat) (A1 : List PileType) (clause : Clause)
-    (hA1 : A1.length = n + 1) (hQ : A1[n]'(by omega) = PileType.Q)
-    (hno : ¬HasMatchingAssignment n A1 (satisfiesClause · clause)) :
-    ∀ i (hi : i < n), ¬matchesLiteral (A1[i]'(by omega)) i clause := by
-  -- A1 = init ++ [Q], init = embedVars vars
-  obtain ⟨init, last, hsplit, hilen⟩ := list_split_last A1 (by intro h; simp [h] at hA1)
-  have hlast : last = PileType.Q := by
-    have h1 : A1[n]'(by omega) = last := by
-      simp only [hsplit]
-      rw [List.getElem_append_right (by omega)]
-      simp
-    rw [← h1]; exact hQ
-  have hinit_len : init.length = n := by omega
-  obtain ⟨vars, hvlen, hvars⟩ := embedVars_surjective init
-  -- ¬satisfiesClause
-  have hnotsat : ¬satisfiesClause vars clause := by
-    intro hsat
-    exact hno ⟨vars, hvlen ▸ hinit_len, hlast ▸ hvars ▸ hsplit, hsat⟩
-  -- Pointwise ¬matchesLiteral
-  intro i hi hml
-  apply hnotsat
-  -- A1[i] = init[i] = embedVar vars[i]
-  have hAi : A1[i]'(by omega) = init[i]'(by omega) := by
-    simp only [hsplit]; rw [List.getElem_append_left (by omega)]
-  rw [hAi] at hml
-  simp only [← hvars, embedVars, List.getElem_map] at hml
-  -- hml : matchesLiteral (embedVar vars[i]) i clause
-  rw [satisfiesClause_iff_matchesLiteral]
-  have hvi : i < vars.length := by rw [hvlen]; omega
-  exact ⟨i, hvi, by
-    have : vars.getD i false = vars[i]'hvi := by
-      simp [List.getD, List.getElem?_eq_getElem hvi]
-    rw [this]
-    exact hml⟩
 
 /-- When vars satisfies a clause, there is a first index where matchesLiteral fires.
     Returns the first matching index with proof it's minimal. -/

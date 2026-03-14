@@ -6,30 +6,6 @@ import PileSort.TestConsume
 import PileSort.TestChain
 import PileSort.ClauseWordNew
 
-theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
-    ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
-  | [x], _ => ⟨[], x, rfl, rfl⟩
-  | x :: y :: rest, _ => by
-    have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
-    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
-
-/-- There exists a Boolean assignment of length n whose embedding matches xs
-    and that satisfies predicate P (typically satisfiesClause or satisfiesFormula). -/
-def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop) : Prop :=
-  ∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q] ∧ P vars
-
-/-- matchesLiteral on an embedded Bool reduces to the literal satisfaction condition. -/
-theorem matchesLiteral_embedVar (b : Bool) (i : Nat) (clause : Clause) :
-    matchesLiteral (embedVar b) i clause ↔
-      (clause.getD i .absent = .pos ∧ b = true) ∨ (clause.getD i .absent = .neg ∧ b = false) := by
-  cases b <;> simp [matchesLiteral, litMatches, embedVar]
-
-/-- satisfiesClause is equivalent to matchesLiteral firing at some in-range variable index. -/
-theorem satisfiesClause_iff_matchesLiteral (vars : List Bool) (clause : Clause) :
-    satisfiesClause vars clause ↔
-      ∃ i, i < vars.length ∧ matchesLiteral (embedVar (vars.getD i false)) i clause := by
-  simp only [satisfiesClause]
-  exact exists_congr fun i => and_congr_right' (matchesLiteral_embedVar _ i clause).symm
 
 /-- ACTD is a trap: from ACTD, testWords stay at exactly ACTD after shifting.
     Mirrors testChain_disq but uses the ACTD equality case. -/

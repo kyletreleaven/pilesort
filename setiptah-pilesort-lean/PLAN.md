@@ -53,6 +53,41 @@ Proof by induction on A1: base trivial; inductive step applies
 case split. If the existential form proves awkward at call sites, fall back to
 two separate lemmas (no-activation and activation-at-i₀).
 
+## Architectural note: missing "testChainEnd" layer?
+
+An alternative layering would insert consumption-form theorems for the full
+`testWords ++ endTestWord` block (from NACTD), one per case:
+
+- `testChainEnd_nonsat_cons` (Q sentinel, no match → CHAIN_DISQ penalty)
+- `testChainEnd_sat_cons` (activation at some index → END_POS)
+- `testChainEnd_disq_cons` (starting from CLAUSE_DISQ → penalty)
+
+Then `clauseWord_start_*` would reduce to two lines:
+`clauseWord_start_preamble_cons` + one `testChainEnd_*_cons` call.
+
+**Verdict: probably yes, this would have been cleaner.** `ClauseWord.lean`
+already had exactly this layer (`testChain_nactd_end`, `testChain_sat_end`,
+`testChain_activate_end_new`, etc.) — just without the suffix/consumption form.
+The complexity we absorbed into `clauseWord_start_nonsat_cons` (Q/S case
+split, getElem_take) would live in the focused `testChainEnd_nonsat_cons` lemma
+instead, making the clauseWord proof trivial and the testChainEnd proofs each
+handle exactly one thing.
+
+The downside is one more file/layer; the upside is reusability (if anything
+else ever needs "testWords ++ endTestWord from NACTD") and simpler clauseWord
+proofs. Not worth refactoring now, but worth doing this way if building from
+scratch.
+
+**On total complexity**: the Q/S case split in `clauseWord_start_nonsat_cons`
+is about the testChain *state*, not the endTestWord interface. The S case uses
+`applyWord_mono` to sidestep the testChain conditional; the Q case proves the
+testChain existential false. A `testChainEnd_nonsat_cons` lemma could avoid the
+Q/S split by arguing: the sat branches of both endTestWord lemmas contradict
+`hno`, so we always land in the penalty branch — but proving the ACTD+Q
+contradiction requires connecting the testChain existential to
+`satisfiesClause`, essentially the same work. Net: better organization, not
+less total proof complexity.
+
 ## Step 2: clauseWord consumption-form lemmas
 
 Re-prove (or prove anew) the two clauseWord consumption-form lemmas using only
@@ -122,6 +157,7 @@ no longer on the proof path of `formulaWord_correct`:
 - [x] **Step 1b** — New `testChain_disq` (A1++A2 form) in `TestChain.lean`
 - [x] **Step 1c** — New combined `testChain_nactd` in `TestChain.lean`
 - [ ] **Step 2a** — Re-prove `clauseWord_start_consumption` using Step 1 lemmas
+  - [x] `clauseWord_start_nonsat_cons`
 - [x] **Step 2b** — Re-prove `clauseWord_chain_consumption` using Step 1 lemmas
 - [ ] **Step 3a** — Re-prove `clauseNext_good_consumption`
 - [ ] **Step 3b** — Re-prove `clauseNext_bad_consumption`
