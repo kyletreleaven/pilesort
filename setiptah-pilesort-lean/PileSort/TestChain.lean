@@ -253,6 +253,26 @@ theorem testChain_nactd_end_disq_noQ (j : Nat) (clause : Clause) (suffix : List 
     have hend := endTestWord_consumption_nactd (j + A1.length) clause suffix x et A2 hA2
     rw [if_neg (fun ⟨heq, _⟩ => het heq)] at hend; omega
 
+/-- From NACTD, Q sentinel, no match anywhere: chain + endTestWord reaches penalty. -/
+theorem testChain_nactd_end_disq_nomatch (j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 : List PileType) (x : PileType) (A2 : List PileType) (hA2 : A2 ≠ [])
+    (hno : ∀ i (hi : i < A1.length), ¬matchesLiteral A1[i] (j + i) clause)
+    (hno_end : ¬matchesLiteral x (j + A1.length) clause) :
+    (A1.length + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ ≤
+    applyWord ((List.range' j A1.length).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + A1.length) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ x :: PileType.Q :: A2))) NACTD := by
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htcn := testChain_nactd_cons A1 (x :: PileType.Q :: A2) j clause
+    (endTestWord (j + A1.length) clause ++ suffix) (by simp)
+  rw [htcn, if_neg (by rintro ⟨⟨i, hi⟩, hm⟩; exact hno i hi hm),
+      show (A1.length + 2) * ALIGN.length = A1.length * ALIGN.length + 2 * ALIGN.length from by
+        rw [Nat.add_mul]]
+  have hend := endTestWord_consumption_nactd (j + A1.length) clause suffix x PileType.Q A2 hA2
+  rw [if_neg (fun ⟨_, h⟩ => hno_end h)] at hend
+  omega
+
 /-- From NACTD at activation site, sentinel form (6 segments).
     x activates (NACTD → ACTD), A1_mid stays ACTD, y is endTestWord variable, Q is sentinel. -/
 theorem testChain_activate_end_new (j : Nat) (clause : Clause) (suffix : List Action)
