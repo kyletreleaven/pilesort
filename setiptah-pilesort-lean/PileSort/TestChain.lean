@@ -1,32 +1,44 @@
 /-
   TestChain: consumption-form lemmas for a sequence of testWords.
 
-  ## Representation choice: A1 ++ A2 vs types.drop k
+  ## The consumption form
+
+  The key structural property of all lemmas here is the *consumption form*:
+
+    applyWord (testWords ++ suffix) machine state =
+      offset + applyWord suffix machine' state'
+
+  This factors the behavior of a word sequence into a fixed offset (the cost
+  of the sequence itself) plus the behavior of the suffix on the residual
+  machine.  It is what makes these lemmas composable: each layer hands off to
+  the next via a concrete suffix machine.
+
+  ## Index-based vs. destructured parameterization
 
   The individual `testWord_consumption_*` lemmas in TestConsume use `x :: rest`
-  to describe the pile-type list: one word consumes `x` from the front and
-  leaves `rest` for the suffix. This is natural for a single step.
+  for the pile-type list: one word consumes `x` from the front and leaves
+  `rest`.  When chaining k test words, there are two equivalent ways to name
+  the boundary:
 
-  When chaining k test words, there are two equivalent ways to parameterize
-  the pile-type list:
+  **Index form** (`types` + `k < types.length`, conclusion mentions `types.drop k`):
+    Falls out naturally from naïve induction — each step increments k and
+    peels one element.  Convenient when the caller reasons by count.
 
-  **Index form** (`types` + `k < types.length`, result mentions `types.drop k`):
-    Used by the old `testChain_disq` in ClauseWordCorrect.lean.  Falls out
-    naturally from naïve induction — each step increments k and peels one
-    element — but `types.drop k` is opaque at call sites and requires extra
-    rewrites to unfold.
-
-  **Destructured form** (`A1 ++ A2`, result mentions `A2` directly):
-    Used by all three lemmas in this file.  The caller pre-splits the list at
-    the boundary and names both halves; the conclusion then mentions `A2`
-    directly, with no `drop` expression to simplify away.  The guard condition
-    `A2 ≠ []` replaces `k < types.length`.
+  **Destructured form** (`A1 ++ A2`, conclusion mentions `A2` directly):
+    The caller pre-splits the list and names both halves; no `drop` expression
+    appears in the conclusion.  Convenient when the caller already holds
+    concrete `A1` and `A2`.
 
   The two forms are logically equivalent (set `A1 = types.take k`,
-  `A2 = types.drop k`), but the destructured form is more ergonomic: call
-  sites already have concrete `A1`/`A2` in hand, and no extra simp lemmas
-  about `List.drop` are needed to connect the conclusion to the rest of the
-  proof.
+  `A2 = types.drop k`); conversion is always `List.take_append_drop` plus a
+  length lemma.  **Neither form has clear supremacy**: destructured tends to
+  win at call sites that already name the halves; index tends to win when the
+  caller is reasoning by count and would have to construct the split
+  artificially.  Because the conversion is cheap and local, the choice can be
+  revisited per-lemma once all lemmas are in consumption form.
+
+  The lemmas in this file use the destructured form.  The old index-form
+  `testChain_disq` (ClauseWordCorrect.lean) is dead code pending deletion.
 -/
 import PileSort.Mono
 import PileSort.Reduction
