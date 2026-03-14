@@ -46,7 +46,7 @@ def main : IO Unit := do
   -- Collect all project nodes, sorted for deterministic output.
   let mut nodes : Array (Name × ConstantInfo) := #[]
   for (n, info) in env.constants do
-    if isProjectConst env n && isWanted info && isExplicit env n then
+    if isProjectConst env n && isWanted info && isExplicit env n && !Lean.isPrivateName n then
       nodes := nodes.push (n, info)
   nodes := nodes.qsort (fun (a, _) (b, _) => a.toString < b.toString)
 
