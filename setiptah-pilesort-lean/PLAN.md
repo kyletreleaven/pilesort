@@ -88,6 +88,49 @@ contradiction requires connecting the testChain existential to
 `satisfiesClause`, essentially the same work. Net: better organization, not
 less total proof complexity.
 
+## End-capped TestChain lemmas (TestChain.lean)
+
+`TestChain.lean` now also holds end-capped lemmas: `testWords ++ endTestWord ++ suffix`
+from a given starting state, in consumption form.  Already proved:
+
+- `testChain_disq_end'` (from CLAUSE_DISQ → ≥ CHAIN_DISQ, A1.length = k+2 form)
+- `testChain_actd_end_new` (from ACTD, Q sentinel hardcoded → = END_POS)
+- `testChain_actd_end_disq` (from ACTD, non-Q sentinel `et ≠ Q` → ≥ CHAIN_DISQ)
+
+Still needed: NACTD end-capped lemmas.
+
+### NACTD end-capped: 2 vs 3 lemmas
+
+The NACTD case has three outcome sub-cases:
+
+1. **Chain activates + Q sentinel** → END_POS  (use `testChain_actd_end_new` after chain)
+2. **No chain activation + Q sentinel + end matches** → END_POS  (`endTestWord_consumption_nactd` sat branch)
+3. **No chain activation + Q sentinel + no end match** → ≥ CHAIN_DISQ
+4. **Non-Q sentinel** (regardless of chain) → ≥ CHAIN_DISQ  (use `testChain_actd_end_disq` or `applyWord_mono` + end lemma)
+
+**Option A — 3 lemmas** (split disq by sentinel type):
+- `testChain_nactd_end_endpos`: Q sentinel + any activation → = END_POS
+- `testChain_nactd_end_disq_nomatch`: Q sentinel + no activation anywhere → ≥ CHAIN_DISQ
+- `testChain_nactd_end_disq_noQ`: non-Q sentinel → ≥ CHAIN_DISQ
+
+  Pro: each lemma has a single clean hypothesis; maps 1-1 onto the three branches
+  of `clauseWord_start_nonsat_cons` (Q case, S case) and `clauseWord_start_sat_cons`.
+  Con: `clauseWord_start_nonsat_cons` still requires an internal Q/S case split.
+
+**Option B — 2 lemmas** (combine disq cases):
+- `testChain_nactd_end_endpos`: Q sentinel + any activation → = END_POS
+- `testChain_nactd_end_disq`: no activation OR non-Q sentinel → ≥ CHAIN_DISQ
+  (handles Q/S split internally)
+
+  Pro: `clauseWord_start_nonsat_cons` needs no case split — applies `testChain_nactd_end_disq`
+  directly from the `¬HasMatchingAssignment` hypothesis.
+  Con: `testChain_nactd_end_disq` is internally more complex (two sub-cases).
+
+**Verdict: open.**  Option B gives cleaner clauseWord proofs; Option A spreads
+complexity more evenly.  The right choice depends on whether the combined disq
+proof is unwieldy.  Recommend trying Option B first; fall back to A if the
+internal case split in `testChain_nactd_end_disq` proves painful.
+
 ## Step 2: clauseWord consumption-form lemmas
 
 Re-prove (or prove anew) the two clauseWord consumption-form lemmas using only
