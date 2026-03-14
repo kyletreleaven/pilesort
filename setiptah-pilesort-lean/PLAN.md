@@ -17,76 +17,23 @@ deleted from `FormulaWord.lean` (and `formulaState` from `Reduction.lean`):
 The sorry lemma `testChain_sat_end_lt_new` in `ClauseWord.lean` is a dead end —
 not in the proof path of `formulaWord_correct`.
 
-## New file: TestChain.lean
+## TestChain.lean (done)
 
-Create `TestChain.lean` to hold three consumption-form lemmas governing the
-position reached by a sequence of test words (no endTestWord), one per starting
-state. Each should be proved using only the corresponding individual lemma from
-`TestConsume.lean` (`testWord_consumption_actd`, `_nactd`, `_disq`). The file
-may eventually be merged into `TestConsume.lean`, but is kept separate for now.
+`TestChain.lean` holds consumption-form lemmas for `testWord` sequences.
+All three plain-chain lemmas are complete:
 
-### ACTD
-Move `testChain_actd_cons` here (already in the right A1++A2 consumption form).
+- `testChain_actd_cons`: from ACTD, shifts past A1, stays ACTD (= form)
+- `testChain_disq_cons`: from CLAUSE\_DISQ, shifts past A1, stays ≥ CLAUSE\_DISQ
+- `testChain_nactd_cons`: from NACTD, shifts past A1, lands at ACTD or NACTD
+  depending on `∃ i : Fin A1.length, matchesLiteral A1[i] (start+i) clause`
 
-### CLAUSE\_DISQ
-New A1++A2 consumption form of `testChain_disq` (which currently uses the old
-`types.drop k` style). Statement:
+End-capped lemmas (`testWords ++ endTestWord`) also in `TestChain.lean`:
 
-```
-applyWord (testWords ++ suffix) (compile (vpt ALIGN (A1 ++ A2))) CLAUSE_DISQ ≥
-  A1.length * m + applyWord suffix (compile (vpt ALIGN A2)) CLAUSE_DISQ
-```
+- `testChain_disq_end'`: from CLAUSE\_DISQ, k testWords + endTestWord → ≥ CHAIN\_DISQ
+- `testChain_actd_end_new`: from ACTD, Q sentinel hardcoded → = END\_POS
+- `testChain_actd_end_disq`: from ACTD, `et ≠ Q` → ≥ CHAIN\_DISQ
 
-### NACTD
-New combined lemma covering all cases (activation or not). Proposed statement:
-
-```
-applyWord (testWords ++ suffix) (compile (vpt ALIGN (A1 ++ A2))) NACTD =
-  A1.length * m + applyWord suffix (compile (vpt ALIGN A2))
-    (if ∃ i : Fin A1.length, matchesLiteral A1[i] (start + i) clause
-     then ACTD else NACTD)
-```
-
-Proof by induction on A1: base trivial; inductive step applies
-`testWord_consumption_nactd` for the head, then either `testChain_actd_cons`
-(if activated) or the IH (if not), with the existential managed across the
-case split. If the existential form proves awkward at call sites, fall back to
-two separate lemmas (no-activation and activation-at-i₀).
-
-## Architectural note: missing "testChainEnd" layer?
-
-An alternative layering would insert consumption-form theorems for the full
-`testWords ++ endTestWord` block (from NACTD), one per case:
-
-- `testChainEnd_nonsat_cons` (Q sentinel, no match → CHAIN_DISQ penalty)
-- `testChainEnd_sat_cons` (activation at some index → END_POS)
-- `testChainEnd_disq_cons` (starting from CLAUSE_DISQ → penalty)
-
-Then `clauseWord_start_*` would reduce to two lines:
-`clauseWord_start_preamble_cons` + one `testChainEnd_*_cons` call.
-
-**Verdict: probably yes, this would have been cleaner.** `ClauseWord.lean`
-already had exactly this layer (`testChain_nactd_end`, `testChain_sat_end`,
-`testChain_activate_end_new`, etc.) — just without the suffix/consumption form.
-The complexity we absorbed into `clauseWord_start_nonsat_cons` (Q/S case
-split, getElem_take) would live in the focused `testChainEnd_nonsat_cons` lemma
-instead, making the clauseWord proof trivial and the testChainEnd proofs each
-handle exactly one thing.
-
-The downside is one more file/layer; the upside is reusability (if anything
-else ever needs "testWords ++ endTestWord from NACTD") and simpler clauseWord
-proofs. Not worth refactoring now, but worth doing this way if building from
-scratch.
-
-**On total complexity**: the Q/S case split in `clauseWord_start_nonsat_cons`
-is about the testChain *state*, not the endTestWord interface. The S case uses
-`applyWord_mono` to sidestep the testChain conditional; the Q case proves the
-testChain existential false. A `testChainEnd_nonsat_cons` lemma could avoid the
-Q/S split by arguing: the sat branches of both endTestWord lemmas contradict
-`hno`, so we always land in the penalty branch — but proving the ACTD+Q
-contradiction requires connecting the testChain existential to
-`satisfiesClause`, essentially the same work. Net: better organization, not
-less total proof complexity.
+Still needed: NACTD end-capped lemmas (see "NACTD end-capped" section above).
 
 ## End-capped TestChain lemmas (TestChain.lean)
 
@@ -196,16 +143,33 @@ no longer on the proof path of `formulaWord_correct`:
 
 ## Progress
 
-- [x] **Step 1a** — Move `testChain_actd_cons` to `TestChain.lean`
-- [x] **Step 1b** — New `testChain_disq` (A1++A2 form) in `TestChain.lean`
-- [x] **Step 1c** — New combined `testChain_nactd` in `TestChain.lean`
-- [ ] **Step 2a** — Re-prove `clauseWord_start_consumption` using Step 1 lemmas
-  - [x] `clauseWord_start_nonsat_cons`
-- [x] **Step 2b** — Re-prove `clauseWord_chain_consumption` using Step 1 lemmas
+- [x] **Step 1a** — `testChain_actd_cons` in `TestChain.lean`
+- [x] **Step 1b** — `testChain_disq_cons` (A1++A2 form) in `TestChain.lean`
+- [x] **Step 1c** — `testChain_nactd_cons` in `TestChain.lean`
+- [x] **Step 1d** — End-capped lemmas in `TestChain.lean`:
+  - [x] `testChain_disq_end'` (migrated + reproved from `testChain_disq_cons`)
+  - [x] `testChain_actd_end_new` (migrated from `ClauseWord.lean`)
+  - [x] `testChain_actd_end_disq` (new)
+  - [ ] `testChain_nactd_end_endpos` (NACTD → END\_POS)
+  - [ ] `testChain_nactd_end_disq` (NACTD → ≥ CHAIN\_DISQ; see plan above)
+- [ ] **Step 2a** — Re-prove `clauseWord_start_consumption` using TestChain lemmas
+  - [x] `clauseWord_start_nonsat_cons` (in `ClauseWordNew.lean`)
+  - [ ] `clauseWord_start_sat_cons`
+  - [ ] delegating `clauseWord_start_consumption`
+- [x] **Step 2b** — `clauseWord_chain_consumption` (in `ClauseWordNew.lean`)
 - [ ] **Step 3a** — Re-prove `clauseNext_good_consumption`
 - [ ] **Step 3b** — Re-prove `clauseNext_bad_consumption`
 - [ ] **Step 3c** — Re-prove `clauseNext_chain_consumption`
 - [ ] **Step 4**  — Delete dead code; confirm clean build
+
+### Dead code (pending Step 4 deletion)
+In `ClauseWordCorrect.lean`: `testChain_disq`, `testChain_disq_end`
+In `ClauseWord.lean`: `testChain_actd`, `testChain_actd_end`, `testChain_activate_end_new`,
+  `testChain_activate_end`, `testChain_nactd_old`, `testChain_nactd`, `testChain_nactd_split`,
+  `testChain_activate_end_split`, `testChain_nactd_end_old`, `testChain_nactd_end`,
+  `testChain_sat_end_lt`, `testChain_sat_end_eq`, `testChain_sat_end_eq_old`,
+  `testChain_sat_end`, `testChain_sat_end_zero`
+  (verify each before deleting)
 
 ### Completed prerequisites
 - [x] All bundled `testWord_consumption` / `endTestWord_consumption` call sites
