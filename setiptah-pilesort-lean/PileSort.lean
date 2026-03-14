@@ -13,3 +13,5 @@ import PileSort.Reduction
 import PileSort.ClauseWord
 import PileSort.TestConsume
 import PileSort.FormulaWord
+
+import PileSort.Legacy.All
