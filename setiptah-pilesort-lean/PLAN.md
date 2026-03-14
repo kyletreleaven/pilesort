@@ -26,18 +26,15 @@ End-capped lemmas (`testWords ++ endTestWord`) also in `TestChain.lean`:
 - `testChain_actd_end_new`: from ACTD, Q sentinel hardcoded → = END\_POS
 - `testChain_actd_end_disq`: from ACTD, `et ≠ Q` → ≥ CHAIN\_DISQ
 
-Still needed: NACTD end-capped lemmas (see "NACTD end-capped" section above).
-
-## End-capped TestChain lemmas (TestChain.lean)
-
-`TestChain.lean` now also holds end-capped lemmas: `testWords ++ endTestWord ++ suffix`
-from a given starting state, in consumption form.  Already proved:
+End-capped lemmas (`testWords ++ endTestWord`) also in `TestChain.lean` (all done):
 
 - `testChain_disq_end'` (from CLAUSE_DISQ → ≥ CHAIN_DISQ, A1.length = k+2 form)
 - `testChain_actd_end_new` (from ACTD, Q sentinel hardcoded → = END_POS)
 - `testChain_actd_end_disq` (from ACTD, non-Q sentinel `et ≠ Q` → ≥ CHAIN_DISQ)
-
-Still needed: NACTD end-capped lemmas.
+- `testChain_nactd_end_endpos` (from NACTD, Q sentinel + any activation → = END_POS)
+- `testChain_nactd_end_disq_nomatch` (from NACTD, Q sentinel + no match → ≥ CHAIN_DISQ)
+- `testChain_nactd_end_disq_noQ` (from NACTD, non-Q sentinel → ≥ CHAIN_DISQ)
+- `testChain_nactd_end_disq` (trivially combines the two NACTD disq cases)
 
 ### NACTD end-capped: 4 lemmas (2/3 compromise)
 
@@ -67,12 +64,11 @@ we get empirical evidence for the 2- vs 3-lemma question without any throwaway w
 
 ## Step 2: clauseWord consumption-form lemmas
 
-Re-prove (or prove anew) the two clauseWord consumption-form lemmas using only
-the clean building blocks: `start_clause_*`, TestChain lemmas, and the
-individual `endTestWord_consumption_*` lemmas. The existing
-`clauseWord_start_consumption` and `clauseWord_chain_consumption` in
-`ClauseWordCorrect.lean` are the target statements; the goal is to simplify
-their proofs.
+Prove two clauseWord consumption-form lemmas in `ClauseWordNew.lean` using only
+`start_clause_*` and end-capped TestChain lemmas.  The `endTestWord_consumption_*`
+lemmas are no longer needed at this level — the end-capped TestChain lemmas wrap
+them up.  There is no combined `clauseWord_start_consumption`; `FormulaWordNew.lean`
+calls the sat/nonsat variants directly.
 
 ### Prerequisites (already exist)
 
@@ -80,26 +76,31 @@ their proofs.
 single-origin consumption-form lemmas for the START_CLAUSE gadget — proved via
 `gadget_lift_*` + `decide`. No changes needed there.
 
-### clauseWord from START_POS (`clauseWord_start_consumption`)
+### clauseWord from START_POS, sat case (`clauseWord_start_sat_cons`)
 
 Proof structure:
-1. `start_clause_start` → suffix sees machine from NACTD
-2. NACTD TestChain lemma → suffix sees A2 from ACTD (sat) or NACTD (nonsat)
-3. `endTestWord_consumption_nactd` (sat/nonsat) or `endTestWord_consumption_actd`
+1. `clauseWord_start_preamble_cons` → reduce to testWords ++ endTestWord from NACTD
+2. `testChain_nactd_end_endpos` → = END_POS
 
-Note: the current proof uses a classical case split (`HasMatchingAssignment`)
-and `satisfiesClause_first_matchesLiteral` to find the first activation index.
-This logic will need to connect to the existential in the NACTD TestChain lemma.
+### clauseWord from START_POS, nonsat case (`clauseWord_start_nonsat_cons`) — done
 
-### clauseWord from CHAIN_DISQ (`clauseWord_chain_consumption`)
+Proof structure:
+1. `clauseWord_start_preamble_cons` → reduce to testWords ++ endTestWord from NACTD
+2. Case split on sentinel (Q or S):
+   - Q: `testChain_nactd_end_disq_nomatch` → ≥ CHAIN_DISQ
+   - S: `testChain_nactd_end_disq_noQ` → ≥ CHAIN_DISQ
+
+Note: the current proof calls `endTestWord_consumption_*` directly and can be
+simplified to use `testChain_nactd_end_disq_nomatch` / `testChain_nactd_end_disq_noQ`.
+
+### clauseWord from CHAIN_DISQ (`clauseWord_chain_consumption`) — done
 
 Proof structure:
 1. `start_clause_disq` → suffix sees machine from ≥ CLAUSE_DISQ
-2. CLAUSE_DISQ TestChain lemma → suffix sees A2 from ≥ CLAUSE_DISQ
-3. `endTestWord_consumption_disq`
+2. `testChain_disq_end'` → ≥ CHAIN_DISQ
 
 Note: `applyWord_mono` bridges the `≥ CLAUSE_DISQ` output of `start_clause_disq`
-into the CLAUSE_DISQ TestChain lemma — same pattern as the current proof.
+into `testChain_disq_end'` — same pattern as the current proof.
 
 ## Step 3: clauseNext consumption-form lemmas
 
@@ -139,10 +140,9 @@ no longer on the proof path of `formulaWord_correct`:
   - [x] `testChain_actd_end_disq` (new)
   - [x] `testChain_nactd_end_endpos` (NACTD → END\_POS)
   - [x] `testChain_nactd_end_disq` (NACTD → ≥ CHAIN\_DISQ; see plan above)
-- [ ] **Step 2a** — Re-prove `clauseWord_start_consumption` using TestChain lemmas
-  - [x] `clauseWord_start_nonsat_cons` (in `ClauseWordNew.lean`)
+- [ ] **Step 2a** — Prove `clauseWord_start_sat_cons` in `ClauseWordNew.lean`
+  - [x] `clauseWord_start_nonsat_cons` (done; simplification to TestChain lemmas deferred)
   - [ ] `clauseWord_start_sat_cons`
-  - [ ] delegating `clauseWord_start_consumption`
 - [x] **Step 2b** — `clauseWord_chain_consumption` (in `ClauseWordNew.lean`)
 - [ ] **Step 3a** — Re-prove `clauseNext_good_consumption`
 - [ ] **Step 3b** — Re-prove `clauseNext_bad_consumption`
@@ -150,6 +150,7 @@ no longer on the proof path of `formulaWord_correct`:
 - [ ] **Step 4**  — Delete dead code; confirm clean build
 
 ### Dead code (pending Step 4 deletion)
+In `TestChain.lean`: `testChain_activate_end_new` (subsumed by `testChain_nactd_end_endpos`)
 In `ClauseWordCorrect.lean`: `testChain_disq`, `testChain_disq_end`
 In `ClauseWord.lean`: `testChain_actd`, `testChain_actd_end`, `testChain_activate_end_new`,
   `testChain_activate_end`, `testChain_nactd_old`, `testChain_nactd`, `testChain_nactd_split`,
