@@ -76,11 +76,19 @@ calls the sat/nonsat variants directly.
 single-origin consumption-form lemmas for the START_CLAUSE gadget — proved via
 `gadget_lift_*` + `decide`. No changes needed there.
 
-### clauseWord from START_POS, sat case (`clauseWord_start_sat_cons`)
+### clauseWord from START_POS, sat case (`clauseWord_start_sat_cons`) — done
 
 Proof structure:
 1. `clauseWord_start_preamble_cons` → reduce to testWords ++ endTestWord from NACTD
-2. `testChain_nactd_end_endpos` → = END_POS
+2. `hasMatchingAssignment_activation` (adapter) → reshape `HasMatchingAssignment` evidence
+   into the `Fin`-indexed form that `testChain_nactd_end_endpos` expects
+3. `testChain_nactd_end_endpos` → = END_POS
+
+`hasMatchingAssignment_activation` wraps `hasMatchingAssignment_some_matchesLiteral`
+(which has the natural signature `∃ i : Fin n, matchesLiteral A1[i] i clause`) and
+converts its output to the `Fin (A1.take (n-1)).length`-indexed / `0 + ↑i`-offset form.
+This is the first concrete instance of the representation-mismatch bridge; both lemmas
+live in `ClauseWordNew.lean`.
 
 ### clauseWord from START_POS, nonsat case (`clauseWord_start_nonsat_cons`) — done
 
@@ -152,9 +160,9 @@ no longer on the proof path of `formulaWord_correct`:
   - [x] `testChain_actd_end_disq` (new)
   - [x] `testChain_nactd_end_endpos` (NACTD → END\_POS)
   - [x] `testChain_nactd_end_disq` (NACTD → ≥ CHAIN\_DISQ; see plan above)
-- [ ] **Step 2a** — Prove `clauseWord_start_sat_cons` in `ClauseWordNew.lean`
+- [x] **Step 2a** — Prove `clauseWord_start_sat_cons` in `ClauseWordNew.lean`
   - [x] `clauseWord_start_nonsat_cons` (done; simplification to TestChain lemmas deferred)
-  - [ ] `clauseWord_start_sat_cons`
+  - [x] `clauseWord_start_sat_cons`
 - [x] **Step 2b** — `clauseWord_chain_consumption` (in `ClauseWordNew.lean`)
 - [ ] **Step 3a** — Re-prove `clauseNext_good_consumption`
 - [ ] **Step 3b** — Re-prove `clauseNext_bad_consumption`

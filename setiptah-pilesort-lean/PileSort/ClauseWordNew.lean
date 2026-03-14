@@ -125,6 +125,49 @@ theorem not_hasMatchingAssignment_no_matchesLiteral
       simp [List.getD, List.getElem?_eq_getElem hvi]
     rw [this]; exact hml⟩
 
+/-- Positive companion to `not_hasMatchingAssignment_no_matchesLiteral`: when A1 has a
+    satisfying assignment, some matchesLiteral fires at some index in [0, n). -/
+theorem hasMatchingAssignment_some_matchesLiteral
+    (n : Nat) (A1 : List PileType) (clause : Clause)
+    (hA1 : A1.length = n + 1)
+    (h : HasMatchingAssignment n A1 (satisfiesClause · clause)) :
+    ∃ i : Fin n, matchesLiteral (A1[↑i]'(by omega)) ↑i clause := by
+  obtain ⟨vars, hvars, hA1eq, hsat⟩ := h
+  rw [satisfiesClause_iff_matchesLiteral] at hsat
+  obtain ⟨i, hi, hml⟩ := hsat
+  rw [hvars] at hi
+  have hAi : A1[i]'(by omega) = embedVar (vars[i]'(by rw [hvars]; exact hi)) := by
+    subst hA1eq; simp only [embedVars]
+    rw [List.getElem_append_left (by rw [List.length_map, hvars]; exact hi), List.getElem_map]
+  have hml' : matchesLiteral (A1[i]'(by omega)) i clause := by
+    rw [hAi]
+    have : vars.getD i false = vars[i]'(by rw [hvars]; exact hi) := by
+      simp [List.getD, List.getElem?_eq_getElem (by rw [hvars]; exact hi)]
+    rw [this] at hml; exact hml
+  exact ⟨⟨i, by omega⟩, hml'⟩
+
+/-- Adapter: converts `hasMatchingAssignment_some_matchesLiteral` output into the activation
+    hypothesis form expected by `testChain_nactd_end_endpos` (with prefix A1.take (n-1),
+    end element A1[n-1], and offset j = 0). -/
+theorem hasMatchingAssignment_activation (n : Nat) (A1 : List PileType) (clause : Clause)
+    (hn : n ≥ 1) (hA1 : A1.length = n + 1)
+    (h : HasMatchingAssignment n A1 (satisfiesClause · clause)) :
+    (∃ i : Fin (A1.take (n - 1)).length, matchesLiteral (A1.take (n - 1))[i] (0 + ↑i) clause) ∨
+      matchesLiteral (A1[n - 1]'(by omega)) (0 + (A1.take (n - 1)).length) clause := by
+  obtain ⟨⟨i, hi⟩, hml⟩ := hasMatchingAssignment_some_matchesLiteral n A1 clause hA1 h
+  -- hi : i < n,  hml : matchesLiteral (A1[i]'_) i clause
+  have htake_len : (A1.take (n - 1)).length = n - 1 := by rw [List.length_take]; omega
+  by_cases hlt : i < n - 1
+  · refine Or.inl ⟨⟨i, by rw [htake_len]; exact hlt⟩, ?_⟩
+    simp only [Nat.zero_add]
+    have hval : (A1.take (n - 1))[i]'(by rw [List.length_take]; omega) = A1[i]'(by omega) := by
+      apply List.getElem_take
+    exact hval ▸ hml
+  · have heq : i = n - 1 := by omega
+    subst heq
+    simp only [htake_len, Nat.zero_add]
+    exact Or.inr hml
+
 /-- clauseWord ++ suffix from START_POS reduces to testWords ++ endTestWord ++ suffix from NACTD. -/
 theorem clauseWord_start_preamble_cons (n : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hA1 : A1.length = n + 1) :
@@ -200,3 +243,33 @@ theorem clauseWord_start_nonsat_cons (n : Nat) (clause : Clause) (suffix : List 
       (A1[n - 1]'(by omega)) PileType.S A2 hA2
     rw [if_neg (by decide)] at hend
     omega
+
+/-- clauseWord in consumption form from START_POS: sat case.
+    When the clause has a satisfying assignment, consumes n blocks and lands at END_POS. -/
+theorem clauseWord_start_sat_cons (n : Nat) (clause : Clause) (suffix : List Action)
+    (A1 A2 : List PileType) (hn : n ≥ 1) (hA1 : A1.length = n + 1) (hA2 : A2 ≠ [])
+    (h : HasMatchingAssignment n A1 (satisfiesClause · clause)) :
+    applyWord (clauseWord n clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ A2))) START_POS =
+    n * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
+  obtain ⟨vars, hvars, hA1eq, hsat⟩ := h
+  have hQ : A1[n]'(by omega) = PileType.Q := by
+    subst hA1eq
+    rw [List.getElem_append_right (by simp [embedVars, List.length_map, hvars])]
+    simp [embedVars, List.length_map, hvars]
+  have hmachine : A1 ++ A2 =
+      A1.take (n - 1) ++ A1[n - 1]'(by omega) :: PileType.Q :: A2 := by
+    have hdrop : A1.drop (n - 1) ++ A2 = A1[n - 1]'(by omega) :: PileType.Q :: A2 := by
+      have h : (A1 ++ A2).drop (n - 1) = A1.drop (n - 1) ++ A2 := by
+        rw [List.drop_append_eq_append_drop,
+            show n - 1 - A1.length = 0 from by omega, List.drop_zero]
+      rw [← h, list_drop_append_two_last A1 A2 n hA1 (by omega), hQ]
+    rw [← hdrop, ← List.append_assoc, List.take_append_drop]
+  have hact' := hasMatchingAssignment_activation n A1 clause hn hA1 ⟨vars, hvars, hA1eq, hsat⟩
+  rw [clauseWord_start_preamble_cons n clause suffix A1 A2 hA1, ← List.append_assoc, hmachine]
+  have htake_len : (A1.take (n - 1)).length = n - 1 := by rw [List.length_take]; omega
+  have hend := testChain_nactd_end_endpos 0 clause suffix
+    (A1.take (n - 1)) (A1[n - 1]'(by omega)) A2 hA2 hact'
+  simp only [Nat.zero_add, htake_len, show n - 1 + 1 = n from by omega] at hend
+  exact hend
