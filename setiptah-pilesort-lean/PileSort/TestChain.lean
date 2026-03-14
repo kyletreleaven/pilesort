@@ -190,8 +190,7 @@ theorem testChain_disq_end' (k j : Nat) (clause : Clause) (suffix : List Action)
   rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by rw [Nat.add_mul]]
   omega
 
-/-- From ACTD, sentinel form: A1 testWords + endTestWord on x :: Q :: A2.
-    Uses testChain_actd_cons to shift past A1, then endTestWord_consumption ACTD with y=Q. -/
+/-- From ACTD, Q-sentinel: A1 testWords + endTestWord on x :: Q :: A2 reaches END_POS. -/
 theorem testChain_actd_end_new (j : Nat) (clause : Clause) (suffix : List Action)
     (A1 : List PileType) (x : PileType) (A2 : List PileType) (hA2 : A2 ≠ []) :
     applyWord ((List.range' j A1.length).flatMap (fun i => testWord i clause) ++
@@ -199,14 +198,32 @@ theorem testChain_actd_end_new (j : Nat) (clause : Clause) (suffix : List Action
       (compile (virtualPileTypes ALIGN (A1 ++ x :: PileType.Q :: A2))) ACTD =
     (A1.length + 1) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from
-    List.append_assoc ..]
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
   have htc := testChain_actd_cons A1 (x :: PileType.Q :: A2) j clause
     (endTestWord (j + A1.length) clause ++ suffix) (by simp)
   rw [htc]
   have hend := endTestWord_consumption_actd (j + A1.length) clause suffix x PileType.Q A2 hA2
   rw [if_pos rfl] at hend
-  rw [hend]
-  rw [show (A1.length + 1) * ALIGN.length = A1.length * ALIGN.length + ALIGN.length from by
+  rw [hend, show (A1.length + 1) * ALIGN.length = A1.length * ALIGN.length + ALIGN.length from by
     rw [Nat.add_mul, Nat.one_mul]]
+  omega
+
+/-- From ACTD, non-Q sentinel: A1 testWords + endTestWord on x :: et :: A2 reaches penalty
+    (≥ CHAIN_DISQ) when et ≠ Q. -/
+theorem testChain_actd_end_disq (j : Nat) (clause : Clause) (suffix : List Action)
+    (A1 : List PileType) (x et : PileType) (A2 : List PileType) (hA2 : A2 ≠ [])
+    (het : et ≠ PileType.Q) :
+    (A1.length + 2) * ALIGN.length +
+      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ ≤
+    applyWord ((List.range' j A1.length).flatMap (fun i => testWord i clause) ++
+              endTestWord (j + A1.length) clause ++ suffix)
+      (compile (virtualPileTypes ALIGN (A1 ++ x :: et :: A2))) ACTD := by
+  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
+  have htc := testChain_actd_cons A1 (x :: et :: A2) j clause
+    (endTestWord (j + A1.length) clause ++ suffix) (by simp)
+  rw [htc]
+  have hend := endTestWord_consumption_actd (j + A1.length) clause suffix x et A2 hA2
+  rw [if_neg het] at hend
+  rw [show (A1.length + 2) * ALIGN.length = A1.length * ALIGN.length + 2 * ALIGN.length from by
+    rw [Nat.add_mul]]
   omega
