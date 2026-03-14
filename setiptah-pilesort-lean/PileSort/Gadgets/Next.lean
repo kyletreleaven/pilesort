@@ -10,7 +10,7 @@ import PileSort.VirtualPileTypes
 import PileSort.Words
 
 /-- Position END_POS in any applyPile block of ALIGN is S. -/
-theorem applyPile_align_endpos (x : PileType) :
+private theorem applyPile_align_endpos (x : PileType) :
     have : END_POS < (applyPile x ALIGN).length := by cases x <;> decide
     (applyPile x ALIGN)[END_POS] = PileType.S := by
   cases x <;> decide
