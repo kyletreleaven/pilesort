@@ -115,6 +115,18 @@ The target lemmas are:
 Each should reduce to a single `clauseWord_start_consumption` or
 `clauseWord_chain_consumption` application (from Step 2), plus arithmetic.
 
+## Representation mismatch (future work)
+
+The `HasMatchingAssignment` / `embedVars` layer and the `matchesLiteral` layer on raw
+pile types speak different languages.  Bridging them is currently done ad hoc in each
+proof (e.g. `not_hasMatchingAssignment_no_matchesLiteral` for the negative direction,
+`hasMatchingAssignment_some_matchesLiteral` for the positive direction).
+
+In the longer term, consider whether `testChain_nactd_end_endpos` (and friends) should
+accept `satisfiesClause`/`HasMatchingAssignment` hypotheses directly, or whether a small
+library of bridge lemmas is the right abstraction.  Reducing this mismatch would shorten
+the clauseWord proofs and make the proof stack easier to read top-to-bottom.
+
 ## Step 4: Cleanup / deletion
 
 Once Steps 1–3 are complete and the build passes, delete all dead code that is
