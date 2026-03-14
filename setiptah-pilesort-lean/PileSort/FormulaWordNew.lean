@@ -114,7 +114,7 @@
   - clauseWord_start_sat_rep, clauseWord_start_nonsat_rep, next_correct_rep
     (baked into the three corollaries)
 -/
-import PileSort.ClauseWordCorrect
+import PileSort.ClauseWordNew
 import PileSort.Gadgets.Next
 
 /-- Consumption form: clauseWord ++ NEXT with satisfying assignment consumes one
@@ -141,11 +141,13 @@ theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
     match m, hm with
     | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, hxs_ne]
   rw [h_eq]
-  -- (b) apply clauseWord_start_sat on flat machine
+  -- (b) apply clauseWord_start_sat_cons (empty suffix) on flat machine
   have hcw : applyWord (clauseWord n c)
       (compile (virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten))) START_POS =
-      END_POS + n * ALIGN.length :=
-    clauseWord_start_sat n c xs _ hn hxs_len hA2 vars hvars hxs hsat
+      END_POS + n * ALIGN.length := by
+    have h := clauseWord_start_sat_cons n c [] xs _ hn hxs_len hA2 ⟨vars, hvars, hxs, hsat⟩
+    have hnil : ∀ (f : Action → Nat → Nat) s, applyWord [] f s = s := fun _ _ => rfl
+    simp only [List.append_nil, hnil] at h; omega
   rw [hcw]
   -- (c) apply next_correct on flat machine
   have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by simp; omega
@@ -181,8 +183,9 @@ theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
       (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
       START_POS ≥ CHAIN_DISQ + xs.length * ALIGN.length := by
     rw [virtualPileTypes_replicate_peel ALIGN xs m (by omega)]
-    have h := clauseWord_start_nonsat n c xs _ hn hxs_len hA2 hno
-    rw [hxs_len]; exact h
+    have h := clauseWord_start_nonsat_cons n c [] xs _ hn hxs_len hA2 hno
+    have hnil : ∀ (f : Action → Nat → Nat) s, applyWord [] f s = s := fun _ _ => rfl
+    simp only [List.append_nil, hnil] at h; rw [hxs_len]; omega
   have h_mono := applyWord_mono suffix
     (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
     (Nat.le_trans h_cw

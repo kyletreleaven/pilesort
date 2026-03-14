@@ -164,9 +164,9 @@ no longer on the proof path of `formulaWord_correct`:
   - [x] `clauseWord_start_nonsat_cons` (done; simplification to TestChain lemmas deferred)
   - [x] `clauseWord_start_sat_cons`
 - [x] **Step 2b** — `clauseWord_chain_consumption` (in `ClauseWordNew.lean`)
-- [ ] **Step 3a** — Re-prove `clauseNext_good_consumption`
-- [ ] **Step 3b** — Re-prove `clauseNext_bad_consumption`
-- [ ] **Step 3c** — Re-prove `clauseNext_chain_consumption`
+- [x] **Step 3a** — Re-prove `clauseNext_good_consumption`
+- [x] **Step 3b** — Re-prove `clauseNext_bad_consumption`
+- [x] **Step 3c** — `clauseNext_chain_consumption` already used `clauseWord_chain_consumption` (new); no change needed
 - [ ] **Step 4**  — Delete dead code; confirm clean build
 
 ### Dead code (pending Step 4 deletion)
