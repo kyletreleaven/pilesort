@@ -52,42 +52,6 @@ theorem testChain_actd_end (k j : Nat) (clause : Clause) (suffix : List Action)
   rw [show (k + 1) * ALIGN.length = k * ALIGN.length + ALIGN.length from by
     rw [Nat.add_mul, Nat.one_mul], Nat.add_assoc]
 
-/-- From NACTD at activation site, sentinel form (6 segments).
-    x activates (NACTD → ACTD), A1_mid stays ACTD, y is endTestWord variable, Q is sentinel. -/
-theorem testChain_activate_end_new (j : Nat) (clause : Clause) (suffix : List Action)
-    (x : PileType) (A1_mid : List PileType) (y : PileType) (A2 : List PileType) (hA2 : A2 ≠ [])
-    (hlit : matchesLiteral x j clause) :
-    applyWord ((List.range' j (A1_mid.length + 1)).flatMap (fun i => testWord i clause) ++
-              endTestWord (j + A1_mid.length + 1) clause ++ suffix)
-      (compile (virtualPileTypes ALIGN (x :: A1_mid ++ y :: PileType.Q :: A2))) NACTD =
-    (A1_mid.length + 2) * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  -- 1. Peel off the activating testWord
-  rw [show (List.range' j (A1_mid.length + 1)).flatMap (fun i => testWord i clause) ++
-        endTestWord (j + A1_mid.length + 1) clause ++ suffix =
-      testWord j clause ++
-        ((List.range' (j + 1) A1_mid.length).flatMap (fun i => testWord i clause) ++
-          endTestWord (j + A1_mid.length + 1) clause ++ suffix) from by
-    rw [List.range'_succ, List.flatMap_cons]; simp only [List.append_assoc]]
-  -- 2. testWord_consumption_nactd with matching literal → ACTD
-  have htw := testWord_consumption_nactd j clause
-    ((List.range' (j + 1) A1_mid.length).flatMap (fun i => testWord i clause) ++
-      endTestWord (j + A1_mid.length + 1) clause ++ suffix)
-    x (A1_mid ++ y :: PileType.Q :: A2) (by simp)
-  rw [if_pos hlit] at htw
-  simp only [List.cons_append] at htw ⊢
-  rw [htw]
-  -- 3. testChain_actd_end_new on A1_mid ++ y :: Q :: A2
-  rw [show j + A1_mid.length + 1 = (j + 1) + A1_mid.length from by omega]
-  have hae := testChain_actd_end_new (j + 1) clause suffix A1_mid y A2 hA2
-  rw [hae]
-  -- 4. Arithmetic
-  rw [show (A1_mid.length + 2) * ALIGN.length =
-      ALIGN.length + (A1_mid.length + 1) * ALIGN.length from by
-    rw [show A1_mid.length + 2 = 1 + (A1_mid.length + 1) from by omega,
-        Nat.add_mul, Nat.one_mul]]
-  omega
-
 /-- From NACTD at activation site (old form): the activating testWord (index j, matching A1[0])
     transitions NACTD → ACTD, then k remaining testWords + endTestWord reach END_POS. -/
 theorem testChain_activate_end (k j : Nat) (clause : Clause) (suffix : List Action)
@@ -332,33 +296,6 @@ theorem testChain_sat_end_lt (k j i₀ : Nat) (clause : Clause) (suffix : List A
   -- 4. Arithmetic: i₀ * m + (k-1-i₀+2) * m = (k+1) * m
   rw [← Nat.add_assoc, ← Nat.add_mul,
       show i₀ + (k - 1 - i₀ + 2) = k + 1 from by omega]
-
-/-- Activation at the endTestWord, sentinel decomposition form.
-    A1 = non-matching prefix, x = matching last variable, Q = sentinel. -/
-theorem testChain_sat_end_eq (j : Nat) (clause : Clause) (suffix : List Action)
-    (A1 : List PileType) (x : PileType) (A2 : List PileType) (hA2 : A2 ≠ [])
-    (hml : matchesLiteral x (j + A1.length) clause)
-    (hno : ∀ i (hi : i < A1.length), ¬matchesLiteral A1[i] (j + i) clause) :
-    applyWord ((List.range' j A1.length).flatMap (fun i => testWord i clause) ++
-              endTestWord (j + A1.length) clause ++ suffix)
-      (compile (virtualPileTypes ALIGN (A1 ++ x :: PileType.Q :: A2))) NACTD =
-    (A1.length + 1) * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN (PileType.Q :: A2))) END_POS := by
-  -- 1. Reassociate word, apply testChain_nactd
-  rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from
-    List.append_assoc ..]
-  have htcn := testChain_nactd A1 (x :: PileType.Q :: A2) j clause
-    (endTestWord (j + A1.length) clause ++ suffix) (by simp) hno
-  rw [htcn]
-  -- 2. endTestWord_consumption_nactd with matchesLiteral and y=Q
-  have hend := endTestWord_consumption_nactd (j + A1.length) clause suffix
-    x PileType.Q A2 hA2
-  rw [if_pos ⟨rfl, hml⟩] at hend
-  rw [hend]
-  -- 3. Arithmetic
-  rw [show (A1.length + 1) * ALIGN.length = A1.length * ALIGN.length + ALIGN.length from by
-    rw [Nat.add_mul, Nat.one_mul]]
-  omega
 
 /-- Case i₀ = k: activation at the endTestWord (old form). -/
 theorem testChain_sat_end_eq_old (k j : Nat) (clause : Clause) (suffix : List Action)
