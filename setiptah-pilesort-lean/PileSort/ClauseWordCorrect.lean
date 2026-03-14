@@ -241,18 +241,3 @@ theorem clauseWord_start_consumption (n : Nat) (clause : Clause) (suffix : List 
           applyWord_compile_append_shift, virtualPileTypes_length, hA1]
     rw [← hshift]
     exact applyWord_mono suffix _ hcw
-
-/-- testWords ++ endTestWord from CLAUSE_DISQ: specialization of testChain_disq_end'
-    with k = n-1, j = 0. -/
-theorem testChain_disq_end (n : Nat) (clause : Clause) (suffix : List Action)
-    (A1 A2 : List PileType) (hn : n ≥ 1)
-    (hA1 : A1.length = n + 1) (hA2 : A2 ≠ []) :
-    applyWord ((List.range (n - 1)).flatMap (fun i => testWord i clause) ++
-              endTestWord (n - 1) clause ++ suffix)
-      (compile (virtualPileTypes ALIGN (A1 ++ A2))) CLAUSE_DISQ ≥
-    (n + 1) * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
-  rw [show List.range (n - 1) = List.range' 0 (n - 1) from List.range_eq_range' ..,
-      show (n + 1) = (n - 1 + 2) from by omega,
-      show endTestWord (n - 1) = endTestWord (0 + (n - 1)) from by simp]
-  exact testChain_disq_end' (n - 1) 0 clause suffix A1 A2 (by omega) hA2

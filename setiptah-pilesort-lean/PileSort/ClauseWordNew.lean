@@ -4,12 +4,17 @@ import PileSort.Gadgets.StartClause
 import PileSort.TestConsume
 import PileSort.TestChain
 
+theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
+    (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by
+  rw [List.drop_append_eq_append_drop, show k - A1.length = 0 from by omega,
+      List.drop_zero, list_drop_two A1 k hA1]; simp
+
 theorem list_drop_append_two_last {α : Type} (A1 A2 : List α) (n : Nat)
     (hA1 : A1.length = n + 1) (hn : n ≥ 1) :
     (A1 ++ A2).drop (n - 1) = A1[n - 1]'(by omega) :: A1[n]'(by omega) :: A2 := by
-  have h := list_drop_append_two A1 A2 (n - 1) (by omega)
-  simp only [show n - 1 + 1 = n from by omega] at h
-  exact h
+  rw [List.drop_append_eq_append_drop, show n - 1 - A1.length = 0 from by omega,
+      List.drop_zero, list_drop_two A1 (n - 1) (by omega)]
+  simp [show n - 1 + 1 = n from by omega]
 
 /-- clauseWord in consumption form from CHAIN_DISQ: consumes n+1 blocks.
 

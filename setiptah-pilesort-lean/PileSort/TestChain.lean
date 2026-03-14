@@ -131,34 +131,6 @@ theorem testChain_nactd_cons : ∀ (A1 A2 : List PileType)
       show ALIGN.length + (rest.length * ALIGN.length + _) = (rest.length + 1) * ALIGN.length + _
       rw [Nat.add_mul, Nat.one_mul]; omega
 
-/-- Chaining testWords from CLAUSE_DISQ: each step shifts by one block and preserves ≥ CLAUSE_DISQ.
-    After k steps on range' start k, the result is ≥ k * m + (suffix result on dropped types).
-
-    Induction on k:
-    - k = 0: range' is empty, trivial.
-    - k + 1: peel off testWord start via range'_succ + flatMap_cons.
-      testWord_consumption (CLAUSE_DISQ case) gives ≥ m + (rest on tail).
-      IH gives rest on tail ≥ k * m + (suffix on drop). Combine with omega. -/
-theorem testChain_disq : ∀ (k : Nat) (start : Nat) (clause : Clause)
-    (suffix : List Action) (types : List PileType), k < types.length →
-    applyWord ((List.range' start k).flatMap (fun i => testWord i clause) ++ suffix)
-      (compile (virtualPileTypes ALIGN types)) CLAUSE_DISQ >=
-    k * ALIGN.length +
-      applyWord suffix (compile (virtualPileTypes ALIGN (types.drop k))) CLAUSE_DISQ
-  | 0, _, _, _, _, _ => by simp
-  | k + 1, start, clause, suffix, [], htypes => by simp at htypes
-  | k + 1, start, clause, suffix, x :: rest, htypes => by
-    simp only [List.length_cons] at htypes
-    have hrest : rest ≠ [] := by intro h; subst h; simp at htypes
-    rw [List.range'_succ, List.flatMap_cons, List.append_assoc]
-    have htw := testWord_consumption_disq start clause
-      ((List.range' (start + 1) k).flatMap (fun i => testWord i clause) ++ suffix)
-      x rest hrest
-    have hih := testChain_disq k (start + 1) clause suffix rest (by omega)
-    show _ >= (k + 1) * ALIGN.length + applyWord suffix
-      (compile (virtualPileTypes ALIGN (List.drop k rest))) CLAUSE_DISQ
-    rw [Nat.succ_mul]; omega
-
 /-- When A1 has exactly k+2 elements, dropping the first k gives the last two. -/
 theorem list_drop_two {α : Type} (A1 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
     A1.drop k = [A1[k]'(by omega), A1[k + 1]'(by omega)] := by
@@ -169,20 +141,14 @@ theorem list_drop_two {α : Type} (A1 : List α) (k : Nat) (hA1 : A1.length = k 
     · have := List.getElem_drop (i := k) (j := 0) (h := by omega) A1; simp [h] at this; exact this
     · have := List.getElem_drop (i := k) (j := 1) (h := by omega) A1; simp [h] at this; exact this
 
-theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
-    (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by
-  rw [List.drop_append_eq_append_drop,
-      show k - A1.length = 0 from by omega, List.drop_zero,
-      list_drop_two A1 k hA1]; simp
-
 /-- From CLAUSE_DISQ: k testWords (indices j..j+k-1) + endTestWord (j+k) reach
     penalty zone, consuming k+2 blocks total.
 
     Proof:
     1. Reassociate word as testWords ++ (endTestWord ++ suffix).
-    2. testChain_disq (k steps): shifts by k*m, stays ≥ CLAUSE_DISQ on A1.drop(k) ++ A2.
-    3. A1.drop(k) has ≥ 2 elements (since A1.length = k+2).
-    4. endTestWord_consumption CLAUSE_DISQ case: ≥ 2*m + suffix from CHAIN_DISQ on A2.
+    2. testChain_disq_cons on (A1.take k) ++ (A1.drop k ++ A2): shifts by k*m.
+    3. Rewrite A1.drop k = [A1[k], A1[k+1]] via list_drop_two.
+    4. endTestWord_consumption_disq: ≥ 2*m + suffix from CHAIN_DISQ on A2.
     5. Total: k*m + 2*m = (k+2)*m. -/
 theorem testChain_disq_end' (k j : Nat) (clause : Clause) (suffix : List Action)
     (A1 A2 : List PileType) (hA1 : A1.length = k + 2) (hA2 : A2 ≠ []) :
@@ -191,13 +157,23 @@ theorem testChain_disq_end' (k j : Nat) (clause : Clause) (suffix : List Action)
       (compile (virtualPileTypes ALIGN (A1 ++ A2))) CLAUSE_DISQ ≥
     (k + 2) * ALIGN.length +
       applyWord suffix (compile (virtualPileTypes ALIGN A2)) CHAIN_DISQ := by
-  -- 1. Reassociate word, apply testChain_disq, rewrite drop
   rw [show _ ++ endTestWord _ _ ++ suffix = _ ++ (endTestWord _ _ ++ suffix) from List.append_assoc ..]
-  have htc := testChain_disq k j clause (endTestWord (j + k) clause ++ suffix) (A1 ++ A2) (by simp [hA1]; omega)
-  rw [list_drop_append_two A1 A2 k hA1] at htc
-  -- 2. endTestWord_consumption_disq
-  have hend := endTestWord_consumption_disq (j + k) clause suffix (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2
-  -- 3. Combine: htc ≥ k*m + hend, hend ≥ 2*m + suffix result
+  have hdrop_ne : A1.drop k ++ A2 ≠ [] := by
+    have hne : A1.drop k ≠ [] := by
+      intro h
+      have := congrArg List.length h
+      simp [List.length_drop, hA1] at this
+      omega
+    intro h; exact hne (List.append_eq_nil.mp h).1
+  have htc := testChain_disq_cons (A1.take k) (A1.drop k ++ A2) j clause
+    (endTestWord (j + k) clause ++ suffix) hdrop_ne
+  rw [show A1.take k ++ (A1.drop k ++ A2) = A1 ++ A2 from by
+      rw [← List.append_assoc, List.take_append_drop],
+    show (A1.take k).length = k from by rw [List.length_take]; omega,
+    show A1.drop k ++ A2 = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 from by
+      rw [list_drop_two A1 k hA1]; simp] at htc
+  have hend := endTestWord_consumption_disq (j + k) clause suffix
+    (A1[k]'(by omega)) (A1[k + 1]'(by omega)) A2 hA2
   show _ ≥ (k + 2) * ALIGN.length + _
-  rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by
-    rw [Nat.add_mul]]; omega
+  rw [show (k + 2) * ALIGN.length = k * ALIGN.length + 2 * ALIGN.length from by rw [Nat.add_mul]]
+  omega
