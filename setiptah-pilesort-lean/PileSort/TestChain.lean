@@ -1,3 +1,33 @@
+/-
+  TestChain: consumption-form lemmas for a sequence of testWords.
+
+  ## Representation choice: A1 ++ A2 vs types.drop k
+
+  The individual `testWord_consumption_*` lemmas in TestConsume use `x :: rest`
+  to describe the pile-type list: one word consumes `x` from the front and
+  leaves `rest` for the suffix. This is natural for a single step.
+
+  When chaining k test words, there are two equivalent ways to parameterize
+  the pile-type list:
+
+  **Index form** (`types` + `k < types.length`, result mentions `types.drop k`):
+    Used by the old `testChain_disq` in ClauseWordCorrect.lean.  Falls out
+    naturally from naïve induction — each step increments k and peels one
+    element — but `types.drop k` is opaque at call sites and requires extra
+    rewrites to unfold.
+
+  **Destructured form** (`A1 ++ A2`, result mentions `A2` directly):
+    Used by all three lemmas in this file.  The caller pre-splits the list at
+    the boundary and names both halves; the conclusion then mentions `A2`
+    directly, with no `drop` expression to simplify away.  The guard condition
+    `A2 ≠ []` replaces `k < types.length`.
+
+  The two forms are logically equivalent (set `A1 = types.take k`,
+  `A2 = types.drop k`), but the destructured form is more ergonomic: call
+  sites already have concrete `A1`/`A2` in hand, and no extra simp lemmas
+  about `List.drop` are needed to connect the conclusion to the rest of the
+  proof.
+-/
 import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Gadgets.StartClause
