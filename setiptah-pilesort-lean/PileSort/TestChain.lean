@@ -38,7 +38,48 @@
   revisited per-lemma once all lemmas are in consumption form.
 
   The lemmas in this file use the destructured form.  The old index-form
-  `testChain_disq` (ClauseWordCorrect.lean) is dead code pending deletion.
+  variants (`testChain_actd`, `testChain_nactd_old` in ClauseWord.lean) are
+  dead code pending deletion.
+
+  ## Plain-chain lemmas
+
+  Three lemmas cover a sequence of k testWords from a given start state:
+
+  - **`testChain_actd_cons`**: from ACTD, shifts past A1, stays at ACTD (= form).
+  - **`testChain_disq_cons`**: from CLAUSE_DISQ, shifts past A1, stays ≥ CLAUSE_DISQ.
+  - **`testChain_nactd_cons`**: from NACTD, shifts past A1, landing at ACTD if
+    `∃ i : Fin A1.length, matchesLiteral A1[i] (start+i) clause`, else NACTD.
+
+  ## End-capped lemmas
+
+  Five lemmas cover a sequence of testWords followed by an endTestWord.  The
+  end-capped form arises at the boundary of a clauseWord gadget.
+
+  - **`testChain_disq_end'`**: from CLAUSE_DISQ, k testWords + endTestWord → ≥ CHAIN_DISQ.
+  - **`testChain_actd_end_new`**: from ACTD, Q sentinel → = END_POS.
+  - **`testChain_actd_end_disq`**: from ACTD, non-Q sentinel → ≥ CHAIN_DISQ.
+  - **`testChain_nactd_end_endpos`**: from NACTD, Q sentinel + any activation → = END_POS.
+  - **`testChain_nactd_end_disq_nomatch`**: from NACTD, Q sentinel + no match → ≥ CHAIN_DISQ.
+  - **`testChain_nactd_end_disq_noQ`**: from NACTD, non-Q sentinel → ≥ CHAIN_DISQ.
+  - **`testChain_nactd_end_disq`**: trivially combines the two NACTD disq cases.
+
+  ### Design note: NACTD end-capped (4-lemma compromise)
+
+  The NACTD end-capped case has two outcome branches (= END_POS vs. ≥ CHAIN_DISQ)
+  and the disq branch splits further on the sentinel (Q or non-Q).  Two designs
+  were considered:
+
+  **3 lemmas** — one per outcome sub-case, each with a single clean hypothesis.
+  Maps 1-1 onto the branches of `clauseWord_start_nonsat_cons`, but leaves an
+  internal Q/S split in that proof.
+
+  **2 lemmas** — combine the two disq sub-cases into one, absorbing the split
+  internally.  Gives a cleaner `clauseWord_start_nonsat_cons` (no case split
+  needed), but makes the combined disq lemma internally more complex.
+
+  Rather than commit to either, all three focused lemmas are provided plus a
+  trivial combined one (`testChain_nactd_end_disq`).  Call sites use whichever
+  form fits best; the two-line combined lemma costs nothing extra.
 -/
 import PileSort.Mono
 import PileSort.Reduction
