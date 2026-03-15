@@ -1,13 +1,52 @@
 # PileSort — Lean 4 Formalization
 
-Machine-checked proofs for the NP-hardness reduction gadgets from
+Machine-checked proofs for the NP-hardness reduction from
 "Sorting by pile shuffles on queue-like and stack-like piles can be hard"
 ([arXiv:2506.05518](https://arxiv.org/abs/2506.05518)).
 
+## Introduction
+
+In pile shuffle, a deck of cards is repeatedly *dealt* into piles and
+*collected* back. Each pile is either queue-like (Q: dealt face-up) or stack-like (S: dealt face-down). A
+permutation is sortable if there exists a type assignment
+for each pile in each round
+so that some deal can return the deck in sorted order. The paper shows that deciding sortability
+is NP-hard in certain scenarios when pile types can be heterogeneous (mixed Q and S across piles).
+
+## Proof by Reduction
+
+The main theorem of this project reduces SAT to an abstraction of pile-sort feasibility via a word construction:
+given a CNF formula with `n` variables and `m` clauses, `formulaWord n clauses`
+is a sequence of "actions" such that a specific automaton accepts it if and
+only if the formula is satisfiable. 
+The word itself is an abstract representation of the input permutation,
+while the candidate automata correspond to the allowable pile-type assignments for a shuffle.
+
+The top-level Lean theorem is:
+
+```lean
+theorem formulaWord_correct (n : Nat) (clauses : List Clause)
+    (xs : List PileType) (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hne : clauses ≠ []) :
+    accepts
+      (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate clauses.length PileType.Q))
+      (formulaWord n clauses)
+    ↔ HasMatchingAssignment n xs (satisfiesFormula · clauses)
+```
+
+where `accepts types word` holds when the compiled automaton for `types` does not
+reach its sink state after processing `word` from state 0.
+
+
+## Building up from the Python code
 The Python code in `setiptah-pilesort-hard` defines finite state automata
 over pile types (Q=queue, S=stack), gadget words, and tests that verify
-properties of these gadgets. Each test checks a finite set of cases and
-becomes a machine-verified Lean 4 theorem proved by `decide` / `native_decide`.
+properties of these gadgets.
+Each test checks a finite set of cases exhaustively.
+
+This project bridges the gap from those brute-force gadget checks to the
+correctness of the full reduction:
+Each gadget lemma becomes a machine-verified Lean 4 theorem proved by `decide` / `native_decide`.
+Then they are composed by hand into `formulaWord_correct`.
 
 ## Prerequisites
 
@@ -46,14 +85,15 @@ setiptah-pilesort-lean/
       Next.lean              -- theorem next_correct
       ForceQ.lean            -- theorem forceq_correct
       Activation.lean        -- theorem activation_correct
-      EndActivation.lean     -- theorem end_activation_correct
       Alignment.lean         -- theorems align_aligned_correct + align_unaligned_correct
       Lifting.lean           -- gadget_lift_eq, gadget_lift_ge
     Reduction.lean           -- Literal, Clause, testWord, clauseWord, formulaWord, accepts
     TestConsume.lean         -- testWord and endTestWord consumption lemmas
-    ClauseWord.lean          -- clauseWord_correct (composing gadget theorems)
-    ClauseWordCorrect.lean   -- clauseWord_correct adapter lemmas for replicated types
-    FormulaWord.lean         -- formulaWord_correct (composing clauseWord_correct)
+    TestChain.lean           -- consumption-form lemmas for sequences of testWords
+    ClauseWord.lean          -- legacy index-form testChain lemmas (not on main proof path)
+    ClauseWordNew.lean       -- clauseWord_chain_consumption + HasMatchingAssignment theorems
+    FormulaWordNew.lean      -- clauseNext_*_consumption + formulaWord_chain_pos'
+    FormulaWord.lean         -- formulaWord_correct (composing clauseWord theorems)
 ```
 
 ## Type Representations
@@ -137,18 +177,36 @@ using two helpers proved by `unfold compile; split <;> omega`:
 - `compile_step_ge`: `s ≤ compile types act s`
 - `compile_step_le`: `compile types act s ≤ s + 1`
 
-### Formula-level proof (FormulaWord.lean)
+### Formula-level proof
 
-The proof is organized around `formulaState`, a tail-recursive computation
-that mirrors the clause-by-clause structure of `formulaWord`. See the module
-doc in `FormulaWord.lean` for the full strategy.
+`formulaWord_correct` is proved via a stack of *consumption-form* lemmas.
+The consumption form factors the behavior of a word sequence into a fixed
+offset plus the behavior of a suffix on a residual machine:
+
+```
+applyWord (word ++ suffix) machine state = offset + applyWord suffix machine' state'
+```
+
+This makes lemmas composable: each layer hands the suffix down to the next.
+The stack, bottom to top:
+
+- **TestChain.lean** — consumption lemmas for sequences of `testWord`s in the
+  plain-chain and end-capped cases.
+- **ClauseWordNew.lean** — `clauseWord_chain_consumption` and the sat/nonsat
+  consumption lemmas, plus bridge lemmas between the `HasMatchingAssignment`
+  vocabulary and the raw `matchesLiteral` pile-type layer.
+- **FormulaWordNew.lean** — `clauseNext_good_consumption`,
+  `clauseNext_bad_consumption`, and `clauseNext_chain_consumption`, which lift
+  one `clauseWord ++ NEXT` step to the replicated-types machine.
+- **FormulaWord.lean** — `formulaWord_correct` by induction on clauses, using
+  the three `clauseNext_*_consumption` lemmas as the inductive engine.
 
 ## Status
 
 | Phase | Content | Status |
 |-------|---------|--------|
 | 1 | Core infrastructure + StartClause, Next, ForceQ | Done |
-| 2 | Activation, EndActivation | Done |
+| 2 | Activation | Done |
 | 3 | Alignment, Monotonicity, compile refactor | Done |
 | 4 | SAT reduction: clauseWord_correct, formulaWord_correct | Done |
 
