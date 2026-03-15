@@ -1,13 +1,14 @@
 /-
-  Test chain end lemmas: combining testWord chains with endTestWord.
+  Single-step consumption lemmas for the testWord and endTestWord gadgets.
 
-  These combine testChain_actd/testChain_disq (from ClauseWord) with
-  endTestWord_consumption to give end-to-end results for the
-  testWords ++ endTestWord portion of clauseWord.
+  Defines `matchesLiteral` and proves that one testWord or endTestWord consumes
+  exactly one pile-type block, leaving a known starting state for the suffix:
+  ACTD stays ACTD, CLAUSE_DISQ stays ≥ CLAUSE_DISQ, and NACTD transitions to
+  ACTD or stays NACTD depending on whether the literal matches.
 
-  Generalized to start from any index j, so the same lemma covers:
-  - j=0: full chain from the beginning (used by clauseWord_chain_consumption)
-  - j>0: tail chain after activation (used by clauseWord_start satisfying case)
+  These are the atomic building blocks composed by TestChain.lean into regular
+  and end-capped chain lemmas; see the TestChain.lean module docstring for the
+  distinction between the two.
 -/
 import PileSort.Mono
 import PileSort.Reduction

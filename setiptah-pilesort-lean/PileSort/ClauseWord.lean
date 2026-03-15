@@ -1,4 +1,12 @@
+/-
+  Legacy index-form testChain lemmas, retained for experimentation.
 
+  The two theorems here (`testChain_actd` and `testChain_nactd_old`) are the
+  index-based counterparts of `testChain_actd_cons` and `testChain_nactd_cons`
+  in TestChain.lean.  They are not on the proof path of `formulaWord_correct`
+  and are candidates for deletion once the index-vs-destructured question
+  (see plan.md) is resolved.
+-/
 import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Gadgets.StartClause

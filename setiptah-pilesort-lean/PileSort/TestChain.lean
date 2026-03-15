@@ -41,6 +41,23 @@
   variants (`testChain_actd`, `testChain_nactd_old` in ClauseWord.lean) are
   dead code pending deletion.
 
+  ## Regular chains vs. end-capped chains
+
+  A clauseWord gadget for a clause with n variables consists of a START_CLAUSE
+  preamble, then n-1 testWords, followed by one endTestWord.  This gives two natural sub-problems:
+
+  **Regular chains** cover a prefix of k testWords only.  Each testWord uses the
+  same activation gadget and simply shifts the machine state forward by one block.
+  The ending state (ACTD, NACTD, or ≥ CLAUSE_DISQ) is passed on to the suffix.
+
+  **End-capped chains** cover k testWords followed by a single endTestWord.
+  The endTestWord uses a different (end-activation) gadget that closes off the
+  clause: if the clause is satisfied it reaches END_POS; otherwise it reaches
+  the penalty zone (≥ CHAIN_DISQ).  End-capped chains give a complete picture
+  of one clauseWord's contribution to the machine trace.
+
+  The single-step building blocks for both kinds of chain are in TestConsume.lean.
+
   ## Plain-chain lemmas
 
   Three lemmas cover a sequence of k testWords from a given start state:

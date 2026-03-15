@@ -1,24 +1,9 @@
 /-
-  Formula-level correctness: acceptance ↔ satisfying assignment.
-
-  ## Module contents
-
-  **`formulaWord_sat_pos'`** and **`formulaWord_unsat_pos'`**: direct inductive
-  proofs on `clauses_ ++ [last]`, using only consumption-form corollaries from
-  `FormulaWordNew` (`clauseNext_good_consumption`, `clauseNext_bad_consumption`,
-  `formulaWord_chain_pos'`) and `clauseWord_start_consumption` for the base case.
-  The machine carries `clauses_.length + 2` vestigial Q-replications throughout;
-  each consumption corollary peels one, leaving exactly the right amount for the IH.
-
-  **`not_satisfiesFormula_rest`**: when no assignment satisfies `c :: rest` but
-  some assignment satisfies `c`, then no assignment satisfies `rest`. Uses
-  `embedVars_injective` since `xs` uniquely determines `vars`.
-
-  **`formulaWord_correct'`**: derives the acceptance iff from the two pos lemmas,
-  absorbing the truncation plumbing via `accepts_iff_applyWord_ext`.
-
-  **`formulaWord_correct`**: wraps `formulaWord_correct'` after splitting the
-  non-empty clause list as `init ++ [last]`.
+  The top-level correctness theorem for the SAT-to-pile-sort reduction:
+  `formulaWord_correct` states that the pile-sort machine compiled from
+  `virtualPileTypes ALIGN xs` accepts `formulaWord n clauses` if and only if
+  there exists an assignment satisfying the formula.  This is the main result
+  of the reduction.
 -/
 import PileSort.Mono
 import PileSort.Reduction
