@@ -52,9 +52,11 @@ theorem formulaWord_from_start_sat' (n : Nat) (clauses_ : List Clause) (last : C
     have hsat_last : satisfiesClause vars last := hsat last (by simp)
     have hhas : HasMatchingAssignment n xs (satisfiesClause · last) :=
       ⟨vars, hvars, hxs, hsat_last⟩
-    have h := clauseWord_start_consumption n last [] xs _ hn hxs_len hA2
-    rw [if_pos hhas, List.append_nil] at h
-    simpa using h
+    simp only [show (2 : Nat) - 1 = 1 from rfl]
+    have h := clauseWord_start_sat_cons n last [] xs _ hn hxs_len hA2 hhas
+    have hnil : ∀ (f : Action → Nat → Nat) s, applyWord [] f s = s := fun _ _ => rfl
+    simp only [List.append_nil, hnil] at h
+    rw [Nat.add_comm] at h; exact h
   | cons c rest ih =>
     simp only [List.length_cons]
     rw [formulaWord_cons]
@@ -115,12 +117,10 @@ theorem formulaWord_from_start_unsat' (n : Nat) (clauses_ : List Clause) (last :
     have hno_last : ¬ HasMatchingAssignment n xs (satisfiesClause · last) := by
       intro ⟨vars, hvars, hxs', hsat'⟩
       exact hno ⟨vars, hvars, hxs', by simp [satisfiesFormula, hsat']⟩
-    have h := clauseWord_start_consumption n last [] xs xs hn hxs_len hxs_ne
-    rw [if_neg hno_last, List.append_nil] at h
-    have hnil : applyWord ([] : List Action) (compile (virtualPileTypes ALIGN xs)) CHAIN_DISQ
-        = CHAIN_DISQ := rfl
-    rw [hnil, ← hxs_len] at h
-    exact h
+    have h := clauseWord_start_nonsat_cons n last [] xs xs hn hxs_len hxs_ne hno_last
+    have hnil : ∀ (f : Action → Nat → Nat) s, applyWord [] f s = s := fun _ _ => rfl
+    simp only [List.append_nil, hnil] at h
+    rw [hxs_len]; omega
   | cons c rest ih =>
     simp only [List.length_cons, show rest.length + 1 + 2 = rest.length + 3 from by omega]
     rw [formulaWord_cons]
