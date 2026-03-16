@@ -1,4 +1,6 @@
 import PileSort.Basic
+import PileSort.Permutations
+import PileSort.PileShuffle
 import PileSort.Automata
 import PileSort.VirtualPileTypes
 import PileSort.Words
