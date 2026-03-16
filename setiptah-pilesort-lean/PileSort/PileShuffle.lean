@@ -30,7 +30,7 @@ def Deck.sorted (n : Nat) : Deck n where
     Requires l to be Nodup with length n. -/
 def Deck.fromDeckSeq {n : Nat} (l : List (Fin n))
     (hnd : l.Nodup) (hlen : l.length = n) : Deck n where
-  cardAt k  := l[k.val]'(hlen.symm ▸ k.isLt)
+  cardAt    := l.get ∘ Fin.cast hlen.symm
   posOf  c  := ⟨l.indexOf c,
                 Nat.lt_of_lt_of_eq
                   (indexOf_lt_length (Fin.mem_of_nodup_length hnd hlen c))
