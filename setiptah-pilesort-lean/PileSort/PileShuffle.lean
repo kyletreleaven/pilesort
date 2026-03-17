@@ -65,7 +65,11 @@ def collectPile {α : Type} (t : PileType) (pile : List α) : List α :=
 
 /-- One round of pile shuffle: deal all cards into piles, collect each pile, concatenate.
     Returns the resulting deck sequence (position order).
-    Nodup and length proofs are deferred. -/
+    The two proof obligations (Nodup, length = n) both follow from the fact that
+    `assign` partitions all n cards across the piles: each card lands in exactly one
+    pile, so the piles are disjoint and their sizes sum to n.  The proofs require
+    infrastructure lemmas ("filterMap of a nodup list with an injective function is
+    nodup", "flatMap of disjoint nodup lists is nodup") that are not yet in scope. -/
 def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)
     (assign : Fin n → Fin types.length) : Deck n :=
   Deck.fromDeckSeq
