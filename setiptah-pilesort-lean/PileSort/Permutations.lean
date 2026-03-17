@@ -12,6 +12,9 @@
     · Fin.mem_of_nodup_length — Nodup list of Fin n with length n contains every element
 -/
 
+def Injective {α β : Type} (f : α → β) : Prop :=
+  ∀ ⦃a b⦄, f a = f b → a = b
+
 variable {α : Type} [DecidableEq α]
 
 -- indexOf_cons spells out the cons case; used throughout.
@@ -77,9 +80,18 @@ theorem indexOf_getElem {l : List α} (hnd : l.Nodup)
       rw [indexOf_cons_ne x (xs[k]'hk') xs hne]
       exact congrArg (· + 1) (ih hnd' k hk')
 
+/-- For an injective f : Fin n → Fin n, every c is in the range.
+    (Uniqueness follows from injectivity; existence is the content.) -/
+-- TODO(eventually): replace sorry; depends on Fin.mem_of_nodup_length (finite pigeonhole).
+theorem Fin.invFun_spec {n : Nat} {f : Fin n → Fin n}
+    (hinj : Injective f)
+    (c : Fin n) : ∃ k : Fin n, f k = c := by
+  sorry
+
 /-- A Nodup list of Fin n with length n contains every element of Fin n. -/
+-- TODO(eventually): replace sorry with a real proof.
+-- Strategy: k ↦ l[k] is injective (by indexOf_getElem), hence surjective on Fin n
+-- (finite pigeonhole), so c is in the range and therefore c ∈ l.
 theorem Fin.mem_of_nodup_length {n : Nat} {l : List (Fin n)}
     (hnd : l.Nodup) (hlen : l.length = n) (c : Fin n) : c ∈ l := by
-  -- The function k ↦ l[k] : Fin n → Fin n is injective (by indexOf_getElem),
-  -- hence surjective on Fin n (finite pigeonhole).  c is in the range, so c ∈ l.
   sorry

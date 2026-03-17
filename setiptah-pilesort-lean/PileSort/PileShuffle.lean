@@ -39,3 +39,43 @@ def Deck.fromDeckSeq {n : Nat} (l : List (Fin n))
     have hmem := Fin.mem_of_nodup_length hnd hlen c
     exact getElem_indexOf hnd hmem
   right_inv k := Fin.ext (indexOf_getElem hnd k.val (hlen.symm ▸ k.isLt))
+
+/-- Build a Deck from a positions array (poses c = position of card c).
+    Requires poses to be injective (hence bijective, since Fin n is finite).
+    Noncomputable because the inverse is constructed via Classical.choice. -/
+noncomputable def Deck.fromCardPositions {n : Nat} (poses : Fin n → Fin n)
+    (hinj : Injective poses) : Deck n where
+  posOf  := poses
+  cardAt k := (Fin.invFun_spec hinj k).choose
+  left_inv  c := hinj (Fin.invFun_spec hinj (poses c)).choose_spec
+  right_inv k := (Fin.invFun_spec hinj k).choose_spec
+
+/-- Cards assigned to pile p, listed in deck order (iterating positions via cardAt). -/
+def dealToPile {n m : Nat} (d : Deck n) (assign : Fin n → Fin m) (p : Fin m) :
+    List (Fin n) :=
+  (List.finRange n).filterMap (fun k =>
+    let c := d.cardAt k
+    if assign c = p then some c else none)
+
+/-- Collect a pile: Queue (FIFO) preserves order; Stack (LIFO) reverses it. -/
+def collectPile {α : Type} (t : PileType) (pile : List α) : List α :=
+  match t with
+  | .Q => pile
+  | .S => pile.reverse
+
+/-- One round of pile shuffle: deal all cards into piles, collect each pile, concatenate.
+    Returns the resulting deck sequence (position order).
+    Nodup and length proofs are deferred. -/
+def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)
+    (assign : Fin n → Fin types.length) : Deck n :=
+  Deck.fromDeckSeq
+    ((List.finRange types.length).flatMap (fun p =>
+      collectPile (types.get p) (dealToPile d assign p)))
+    (by sorry)  -- TODO: each card appears in exactly one pile (assign is total)
+    (by sorry)  -- TODO: total length = n (assign covers all n cards)
+
+/-- A deck is sortable in one round with a given pile-type list if there exists
+    a deal assignment such that the shuffle round produces the sorted deck. -/
+def Sortable {n : Nat} (d : Deck n) (types : List PileType) : Prop :=
+  ∃ assign : Fin n → Fin types.length,
+    shuffleRound d types assign = Deck.sorted n
