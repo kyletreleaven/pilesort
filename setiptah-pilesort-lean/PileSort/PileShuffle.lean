@@ -1,28 +1,24 @@
 /-
   Pile shuffle sort model.
 
-  A Deck n carries both directions of the deck permutation to avoid
-  ambiguity at call sites:
-    · posOf  c = position of card c  (the permutation σ)
-    · cardAt k = card at position k  (σ⁻¹)
-
-  Cards are identified by sorted rank: card c belongs at position c
-  in the sorted deck.
-
   ## Structure
 
   The file is layered:
 
-  1. `Deck n` — the permutation type, with constructors and standard decks.
-
-  2. List-level shuffle (`dealToPile`, `collectPile`, `shuffleSeq`) — the
+  1. List-level shuffle (`dealToPile`, `collectPile`, `shuffleSeq`) — the
      mechanics of pile shuffle on a plain list, with no permutation invariants
      required.  Correctness lemmas (Nodup, length, membership, disjointness)
      live here.
 
+  2. `Deck n` — the permutation type, with constructors and standard decks.
+     Cards are identified by sorted rank: card c belongs at position c.
+     A Deck carries both directions of the permutation:
+       · posOf  c = position of card c  (the permutation σ)
+       · cardAt k = card at position k  (σ⁻¹)
+
   3. `shuffleRound` — lifts `shuffleSeq` to `Deck n` via `Deck.toList` and
      `Deck.fromDeckSeq`.  The proof obligations are discharged by the list-level
-     lemmas.
+     lemmas (TODO: `shuffleSeq_nodup`, `shuffleSeq_length`).
 
   4. `Sortable`, `shuffleRound_order` — higher-level results.
 
@@ -52,6 +48,48 @@
 import PileSort.Basic
 import PileSort.Lists
 import PileSort.Permutations
+
+/-! ## List-level pile shuffle -/
+
+/-- Cards in list l assigned to pile p, in the order they appear in l. -/
+def dealToPile {n m : Nat} (l : List (Fin n)) (assign : Fin n → Fin m) (p : Fin m) :
+    List (Fin n) :=
+  l.filter (fun c => assign c = p)
+
+/-- Collect a pile: Queue (FIFO) preserves order; Stack (LIFO) reverses it. -/
+def collectPile {α : Type} (t : PileType) (pile : List α) : List α :=
+  match t with
+  | .Q => pile
+  | .S => pile.reverse
+
+/-- One pile-shuffle pass on a plain list: deal into piles, collect, concatenate. -/
+def shuffleSeq {n : Nat} (l : List (Fin n)) (types : List PileType)
+    (assign : Fin n → Fin types.length) : List (Fin n) :=
+  (List.finRange types.length).flatMap (fun p =>
+    collectPile (types.get p) (dealToPile l assign p))
+
+/-! ### Basic properties -/
+
+theorem collectPile_length {α : Type} (t : PileType) (pile : List α) :
+    (collectPile t pile).length = pile.length := by
+  cases t <;> simp [collectPile]
+
+theorem collectPile_nodup {α : Type} (t : PileType) (pile : List α) :
+    (collectPile t pile).Nodup ↔ pile.Nodup := by
+  cases t <;> simp [collectPile, List.Nodup, List.pairwise_reverse, Ne, eq_comm]
+
+theorem dealToPile_nodup {n m : Nat} (l : List (Fin n)) (hl : l.Nodup)
+    (assign : Fin n → Fin m) (p : Fin m) : (dealToPile l assign p).Nodup :=
+  hl.filter _
+
+theorem mem_dealToPile {n m : Nat} (l : List (Fin n)) (assign : Fin n → Fin m)
+    (p : Fin m) (c : Fin n) : c ∈ dealToPile l assign p ↔ c ∈ l ∧ assign c = p := by
+  simp [dealToPile, List.mem_filter]
+
+theorem dealToPile_disjoint {n m : Nat} (l : List (Fin n)) (assign : Fin n → Fin m)
+    (p q : Fin m) (c : Fin n) (hp : c ∈ dealToPile l assign p)
+    (hq : c ∈ dealToPile l assign q) : p = q := by
+  simp [mem_dealToPile] at hp hq; exact hp.2.symm.trans hq.2
 
 /-! ## Deck -/
 
@@ -93,16 +131,13 @@ noncomputable def Deck.fromCardPositions {n : Nat} (poses : Fin n → Fin n)
   left_inv  c := hinj (Fin.invFun_spec hinj (poses c)).choose_spec
   right_inv k := (Fin.invFun_spec hinj k).choose_spec
 
+/-- cardAt is injective: distinct positions hold distinct cards. -/
 theorem Deck.cardAt_injective {n : Nat} (d : Deck n) : Injective d.cardAt :=
   fun a b h => by have := d.right_inv a; rw [h, d.right_inv b] at this; exact this.symm
 
 /-- The position-order sequence of cards in a deck. -/
 def Deck.toList {n : Nat} (d : Deck n) : List (Fin n) :=
   (List.finRange n).map d.cardAt
-
-theorem nodup_finRange (n : Nat) : (List.finRange n).Nodup := by
-  simp [List.Nodup, List.pairwise_iff_getElem, Fin.ext_iff, Nat.ne_of_lt]
-  omega
 
 theorem Deck.toList_nodup {n : Nat} (d : Deck n) : d.toList.Nodup :=
   (nodup_finRange n).map (f := d.cardAt) (fun a b hne heq => hne (d.cardAt_injective heq))
@@ -112,48 +147,6 @@ theorem Deck.toList_length {n : Nat} (d : Deck n) : d.toList.length = n := by
 
 theorem Deck.mem_toList {n : Nat} (d : Deck n) (c : Fin n) : c ∈ d.toList :=
   Fin.mem_of_nodup_length d.toList_nodup d.toList_length c
-
-/-! ## List-level pile shuffle -/
-
-/-- Cards in list l assigned to pile p, in the order they appear in l. -/
-def dealToPile {n m : Nat} (l : List (Fin n)) (assign : Fin n → Fin m) (p : Fin m) :
-    List (Fin n) :=
-  l.filter (fun c => assign c = p)
-
-/-- Collect a pile: Queue (FIFO) preserves order; Stack (LIFO) reverses it. -/
-def collectPile {α : Type} (t : PileType) (pile : List α) : List α :=
-  match t with
-  | .Q => pile
-  | .S => pile.reverse
-
-theorem collectPile_length {α : Type} (t : PileType) (pile : List α) :
-    (collectPile t pile).length = pile.length := by
-  cases t <;> simp [collectPile]
-
-theorem collectPile_nodup {α : Type} (t : PileType) (pile : List α) :
-    (collectPile t pile).Nodup ↔ pile.Nodup := by
-  cases t <;> simp [collectPile, List.Nodup, List.pairwise_reverse, Ne, eq_comm]
-
-theorem dealToPile_nodup {n m : Nat} (l : List (Fin n)) (hl : l.Nodup)
-    (assign : Fin n → Fin m) (p : Fin m) : (dealToPile l assign p).Nodup :=
-  hl.filter _
-
-theorem mem_dealToPile {n m : Nat} (l : List (Fin n)) (assign : Fin n → Fin m)
-    (p : Fin m) (c : Fin n) : c ∈ dealToPile l assign p ↔ c ∈ l ∧ assign c = p := by
-  simp [dealToPile, List.mem_filter]
-
-theorem dealToPile_disjoint {n m : Nat} (l : List (Fin n)) (assign : Fin n → Fin m)
-    (p q : Fin m) (c : Fin n) (hp : c ∈ dealToPile l assign p)
-    (hq : c ∈ dealToPile l assign q) : p = q := by
-  simp [mem_dealToPile] at hp hq; exact hp.2.symm.trans hq.2
-
-/-- One pile-shuffle pass on a plain list: deal into piles, collect, concatenate. -/
-def shuffleSeq {n : Nat} (l : List (Fin n)) (types : List PileType)
-    (assign : Fin n → Fin types.length) : List (Fin n) :=
-  (List.finRange types.length).flatMap (fun p =>
-    collectPile (types.get p) (dealToPile l assign p))
-
-/-! ## Lifting to Deck -/
 
 /-- One round of pile shuffle on a Deck: lifts shuffleSeq via Deck.toList. -/
 def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)

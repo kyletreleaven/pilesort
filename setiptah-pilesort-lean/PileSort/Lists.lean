@@ -2,6 +2,11 @@
   General-purpose list lemmas not available in core Lean 4.
 -/
 
+/-- List.finRange n is Nodup: distinct positions map to distinct Fin n elements. -/
+theorem nodup_finRange (n : Nat) : (List.finRange n).Nodup := by
+  simp [List.Nodup, List.pairwise_iff_getElem, Fin.ext_iff, Nat.ne_of_lt]
+  omega
+
 /-- filterMap on a Nodup list is Nodup when the function is injective on Some values. -/
 theorem List.Nodup.filterMap {α β : Type} {f : α → Option β} {l : List α}
     (hnd : l.Nodup)
