@@ -8,6 +8,33 @@
 
   Cards are identified by sorted rank: card c belongs at position c
   in the sorted deck.
+
+  ## Proof roadmap
+
+  The central target is `shuffleRound_virtualPileTypes`:
+
+      shuffleRound (shuffleRound d pt1 assign1) pt2 assign2
+        = shuffleRound d (virtualPileTypes pt1 pt2) combinedAssign
+
+  The strategy:
+
+  1. Prove `shuffleRound_order`: the output ordering is determined by pile
+     assignment and pile type (earlier pile wins; within a pile, Q preserves
+     deck order and S reverses it).
+
+  2. Define `combinedAssign`: maps each card to a block-indexed virtual pile,
+       combinedAssign c = assign2(c) * pt1.length + f(assign2 c, assign1 c)
+     where f adjusts the round-1 index based on whether pt2[assign2 c] is Q
+     (identity) or S (reversed block).
+
+  3. Prove `shuffleRound_virtualPileTypes` by Deck extensionality (posOf
+     agreement suffices): apply `shuffleRound_order` twice on the LHS and
+     once on the RHS, then use `virtualPileTypes_getElem` to match the
+     virtual pile type at the combined index to the composed condition.
+
+  Prerequisites: the two sorry obligations in `shuffleRound` (Nodup and
+  length = n, both following from the partition property of assign) must be
+  discharged before `shuffleRound_order` can be proved.
 -/
 import PileSort.Basic
 import PileSort.Permutations
@@ -65,11 +92,20 @@ def collectPile {α : Type} (t : PileType) (pile : List α) : List α :=
 
 /-- One round of pile shuffle: deal all cards into piles, collect each pile, concatenate.
     Returns the resulting deck sequence (position order).
+
     The two proof obligations (Nodup, length = n) both follow from the fact that
     `assign` partitions all n cards across the piles: each card lands in exactly one
-    pile, so the piles are disjoint and their sizes sum to n.  The proofs require
-    infrastructure lemmas ("filterMap of a nodup list with an injective function is
-    nodup", "flatMap of disjoint nodup lists is nodup") that are not yet in scope. -/
+    pile, so the piles are disjoint and their sizes sum to n.
+
+    Estimated work (~4-6 helper lemmas, a few hours):
+      · `collectPile` preserves length and Nodup (trivial)
+      · `dealToPile d assign p` is Nodup — filterMap on nodup `finRange n` with
+        injective `d.cardAt` (from `right_inv`) keeps values distinct
+      · sizes of `dealToPile` sum to n — partition/counting argument, needs
+        `List.length_filterMap` or equivalent
+      · piles are pairwise disjoint — card c ∈ pile p iff `assign c = p`
+      · `flatMap_nodup_of_disjoint` — flatMap of pairwise disjoint nodup lists
+        is nodup; the hardest piece, likely not in core -/
 def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)
     (assign : Fin n → Fin types.length) : Deck n :=
   Deck.fromDeckSeq
@@ -77,6 +113,21 @@ def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)
       collectPile (types.get p) (dealToPile d assign p)))
     (by sorry)  -- TODO: each card appears in exactly one pile (assign is total)
     (by sorry)  -- TODO: total length = n (assign covers all n cards)
+
+/-- The order of cards in the output deck is determined by pile assignment and pile type:
+    d'.posOf s < d'.posOf t iff
+      · assign s < assign t  (s dealt to an earlier pile), or
+      · assign s = assign t = x, types[x] = Q, and d.posOf s < d.posOf t  (FIFO), or
+      · assign s = assign t = x, types[x] = S, and d.posOf t < d.posOf s  (LIFO). -/
+theorem shuffleRound_order {n : Nat} (d : Deck n) (types : List PileType)
+    (assign : Fin n → Fin types.length) (s t : Fin n) :
+    let d' := shuffleRound d types assign
+    d'.posOf s < d'.posOf t ↔
+      assign s < assign t ∨
+      ∃ _ : assign s = assign t,
+        (types.get (assign s) = .Q ∧ d.posOf s < d.posOf t) ∨
+        (types.get (assign s) = .S ∧ d.posOf t < d.posOf s) := by
+  sorry
 
 /-- A deck is sortable in one round with a given pile-type list if there exists
     a deal assignment such that the shuffle round produces the sorted deck. -/
