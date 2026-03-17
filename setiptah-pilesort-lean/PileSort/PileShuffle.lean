@@ -115,6 +115,25 @@ theorem dealToPile_nodup {n m : Nat} (d : Deck n) (assign : Fin n → Fin m) (p 
   simp only [Option.ite_none_right_eq_some] at ha hb
   exact d.cardAt_injective (Option.some.inj (ha.2.trans hb.2.symm))
 
+/-- A card is in dealToPile d assign p iff it is assigned to pile p. -/
+theorem mem_dealToPile {n m : Nat} (d : Deck n) (assign : Fin n → Fin m) (p : Fin m)
+    (c : Fin n) : c ∈ dealToPile d assign p ↔ assign c = p := by
+  simp only [dealToPile, List.mem_filterMap]
+  constructor
+  · rintro ⟨k, _, hk⟩
+    by_cases h : assign (d.cardAt k) = p
+    · simp [h] at hk; rw [← hk]; exact h
+    · simp [h] at hk
+  · intro h
+    exact ⟨d.posOf c, Fin.mem_of_nodup_length (nodup_finRange n) (by simp) (d.posOf c),
+           by rw [d.left_inv]; simp [h]⟩
+
+/-- Cards in different piles are distinct (piles are pairwise disjoint). -/
+theorem dealToPile_disjoint {n m : Nat} (d : Deck n) (assign : Fin n → Fin m)
+    (p q : Fin m) (c : Fin n) (hp : c ∈ dealToPile d assign p)
+    (hq : c ∈ dealToPile d assign q) : p = q := by
+  rw [mem_dealToPile] at hp hq; exact hp.symm.trans hq
+
 /-- One round of pile shuffle: deal all cards into piles, collect each pile, concatenate.
     Returns the resulting deck sequence (position order).
 
