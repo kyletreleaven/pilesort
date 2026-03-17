@@ -37,6 +37,7 @@
   discharged before `shuffleRound_order` can be proved.
 -/
 import PileSort.Basic
+import PileSort.Lists
 import PileSort.Permutations
 
 /-- A deck of n cards: both directions of the permutation, mutually inverse. -/
@@ -97,6 +98,22 @@ theorem collectPile_length {α : Type} (t : PileType) (pile : List α) :
 theorem collectPile_nodup {α : Type} (t : PileType) (pile : List α) :
     (collectPile t pile).Nodup ↔ pile.Nodup := by
   cases t <;> simp [collectPile, List.Nodup, List.pairwise_reverse, Ne, eq_comm]
+
+
+theorem nodup_finRange (n : Nat) : (List.finRange n).Nodup := by
+  simp [List.Nodup, List.pairwise_iff_getElem, Fin.ext_iff, Nat.ne_of_lt]
+  omega
+
+theorem Deck.cardAt_injective {n : Nat} (d : Deck n) : Injective d.cardAt :=
+  fun a b h => by have := d.right_inv a; rw [h, d.right_inv b] at this; exact this.symm
+
+/-- dealToPile produces a Nodup list. -/
+theorem dealToPile_nodup {n m : Nat} (d : Deck n) (assign : Fin n → Fin m) (p : Fin m) :
+    (dealToPile d assign p).Nodup := by
+  apply List.Nodup.filterMap (nodup_finRange n)
+  intro a _ b _ x ha hb
+  simp only [Option.ite_none_right_eq_some] at ha hb
+  exact d.cardAt_injective (Option.some.inj (ha.2.trans hb.2.symm))
 
 /-- One round of pile shuffle: deal all cards into piles, collect each pile, concatenate.
     Returns the resulting deck sequence (position order).
