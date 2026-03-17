@@ -90,6 +90,14 @@ def collectPile {α : Type} (t : PileType) (pile : List α) : List α :=
   | .Q => pile
   | .S => pile.reverse
 
+theorem collectPile_length {α : Type} (t : PileType) (pile : List α) :
+    (collectPile t pile).length = pile.length := by
+  cases t <;> simp [collectPile]
+
+theorem collectPile_nodup {α : Type} (t : PileType) (pile : List α) :
+    (collectPile t pile).Nodup ↔ pile.Nodup := by
+  cases t <;> simp [collectPile, List.Nodup, List.pairwise_reverse, Ne, eq_comm]
+
 /-- One round of pile shuffle: deal all cards into piles, collect each pile, concatenate.
     Returns the resulting deck sequence (position order).
 
