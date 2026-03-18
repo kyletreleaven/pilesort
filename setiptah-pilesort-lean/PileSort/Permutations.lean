@@ -1,3 +1,5 @@
+import PileSort.Lists
+
 /-
   Technical lemmas about bijections of Fin n.
 
@@ -10,6 +12,7 @@
     · getElem_indexOf         — l.Nodup → a ∈ l → l[l.indexOf a] = a
     · indexOf_getElem         — l.Nodup → l.indexOf l[k] = k
     · Fin.mem_of_nodup_length — Nodup list of Fin n with length n contains every element
+    · Fin.invFun_spec         — injective Fin n → Fin n is surjective
 -/
 
 def Injective {α β : Type} (f : α → β) : Prop :=
@@ -80,18 +83,173 @@ theorem indexOf_getElem {l : List α} (hnd : l.Nodup)
       rw [indexOf_cons_ne x (xs[k]'hk') xs hne]
       exact congrArg (· + 1) (ih hnd' k hk')
 
-/-- For an injective f : Fin n → Fin n, every c is in the range.
-    (Uniqueness follows from injectivity; existence is the content.) -/
--- TODO(eventually): replace sorry; depends on Fin.mem_of_nodup_length (finite pigeonhole).
-theorem Fin.invFun_spec {n : Nat} {f : Fin n → Fin n}
-    (hinj : Injective f)
-    (c : Fin n) : ∃ k : Fin n, f k = c := by
-  sorry
+/-!
+  ## Finite surjectivity (pigeonhole for Fin n)
+
+  `Fin.mem_of_nodup_length` is the core surjectivity result: a Nodup list
+  of `Fin n` with length `n` must contain every element.  The proof proceeds
+  by induction on `n`, using a compression map that removes one element from
+  `Fin (n+1)` to produce an element of `Fin n`.
+
+  `Fin.invFun_spec` (injective `Fin n → Fin n` is surjective) is then an
+  immediate corollary: map `List.finRange n` through `f` to get a Nodup list
+  of length `n`, apply `Fin.mem_of_nodup_length`, and unpack.
+-/
+
+/-- Compress Fin (n+1) to Option (Fin n) by omitting the value a.
+    Returns none iff x = a; injective on Some values. -/
+private def compressOpt {n : Nat} (a : Fin (n+1)) (x : Fin (n+1)) : Option (Fin n) :=
+  if hlt : x.val < a.val then
+    some ⟨x.val, by omega⟩
+  else if _heq : x.val = a.val then
+    none
+  else
+    some ⟨x.val - 1, by omega⟩
+
+private theorem compressOpt_ne_none {n : Nat} (a : Fin (n+1)) (x : Fin (n+1))
+    (h : x ≠ a) : ∃ v, compressOpt a x = some v := by
+  unfold compressOpt
+  by_cases hlt : x.val < a.val
+  · rw [dif_pos hlt]; exact ⟨_, rfl⟩
+  · rw [dif_neg hlt]
+    by_cases heq : x.val = a.val
+    · rw [dif_pos heq]; exact absurd (Fin.ext heq) h
+    · rw [dif_neg heq]; exact ⟨_, rfl⟩
+
+private theorem compressOpt_injective {n : Nat} (a : Fin (n+1))
+    (x y : Fin (n+1)) (v : Fin n)
+    (hx : compressOpt a x = some v) (hy : compressOpt a y = some v) : x = y := by
+  unfold compressOpt at hx hy
+  by_cases hltx : x.val < a.val
+  · rw [dif_pos hltx] at hx
+    -- hx : some ⟨x.val, _⟩ = some v, so x.val = v.val
+    have hvx : x.val = v.val := congrArg Fin.val (Option.some.inj hx)
+    by_cases hlty : y.val < a.val
+    · rw [dif_pos hlty] at hy
+      have hvy : y.val = v.val := congrArg Fin.val (Option.some.inj hy)
+      exact Fin.ext (by omega)
+    · rw [dif_neg hlty] at hy
+      by_cases heqy : y.val = a.val
+      · rw [dif_pos heqy] at hy; exact absurd hy (Option.noConfusion)
+      · rw [dif_neg heqy] at hy
+        -- hx : x.val < a.val, hy : y.val - 1 = v.val = x.val; contradiction
+        have hvy : y.val - 1 = v.val := congrArg Fin.val (Option.some.inj hy)
+        exfalso; omega
+  · rw [dif_neg hltx] at hx
+    by_cases heqx : x.val = a.val
+    · rw [dif_pos heqx] at hx; exact absurd hx (Option.noConfusion)
+    · rw [dif_neg heqx] at hx
+      have hvx : x.val - 1 = v.val := congrArg Fin.val (Option.some.inj hx)
+      by_cases hlty : y.val < a.val
+      · rw [dif_pos hlty] at hy
+        have hvy : y.val = v.val := congrArg Fin.val (Option.some.inj hy)
+        exfalso; omega
+      · rw [dif_neg hlty] at hy
+        by_cases heqy : y.val = a.val
+        · rw [dif_pos heqy] at hy; exact absurd hy (Option.noConfusion)
+        · rw [dif_neg heqy] at hy
+          have hvy : y.val - 1 = v.val := congrArg Fin.val (Option.some.inj hy)
+          exact Fin.ext (by omega)
+
+/-- If every element of l maps to `some`, filterMap preserves length. -/
+private theorem filterMap_length_of_all_some {α β : Type} {f : α → Option β} {l : List α}
+    (h : ∀ a ∈ l, ∃ b, f a = some b) : (l.filterMap f).length = l.length := by
+  induction l with
+  | nil => simp
+  | cons hd tl ih =>
+    obtain ⟨b, hb⟩ := h hd (List.mem_cons_self hd tl)
+    have hcons : (hd :: tl).filterMap f = b :: tl.filterMap f := by
+      simp [hb]
+    rw [hcons, List.length_cons, List.length_cons]
+    congr 1
+    exact ih (fun a ha => h a (List.mem_cons_of_mem hd ha))
 
 /-- A Nodup list of Fin n with length n contains every element of Fin n. -/
--- TODO(eventually): replace sorry with a real proof.
--- Strategy: k ↦ l[k] is injective (by indexOf_getElem), hence surjective on Fin n
--- (finite pigeonhole), so c is in the range and therefore c ∈ l.
 theorem Fin.mem_of_nodup_length {n : Nat} {l : List (Fin n)}
     (hnd : l.Nodup) (hlen : l.length = n) (c : Fin n) : c ∈ l := by
-  sorry
+  induction n with
+  | zero => exact c.elim0
+  | succ n ih =>
+    match l, hlen with
+    | [], h => exact absurd h (by simp)
+    | hd :: tl, h =>
+      have hlen_tl : tl.length = n := by
+        have := h; rw [List.length_cons] at this; omega
+      have hnd_tl : tl.Nodup := hnd.of_cons
+      have hhd_notin : hd ∉ tl := (List.nodup_cons.mp hnd).1
+      by_cases heq : c = hd
+      · exact heq ▸ List.mem_cons_self hd tl
+      · -- Compress tl : List (Fin (n+1)) into a List (Fin n) by removing hd.
+        -- All elements of tl are ≠ hd (since hd ∉ tl), so compressOpt hd always
+        -- returns some. The compressed list is Nodup with length n; by IH it
+        -- contains every Fin n element, including compressOpt hd c.
+        have hmem_tl : ∀ x ∈ tl, x ≠ hd := fun x hx heqx => hhd_notin (heqx ▸ hx)
+        have hall : ∀ x ∈ tl, ∃ b, compressOpt hd x = some b :=
+          fun x hx => compressOpt_ne_none hd x (hmem_tl x hx)
+        have hlen' : (tl.filterMap (compressOpt hd)).length = n :=
+          (filterMap_length_of_all_some hall).trans hlen_tl
+        have hnd' : (tl.filterMap (compressOpt hd)).Nodup :=
+          List.Nodup.filterMap hnd_tl
+            (fun a _ b _ v ha hb => compressOpt_injective hd a b v ha hb)
+        -- compressOpt hd c returns some v (since c ≠ hd)
+        obtain ⟨v, hcv⟩ := compressOpt_ne_none hd c heq
+        -- By IH, v is in the compressed list
+        have hv_in : v ∈ tl.filterMap (compressOpt hd) := ih hnd' hlen' v
+        -- Unpack: some x in tl maps to v under compressOpt hd
+        rw [List.mem_filterMap] at hv_in
+        obtain ⟨x, hx_mem, hx_v⟩ := hv_in
+        -- Injectivity: x = c
+        have hxc : x = c := compressOpt_injective hd x c v hx_v hcv
+        exact List.mem_cons.mpr (Or.inr (hxc ▸ hx_mem))
+
+/-- An injective function Fin n → Fin n is surjective. -/
+theorem Fin.invFun_spec {n : Nat} {f : Fin n → Fin n}
+    (hinj : Injective f) (c : Fin n) : ∃ k : Fin n, f k = c := by
+  -- (List.finRange n).map f is Nodup with length n, so contains c.
+  have hnodup : ((List.finRange n).map f).Nodup :=
+    (nodup_finRange n).map (f := f) (fun a b hne heq => hne (hinj heq))
+  have hlen : ((List.finRange n).map f).length = n := by simp
+  have hmem : c ∈ (List.finRange n).map f :=
+    Fin.mem_of_nodup_length hnodup hlen c
+  rw [List.mem_map] at hmem
+  obtain ⟨k, _, hk⟩ := hmem
+  exact ⟨k, hk⟩
+
+/-! ## Computable inverse of an injective Fin n → Fin n -/
+
+private def preimgList {n : Nat} (f : Fin n → Fin n) : List (Fin n) :=
+  (List.finRange n).map f
+
+private theorem preimgList_nodup {n : Nat} {f : Fin n → Fin n} (hinj : Injective f) :
+    (preimgList f).Nodup :=
+  (nodup_finRange n).map (f := f) (fun _a _b hne heq => hne (hinj heq))
+
+private theorem preimgList_length {n : Nat} (f : Fin n → Fin n) :
+    (preimgList f).length = n := by simp [preimgList]
+
+private theorem mem_preimgList {n : Nat} {f : Fin n → Fin n} (hinj : Injective f) (k : Fin n) :
+    k ∈ preimgList f :=
+  Fin.mem_of_nodup_length (preimgList_nodup hinj) (preimgList_length f) k
+
+/-- The computable inverse of an injective Fin n → Fin n. -/
+def Fin.invOf {n : Nat} {f : Fin n → Fin n} (hinj : Injective f) (k : Fin n) : Fin n :=
+  ⟨(preimgList f).indexOf k, by
+    have h1 := indexOf_lt_length (mem_preimgList hinj k)
+    have h2 := preimgList_length f
+    omega⟩
+
+theorem Fin.invOf_right {n : Nat} {f : Fin n → Fin n} (hinj : Injective f) (k : Fin n) :
+    f (Fin.invOf hinj k) = k := by
+  have hlt  := indexOf_lt_length (mem_preimgList hinj k)
+  have hget : (preimgList f)[(preimgList f).indexOf k]'hlt = k :=
+    getElem_indexOf (preimgList_nodup hinj) (mem_preimgList hinj k)
+  simp only [preimgList, List.getElem_map] at hget
+  simpa using hget
+
+theorem Fin.invOf_left {n : Nat} {f : Fin n → Fin n} (hinj : Injective f) (c : Fin n) :
+    Fin.invOf hinj (f c) = c := Fin.ext (by
+  have hclt : c.val < (preimgList f).length := by rw [preimgList_length]; exact c.isLt
+  have himg_c : (preimgList f)[c.val]'hclt = f c := by
+    simp [preimgList, List.getElem_map]
+  rw [← himg_c]
+  exact indexOf_getElem (preimgList_nodup hinj) c.val hclt)

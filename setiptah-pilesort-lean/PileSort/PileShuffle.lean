@@ -122,14 +122,13 @@ def Deck.fromDeckSeq {n : Nat} (l : List (Fin n))
   right_inv k := Fin.ext (indexOf_getElem hnd k.val (hlen.symm ▸ k.isLt))
 
 /-- Build a Deck from a positions array (poses c = position of card c).
-    Requires poses to be injective (hence bijective, since Fin n is finite).
-    Noncomputable because the inverse is constructed via Classical.choice. -/
-noncomputable def Deck.fromCardPositions {n : Nat} (poses : Fin n → Fin n)
+    Requires poses to be injective (hence bijective, since Fin n is finite). -/
+def Deck.fromCardPositions {n : Nat} (poses : Fin n → Fin n)
     (hinj : Injective poses) : Deck n where
-  posOf  := poses
-  cardAt k := (Fin.invFun_spec hinj k).choose
-  left_inv  c := hinj (Fin.invFun_spec hinj (poses c)).choose_spec
-  right_inv k := (Fin.invFun_spec hinj k).choose_spec
+  posOf     := poses
+  cardAt    := Fin.invOf hinj
+  left_inv  := Fin.invOf_left hinj
+  right_inv := Fin.invOf_right hinj
 
 /-- cardAt is injective: distinct positions hold distinct cards. -/
 theorem Deck.cardAt_injective {n : Nat} (d : Deck n) : Injective d.cardAt :=
@@ -140,7 +139,7 @@ def Deck.toList {n : Nat} (d : Deck n) : List (Fin n) :=
   (List.finRange n).map d.cardAt
 
 theorem Deck.toList_nodup {n : Nat} (d : Deck n) : d.toList.Nodup :=
-  (nodup_finRange n).map (f := d.cardAt) (fun a b hne heq => hne (d.cardAt_injective heq))
+  (nodup_finRange n).map (f := d.cardAt) (fun _a _b hne heq => hne (d.cardAt_injective heq))
 
 theorem Deck.toList_length {n : Nat} (d : Deck n) : d.toList.length = n := by
   simp [Deck.toList]
