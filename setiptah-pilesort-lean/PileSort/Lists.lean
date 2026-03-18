@@ -1,5 +1,39 @@
 /-
   General-purpose list lemmas not available in core Lean 4.
+
+  ## Proof plan for shuffleRound_order (bottom-up)
+
+  ### Lists.lean (this file)
+
+  1. `list_split_at` — for `a ∈ l`, splits `l = l.take (indexOf a l) ++ [a] ++ l.drop (indexOf a l + 1)`.
+     Assembles from `take_append_drop`, `drop_eq_getElem_cons`, `getElem_indexOf`.
+
+  2. `indexOf_append_not_mem` — if `a ∉ l₁` then `(l₁ ++ l₂).indexOf a = l₁.length + l₂.indexOf a`.
+     Short induction on `l₁`.
+     NOTE: may not be needed as a standalone — since we have nodup throughout, `a ∉ prefix` and
+     `a ∉ suffix` follow immediately from the split, so this may be inlineable at each use site.
+
+  3. `indexOf_filter_lt` — for nodup `l` with `a, b ∈ l.filter f`:
+       `(l.filter f).indexOf a < (l.filter f).indexOf b ↔ l.indexOf a < l.indexOf b`
+     Uses 1 (split at a, bootstrap to split at b), `List.filter_append`, and nodup to
+     conclude `a ∉ prefix`/`suffix` (possibly inlining 2).
+
+  4. `indexOf_reverse_lt` — for nodup `l` with `a, b ∈ l`:
+       `l.reverse.indexOf a < l.reverse.indexOf b ↔ l.indexOf b < l.indexOf a`
+     Uses 1 and nodup on the reversed decomposition (possibly inlining 2).
+
+  5. `indexOf_flatMap_order` — for a nodup `(finRange m).flatMap piles` with `s ∈ piles ps`, `t ∈ piles pt`:
+       `indexOf s (...) < indexOf t (...) ↔ ps < pt ∨ (ps = pt ∧ (piles ps).indexOf s < (piles ps).indexOf t)`
+     Uses 2 and `finRange_flatMap_split`.
+
+  ### PileShuffle.lean
+
+  6. `shuffleSeq_order` — list-level version of shuffleRound_order:
+       `(shuffleSeq l types assign).indexOf s < (...).indexOf t ↔ ...`
+     Applies 5, then 3 (Q case) and 4 (S case) for within-pile comparison.
+     Connects `l.indexOf s` to `d.posOf s` via `indexOf_getElem` + `left_inv` (inlined).
+
+  7. `shuffleRound_order` — lifts 6 to Deck by unfolding `fromDeckSeq.posOf`.
 -/
 
 open List
