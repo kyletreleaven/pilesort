@@ -116,6 +116,16 @@ theorem flatMap_filter_cons {α : Type} {m : Nat} (a : α) (t : List α) (f : α
       List.append_assoc]
   exact List.perm_middle
 
+/-- flatMap respects pointwise permutation of the mapped function. -/
+theorem List.flatMap_perm_congr {α β : Type} {f g : α → List β} {l : List α}
+    (h : ∀ a ∈ l, f a ~ g a) : l.flatMap f ~ l.flatMap g := by
+  induction l with
+  | nil => simp
+  | cons a t ih =>
+    simp only [List.flatMap_cons]
+    exact ((h a (List.mem_cons_self a t)).append_right _).trans
+      (((ih (fun b hb => h b (List.mem_cons_of_mem a hb)))).append_left _)
+
 /-- Partitioning a list into piles by a function and flatMapping is a permutation of the
     original list. -/
 theorem flatMap_filter_perm {α : Type} {m : Nat} (l : List α) (f : α → Fin m) :

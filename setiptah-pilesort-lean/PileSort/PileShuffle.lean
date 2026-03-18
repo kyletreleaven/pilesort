@@ -104,12 +104,27 @@ theorem mem_shuffleSeq {n : Nat} (l : List (Fin n)) (types : List PileType)
   · intro hc
     exact ⟨assign c, Fin.mem_of_nodup_length (nodup_finRange _) (by simp) _, hc, rfl⟩
 
+theorem collectPile_perm {α : Type} (t : PileType) (pile : List α) :
+    List.Perm (collectPile t pile) pile := by
+  cases t <;> simp [collectPile]
+
+theorem shuffleSeq_perm {n : Nat} (l : List (Fin n)) (types : List PileType)
+    (assign : Fin n → Fin types.length) : List.Perm (shuffleSeq l types assign) l := by
+  simp only [shuffleSeq]
+  apply List.Perm.trans
+  · apply List.flatMap_perm_congr
+    intro p _
+    exact collectPile_perm (types.get p) _
+  · exact flatMap_filter_perm l assign
+
 theorem shuffleSeq_length {n : Nat} (l : List (Fin n)) (types : List PileType)
     (assign : Fin n → Fin types.length) :
-    (shuffleSeq l types assign).length = l.length := by sorry
+    (shuffleSeq l types assign).length = l.length :=
+  (shuffleSeq_perm l types assign).length_eq
 
 theorem shuffleSeq_nodup {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (types : List PileType)
-    (assign : Fin n → Fin types.length) : (shuffleSeq l types assign).Nodup := by sorry
+    (assign : Fin n → Fin types.length) : (shuffleSeq l types assign).Nodup :=
+  (shuffleSeq_perm l types assign).nodup_iff.mpr hl
 
 /-! ## Deck -/
 
