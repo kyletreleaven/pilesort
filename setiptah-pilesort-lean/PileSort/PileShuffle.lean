@@ -91,6 +91,26 @@ theorem dealToPile_disjoint {n m : Nat} (l : List (Fin n)) (assign : Fin n → F
     (hq : c ∈ dealToPile l assign q) : p = q := by
   simp [mem_dealToPile] at hp hq; exact hp.2.symm.trans hq.2
 
+theorem mem_collectPile {α : Type} (t : PileType) (pile : List α) (a : α) :
+    a ∈ collectPile t pile ↔ a ∈ pile := by
+  cases t <;> simp [collectPile]
+
+theorem mem_shuffleSeq {n : Nat} (l : List (Fin n)) (types : List PileType)
+    (assign : Fin n → Fin types.length) (c : Fin n) :
+    c ∈ shuffleSeq l types assign ↔ c ∈ l := by
+  simp only [shuffleSeq, List.mem_flatMap, mem_collectPile, mem_dealToPile]
+  constructor
+  · rintro ⟨_, _, hc, _⟩; exact hc
+  · intro hc
+    exact ⟨assign c, Fin.mem_of_nodup_length (nodup_finRange _) (by simp) _, hc, rfl⟩
+
+theorem shuffleSeq_length {n : Nat} (l : List (Fin n)) (types : List PileType)
+    (assign : Fin n → Fin types.length) :
+    (shuffleSeq l types assign).length = l.length := by sorry
+
+theorem shuffleSeq_nodup {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (types : List PileType)
+    (assign : Fin n → Fin types.length) : (shuffleSeq l types assign).Nodup := by sorry
+
 /-! ## Deck -/
 
 /-- A deck of n cards: both directions of the permutation, mutually inverse. -/
@@ -151,8 +171,8 @@ theorem Deck.mem_toList {n : Nat} (d : Deck n) (c : Fin n) : c ∈ d.toList :=
 def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)
     (assign : Fin n → Fin types.length) : Deck n :=
   Deck.fromDeckSeq (shuffleSeq d.toList types assign)
-    (by sorry)  -- TODO: shuffleSeq_nodup
-    (by sorry)  -- TODO: shuffleSeq_length
+    (shuffleSeq_nodup d.toList d.toList_nodup types assign)
+    ((shuffleSeq_length d.toList types assign).trans d.toList_length)
 
 /-! ## Higher-level results -/
 
