@@ -141,6 +141,32 @@ private theorem flatMap_filter_cons_eq {α : Type} {m : Nat} (a : α) (t : List 
   simp only [show tf = fun p : Fin m => t.filter (fun c => decide (f c = p)) from rfl]
   simp [List.append_assoc, List.cons_append]
 
+/-- indexOf is strictly less than the list length when the element is a member. -/
+theorem indexOf_lt_length {α : Type} [DecidableEq α] {a : α} {l : List α} (hmem : a ∈ l) :
+    l.indexOf a < l.length := by
+  induction l with
+  | nil => exact absurd hmem (List.not_mem_nil _)
+  | cons x xs ih =>
+    simp only [List.length_cons]
+    by_cases hax : x = a
+    · simp [List.indexOf_cons, hax]
+    · have hmem' : a ∈ xs := (List.mem_cons.mp hmem).resolve_left (Ne.symm hax)
+      simp only [List.indexOf_cons, show (x == a) = false from by simp [hax], cond_false]
+      exact Nat.succ_lt_succ (ih hmem')
+
+/-- The element at its own indexOf is itself (no Nodup required). -/
+theorem getElem_indexOf {α : Type} [DecidableEq α] {a : α} {l : List α} (hmem : a ∈ l) :
+    l[l.indexOf a]'(indexOf_lt_length hmem) = a := by
+  induction l with
+  | nil => exact absurd hmem (List.not_mem_nil _)
+  | cons x xs ih =>
+    by_cases hax : x = a
+    · subst hax; simp [List.indexOf_cons]
+    · have hmem' : a ∈ xs := (List.mem_cons.mp hmem).resolve_left (Ne.symm hax)
+      simp only [List.indexOf_cons, show (x == a) = false from by simp [hax], cond_false,
+                 List.getElem_cons_succ]
+      exact ih hmem'
+
 theorem flatMap_filter_cons {α : Type} {m : Nat} (a : α) (t : List α) (f : α → Fin m) :
     (List.finRange m).flatMap (fun p => (a :: t).filter (fun c => decide (f c = p))) ~
     a :: (List.finRange m).flatMap (fun p => t.filter (fun c => decide (f c = p))) := by

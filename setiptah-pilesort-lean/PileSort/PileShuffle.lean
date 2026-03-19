@@ -153,7 +153,7 @@ def Deck.fromDeckSeq {n : Nat} (l : List (Fin n))
                   hlen⟩
   left_inv  c := by
     have hmem := Fin.mem_of_nodup_length hnd hlen c
-    exact getElem_indexOf hnd hmem
+    exact getElem_indexOf hmem
   right_inv k := Fin.ext (indexOf_getElem hnd k.val (hlen.symm ▸ k.isLt))
 
 /-- Build a Deck from a positions array (poses c = position of card c).

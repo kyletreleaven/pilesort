@@ -33,35 +33,6 @@ private theorem indexOf_cons_ne (x y : α) (xs : List α) (h : x ≠ y) :
   | true  => exact absurd (by simpa using hb) h
   | false => rfl
 
-/-- indexOf is strictly less than the list length when the element is a member. -/
-theorem indexOf_lt_length {a : α} {l : List α} (hmem : a ∈ l) :
-    l.indexOf a < l.length := by
-  induction l with
-  | nil => exact absurd hmem (List.not_mem_nil _)
-  | cons x xs ih =>
-    simp only [List.length_cons]
-    by_cases hax : x = a
-    · simp [indexOf_cons_eq x a xs hax]
-    · have hmem' : a ∈ xs :=
-        (List.mem_cons.mp hmem).resolve_left (Ne.symm hax)
-      rw [indexOf_cons_ne x a xs hax]
-      exact Nat.succ_lt_succ (ih hmem')
-
-/-- The element at its own indexOf is itself, for Nodup lists. -/
-theorem getElem_indexOf {a : α} {l : List α}
-    (hnd : l.Nodup) (hmem : a ∈ l) :
-    l[l.indexOf a]'(indexOf_lt_length hmem) = a := by
-  induction l with
-  | nil => exact absurd hmem (List.not_mem_nil _)
-  | cons x xs ih =>
-    by_cases hax : x = a
-    · subst hax
-      simp [indexOf_cons_eq x x xs rfl, List.getElem_cons_zero]
-    · have hmem' : a ∈ xs :=
-        (List.mem_cons.mp hmem).resolve_left (Ne.symm hax)
-      have hnd' : xs.Nodup := hnd.of_cons
-      simp only [indexOf_cons_ne x a xs hax, List.getElem_cons_succ]
-      exact ih hnd' hmem'
 
 /-- The indexOf of the element at position k is k, for Nodup lists. -/
 theorem indexOf_getElem {l : List α} (hnd : l.Nodup)
@@ -242,7 +213,7 @@ theorem Fin.invOf_right {n : Nat} {f : Fin n → Fin n} (hinj : Injective f) (k 
     f (Fin.invOf hinj k) = k := by
   have hlt  := indexOf_lt_length (mem_preimgList hinj k)
   have hget : (preimgList f)[(preimgList f).indexOf k]'hlt = k :=
-    getElem_indexOf (preimgList_nodup hinj) (mem_preimgList hinj k)
+    getElem_indexOf (mem_preimgList hinj k)
   simp only [preimgList, List.getElem_map] at hget
   simpa using hget
 
