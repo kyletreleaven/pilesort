@@ -167,6 +167,146 @@ theorem getElem_indexOf {α : Type} [DecidableEq α] {a : α} {l : List α} (hme
                  List.getElem_cons_succ]
       exact ih hmem'
 
+/-- Split a list at the first occurrence of a: l = prefix ++ [a] ++ suffix. -/
+-- if a ∈ l.take k then indexOf a l < k
+private theorem indexOf_lt_of_mem_take {α : Type} [DecidableEq α] {a : α} {l : List α} {k : Nat}
+    (h : a ∈ l.take k) : l.indexOf a < k := by
+  induction l generalizing k with
+  | nil => simp at h
+  | cons x xs ih =>
+    cases k with
+    | zero => simp at h
+    | succ k =>
+      simp only [List.take_succ_cons] at h
+      simp only [List.indexOf_cons]
+      by_cases hax : x = a
+      · simp [hax]
+      · have h' : a ∈ xs.take k := (List.mem_cons.mp h).resolve_left (Ne.symm hax)
+        simp only [show (x == a) = false from by simp [hax], cond_false]
+        exact Nat.succ_lt_succ (ih h')
+
+-- a ∉ l.take (indexOf a l)
+private theorem not_mem_take_indexOf {α : Type} [DecidableEq α] {a : α} {l : List α} :
+    a ∉ l.take (l.indexOf a) :=
+  fun h => absurd (indexOf_lt_of_mem_take h) (Nat.lt_irrefl _)
+
+theorem list_split_at {α : Type} [DecidableEq α] {l : List α} {a : α} (h : a ∈ l) :
+    l = l.take (l.indexOf a) ++ [a] ++ l.drop (l.indexOf a + 1) := by
+  have hlt : l.indexOf a < l.length := indexOf_lt_length h
+  have hdrop : l.drop (l.indexOf a) = a :: l.drop (l.indexOf a + 1) := by
+    rw [List.drop_eq_getElem_cons hlt, getElem_indexOf h]
+  calc l = l.take (l.indexOf a) ++ l.drop (l.indexOf a) := (List.take_append_drop _ _).symm
+    _ = l.take (l.indexOf a) ++ (a :: l.drop (l.indexOf a + 1)) := by rw [hdrop]
+    _ = l.take (l.indexOf a) ++ [a] ++ l.drop (l.indexOf a + 1) := by simp [List.append_assoc]
+
+/-- Two-element split: given indexOf a l < indexOf b l, decompose l into pre ++ [a] ++ mid ++ [b] ++ suf,
+    with non-membership witnesses. -/
+theorem list_split_two {α : Type} [DecidableEq α] {l : List α} {a b : α}
+    (ha : a ∈ l) (hb : b ∈ l) (hlt : l.indexOf a < l.indexOf b) :
+    ∃ pre mid suf : List α,
+      l = pre ++ [a] ++ mid ++ [b] ++ suf ∧
+      a ∉ pre ∧ b ∉ pre ∧ a ≠ b ∧ b ∉ mid := by
+  have hab : a ≠ b := fun h => absurd (h ▸ hlt) (Nat.lt_irrefl _)
+  have hb_not_pre : b ∉ l.take (l.indexOf a) := fun h =>
+    absurd (indexOf_lt_of_mem_take h) (Nat.not_lt.mpr (Nat.le_of_lt hlt))
+  have hl_split_a := list_split_at ha
+  have hb_in_suffix : b ∈ l.drop (l.indexOf a + 1) := by
+    have : b ∈ l.take (l.indexOf a) ++ [a] ++ l.drop (l.indexOf a + 1) := hl_split_a ▸ hb
+    simp [List.mem_append, hb_not_pre, hab.symm] at this
+    exact this
+  have hs_split_b := list_split_at hb_in_suffix
+  exact ⟨l.take (l.indexOf a),
+         (l.drop (l.indexOf a + 1)).take ((l.drop (l.indexOf a + 1)).indexOf b),
+         (l.drop (l.indexOf a + 1)).drop ((l.drop (l.indexOf a + 1)).indexOf b + 1),
+         by conv => lhs; rw [hl_split_a, hs_split_b]
+            simp [List.append_assoc],
+         not_mem_take_indexOf,
+         hb_not_pre,
+         hab,
+         not_mem_take_indexOf⟩
+
+-- indexOf in a concatenation when a is not in the prefix
+private theorem indexOf_append_not_mem {α : Type} [DecidableEq α] {a : α} (l₁ l₂ : List α)
+    (h : a ∉ l₁) : (l₁ ++ l₂).indexOf a = l₁.length + l₂.indexOf a := by
+  induction l₁ with
+  | nil => simp
+  | cons x xs ih =>
+    have hxa : x ≠ a := fun heq => h (heq ▸ List.mem_cons_self x xs)
+    have h' : a ∉ xs := fun hmem => h (List.mem_cons_of_mem x hmem)
+    simp only [List.cons_append, List.indexOf_cons,
+               show (x == a) = false from by simp [hxa], cond_false,
+               List.length_cons, ih h']
+    omega
+
+-- helper: given split with x before y (x ∉ pre, y ∉ pre ++ [x] ++ mid), indexOf x = pre.length
+private theorem indexOf_split_fst {α : Type} [DecidableEq α] {x : α} {pre rest : List α}
+    (hx : x ∉ pre) : (pre ++ x :: rest).indexOf x = pre.length := by
+  simp [indexOf_append_not_mem _ _ hx, List.indexOf_cons]
+
+private theorem indexOf_split_snd {α : Type} [DecidableEq α] {x y : α} {pre mid suf : List α}
+    (hy_pre : y ∉ pre) (hyx : y ≠ x) (hy_mid : y ∉ mid) :
+    (pre ++ [x] ++ mid ++ [y] ++ suf).indexOf y = pre.length + 1 + mid.length := by
+  have hpxm : y ∉ pre ++ [x] ++ mid := by simp [List.mem_append, hy_pre, hyx, hy_mid]
+  rw [show pre ++ [x] ++ mid ++ [y] ++ suf = (pre ++ [x] ++ mid) ++ y :: suf by
+        simp [List.append_assoc],
+      indexOf_append_not_mem _ _ hpxm]
+  simp [List.indexOf_cons, List.length_append]
+  omega
+
+-- indexOf of the fst pivot is less than indexOf of the snd pivot in a split list.
+private theorem indexOf_fst_lt_snd {α : Type} [DecidableEq α] {x y : α} {A B C : List α}
+    (hxA : x ∉ A) (hyA : y ∉ A) (hyx : y ≠ x) (hyB : y ∉ B) :
+    (A ++ x :: B ++ y :: C).indexOf x < (A ++ x :: B ++ y :: C).indexOf y := by
+  have hxidx : (A ++ x :: B ++ y :: C).indexOf x = A.length := by
+    rw [show A ++ x :: B ++ y :: C = A ++ x :: (B ++ y :: C) from by
+        simp [List.cons_append, List.append_assoc]]
+    exact indexOf_split_fst hxA
+  have hy_nmem : y ∉ A ++ x :: B := by simp [List.mem_append, hyA, hyx, hyB]
+  have hyidx : (A ++ x :: B ++ y :: C).indexOf y = A.length + 1 + B.length := by
+    rw [indexOf_append_not_mem _ _ hy_nmem]
+    simp [List.indexOf_cons, List.length_append]; omega
+  omega
+
+theorem indexOf_filter_lt {α : Type} [DecidableEq α] {f : α → Bool} {l : List α}
+    {a b : α} (ha : a ∈ l.filter f) (hb : b ∈ l.filter f) :
+    (l.filter f).indexOf a < (l.filter f).indexOf b ↔ l.indexOf a < l.indexOf b := by
+  have ha_l : a ∈ l := (List.mem_filter.mp ha).1
+  have hb_l : b ∈ l := (List.mem_filter.mp hb).1
+  have hfa : f a = true := (List.mem_filter.mp ha).2
+  have hfb : f b = true := (List.mem_filter.mp hb).2
+  constructor
+  · intro hlt_flt
+    rcases Nat.lt_trichotomy (l.indexOf a) (l.indexOf b) with h | h | h
+    · exact h
+    · -- indexOf a = indexOf b → a = b → contradiction
+      have hab : a = b := by
+        have h1 := getElem_indexOf ha_l
+        simp only [h] at h1
+        exact h1.symm.trans (getElem_indexOf hb_l)
+      subst hab; exact absurd hlt_flt (Nat.lt_irrefl _)
+    · -- l.indexOf b < l.indexOf a: split with b before a, filter gives b before a, contradiction
+      obtain ⟨pre, mid, suf, hl_eq, hb_pre, ha_pre, hba, ha_mid⟩ := list_split_two hb_l ha_l h
+      have hflt_eq : l.filter f = pre.filter f ++ b :: mid.filter f ++ a :: suf.filter f := by
+        rw [hl_eq]; simp [List.filter_append, List.filter_cons, hfb, hfa]
+      have hb_pref : b ∉ pre.filter f := fun hmem => hb_pre (List.mem_filter.mp hmem).1
+      have ha_pref : a ∉ pre.filter f := fun hmem => ha_pre (List.mem_filter.mp hmem).1
+      have ha_midf : a ∉ mid.filter f := fun hmem => ha_mid (List.mem_filter.mp hmem).1
+      have hord : (pre.filter f ++ b :: mid.filter f ++ a :: suf.filter f).indexOf b <
+                  (pre.filter f ++ b :: mid.filter f ++ a :: suf.filter f).indexOf a :=
+        indexOf_fst_lt_snd hb_pref ha_pref hba.symm ha_midf
+      rw [← hflt_eq] at hord; omega
+  · intro hlt
+    obtain ⟨pre, mid, suf, hl_eq, ha_pre, hb_pre, hab, hb_mid⟩ := list_split_two ha_l hb_l hlt
+    have hflt_eq : l.filter f = pre.filter f ++ a :: mid.filter f ++ b :: suf.filter f := by
+      rw [hl_eq]; simp [List.filter_append, List.filter_cons, hfa, hfb]
+    have ha_pref : a ∉ pre.filter f := fun hmem => ha_pre (List.mem_filter.mp hmem).1
+    have hb_pref : b ∉ pre.filter f := fun hmem => hb_pre (List.mem_filter.mp hmem).1
+    have hb_midf : b ∉ mid.filter f := fun hmem => hb_mid (List.mem_filter.mp hmem).1
+    have hord : (pre.filter f ++ a :: mid.filter f ++ b :: suf.filter f).indexOf a <
+                (pre.filter f ++ a :: mid.filter f ++ b :: suf.filter f).indexOf b :=
+      indexOf_fst_lt_snd ha_pref hb_pref hab.symm hb_midf
+    rwa [← hflt_eq] at hord
+
 theorem flatMap_filter_cons {α : Type} {m : Nat} (a : α) (t : List α) (f : α → Fin m) :
     (List.finRange m).flatMap (fun p => (a :: t).filter (fun c => decide (f c = p))) ~
     a :: (List.finRange m).flatMap (fun p => t.filter (fun c => decide (f c = p))) := by
