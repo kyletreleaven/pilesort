@@ -316,6 +316,34 @@ theorem flatMap_filter_cons {α : Type} {m : Nat} (a : α) (t : List α) (f : α
       List.append_assoc]
   exact List.perm_middle
 
+theorem indexOf_reverse_eq {α : Type} [DecidableEq α] {l : List α} {a : α}
+    (hnd : l.Nodup) (ha : a ∈ l) :
+    l.reverse.indexOf a = l.length - l.indexOf a - 1 := by
+  have hlt := indexOf_lt_length ha
+  -- a ∉ l.drop (indexOf a + 1): drop is nodup, equals a :: suf, so a ∉ suf
+  have hdrop_nd : (l.drop (l.indexOf a)).Nodup :=
+    hnd.sublist (List.drop_sublist _ l)
+  have hdrop_eq : l.drop (l.indexOf a) = a :: l.drop (l.indexOf a + 1) :=
+    (List.drop_eq_getElem_cons hlt).trans (by simp [getElem_indexOf ha])
+  have ha_suf : a ∉ l.drop (l.indexOf a + 1) :=
+    (List.nodup_cons.mp (hdrop_eq ▸ hdrop_nd)).1
+  -- reverse of the split: suf.reverse ++ [a] ++ pre.reverse
+  have hrev : l.reverse = (l.drop (l.indexOf a + 1)).reverse ++ a ::
+                           (l.take (l.indexOf a)).reverse := by
+    conv => lhs; rw [list_split_at ha]
+    simp [List.reverse_append]
+  rw [hrev, indexOf_split_fst (fun h => ha_suf (List.mem_reverse.mp h))]
+  simp only [List.length_reverse, List.length_drop]
+  omega
+
+theorem indexOf_reverse_lt {α : Type} [DecidableEq α] {l : List α} {a b : α}
+    (hnd : l.Nodup) (ha : a ∈ l) (hb : b ∈ l) :
+    l.reverse.indexOf a < l.reverse.indexOf b ↔ l.indexOf b < l.indexOf a := by
+  have ha_lt := indexOf_lt_length ha
+  have hb_lt := indexOf_lt_length hb
+  rw [indexOf_reverse_eq hnd ha, indexOf_reverse_eq hnd hb]
+  constructor <;> intro h <;> omega
+
 /-- flatMap respects pointwise permutation of the mapped function. -/
 theorem List.flatMap_perm_congr {α β : Type} {f g : α → List β} {l : List α}
     (h : ∀ a ∈ l, f a ~ g a) : l.flatMap f ~ l.flatMap g := by
@@ -333,3 +361,14 @@ theorem flatMap_filter_perm {α : Type} {m : Nat} (l : List α) (f : α → Fin 
   induction l with
   | nil => simp
   | cons a t ih => exact (flatMap_filter_cons a t f).trans (ih.cons a)
+
+/-- Order in a flatMap: for a nodup flatMap, indexOf s < indexOf t iff
+    the pile index of s is smaller, or the piles are equal and s comes before t within the pile. -/
+theorem indexOf_flatMap_order {n m : Nat} (piles : Fin m → List (Fin n))
+    (hnd : ((List.finRange m).flatMap piles).Nodup)
+    {s t : Fin n} {ps pt : Fin m}
+    (hs : s ∈ piles ps) (ht : t ∈ piles pt) :
+    ((List.finRange m).flatMap piles).indexOf s <
+    ((List.finRange m).flatMap piles).indexOf t ↔
+      ps < pt ∨ (ps = pt ∧ (piles ps).indexOf s < (piles ps).indexOf t) := by
+  sorry

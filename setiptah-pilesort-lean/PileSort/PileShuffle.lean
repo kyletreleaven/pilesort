@@ -191,6 +191,29 @@ def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)
 
 /-! ## Higher-level results -/
 
+/-- The position of card s in d.toList equals (d.posOf s).val. -/
+theorem Deck.toList_indexOf {n : Nat} (d : Deck n) (s : Fin n) :
+    d.toList.indexOf s = (d.posOf s).val := by
+  have hlt : (d.posOf s).val < d.toList.length := by
+    rw [d.toList_length]; exact (d.posOf s).isLt
+  have hget : d.toList[(d.posOf s).val]'hlt = s := by
+    simp only [Deck.toList, List.getElem_map, List.getElem_finRange]
+    exact d.left_inv s
+  calc d.toList.indexOf s
+      = d.toList.indexOf (d.toList[(d.posOf s).val]'hlt) := by rw [hget]
+    _ = (d.posOf s).val := indexOf_getElem d.toList_nodup (d.posOf s).val hlt
+
+/-- List-level version of shuffleRound_order: order in shuffleSeq output
+    is determined by pile assignment and pile type. -/
+theorem shuffleSeq_order {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (hlen : l.length = n)
+    (types : List PileType) (assign : Fin n → Fin types.length) (s t : Fin n) :
+    (shuffleSeq l types assign).indexOf s < (shuffleSeq l types assign).indexOf t ↔
+      assign s < assign t ∨
+      ∃ _ : assign s = assign t,
+        (types.get (assign s) = .Q ∧ l.indexOf s < l.indexOf t) ∨
+        (types.get (assign s) = .S ∧ l.indexOf t < l.indexOf s) := by
+  sorry
+
 /-- The order of cards in the output deck is determined by pile assignment and pile type:
     d'.posOf s < d'.posOf t iff
       · assign s < assign t  (s dealt to an earlier pile), or
@@ -204,7 +227,13 @@ theorem shuffleRound_order {n : Nat} (d : Deck n) (types : List PileType)
       ∃ _ : assign s = assign t,
         (types.get (assign s) = .Q ∧ d.posOf s < d.posOf t) ∨
         (types.get (assign s) = .S ∧ d.posOf t < d.posOf s) := by
-  sorry
+  simp only []
+  -- Unfold posOf: fromDeckSeq.posOf c = ⟨indexOf c, ...⟩, and Fin < is val <
+  change (shuffleSeq d.toList types assign).indexOf s <
+         (shuffleSeq d.toList types assign).indexOf t ↔ _
+  rw [shuffleSeq_order d.toList d.toList_nodup d.toList_length]
+  -- Replace d.toList.indexOf with (d.posOf ·).val; Fin < is val < by Fin.lt_def
+  simp only [Deck.toList_indexOf, Fin.lt_def]
 
 /-- A deck is sortable in one round with a given pile-type list if there exists
     a deal assignment such that the shuffle round produces the sorted deck. -/
