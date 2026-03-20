@@ -267,9 +267,31 @@ private theorem shuffleSeq_order_diff {n : Nat} (l : List (Fin n)) (hl : l.Nodup
     (s t : Fin n) (hne : assign s ≠ assign t) :
     (shuffleSeq l types assign).indexOf s < (shuffleSeq l types assign).indexOf t ↔
       assign s < assign t := by
-  -- Rewrite shuffleSeq as lists.flatten, then apply indexOf_flatten_of_lt_val in each direction.
-  -- The assign s > assign t direction is a contradiction via the reversed inequality.
-  sorry
+  let piles := fun p : Fin types.length => collectPile (types.get p) (dealToPile l assign p)
+  let lists := (List.finRange types.length).map piles
+  have hseq : shuffleSeq l types assign = lists.flatten := by
+    simp only [shuffleSeq, lists]; rfl
+  have hlists_len : lists.length = types.length := by simp [lists]
+  have hs_lt : (assign s).val < lists.length := hlists_len.symm ▸ (assign s).isLt
+  have ht_lt : (assign t).val < lists.length := hlists_len.symm ▸ (assign t).isLt
+  have hs : s ∈ lists[(assign s).val]'hs_lt := by
+    simp only [lists, List.getElem_map, List.getElem_finRange, Fin.eta]
+    exact (mem_collectPile _ _ s).mpr ((mem_dealToPile l assign (assign s) s).mpr
+      ⟨Fin.mem_of_nodup_length hl hlen s, rfl⟩)
+  have ht : t ∈ lists[(assign t).val]'ht_lt := by
+    simp only [lists, List.getElem_map, List.getElem_finRange, Fin.eta]
+    exact (mem_collectPile _ _ t).mpr ((mem_dealToPile l assign (assign t) t).mpr
+      ⟨Fin.mem_of_nodup_length hl hlen t, rfl⟩)
+  have hnd : lists.flatten.Nodup := hseq ▸ shuffleSeq_nodup l hl types assign
+  have hval_ne : (assign s).val ≠ (assign t).val := fun h => hne (Fin.ext h)
+  rw [hseq]
+  constructor
+  · intro hlt
+    rcases Nat.lt_or_gt_of_ne hval_ne with h | h
+    · exact h
+    · have := indexOf_flatten_of_lt_val lists hnd ht_lt hs_lt h ht hs
+      omega
+  · exact fun h => indexOf_flatten_of_lt_val lists hnd hs_lt ht_lt h hs ht
 
 /-- When s and t are dealt to the same pile p, their order in the shuffleSeq output
     is determined by collectPile_indexOf_iff: Q preserves l-order, S reverses it. -/
@@ -293,17 +315,17 @@ theorem shuffleSeq_order {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (hlen : l.l
         (types.get (assign s) = .Q ∧ l.indexOf s < l.indexOf t) ∨
         (types.get (assign s) = .S ∧ l.indexOf t < l.indexOf s) := by
   by_cases heq : assign s = assign t
-  · constructor
-    · intro h
-      exact Or.inr ⟨heq, (shuffleSeq_order_same l hl hlen types assign s t heq).mp h⟩
+  · rw [shuffleSeq_order_same l hl hlen types assign s t heq]
+    constructor
+    · exact fun h => Or.inr ⟨heq, h⟩
     · rintro (h | ⟨_, hQS⟩)
       · exact absurd heq (Fin.ne_of_lt h)
-      · exact (shuffleSeq_order_same l hl hlen types assign s t heq).mpr hQS
-  · constructor
-    · intro h
-      exact Or.inl ((shuffleSeq_order_diff l hl hlen types assign s t heq).mp h)
+      · exact hQS
+  · rw [shuffleSeq_order_diff l hl hlen types assign s t heq]
+    constructor
+    · exact Or.inl
     · rintro (h | ⟨heq', _⟩)
-      · exact (shuffleSeq_order_diff l hl hlen types assign s t heq).mpr h
+      · exact h
       · exact absurd heq' heq
 
 /-- The order of cards in the output deck is determined by pile assignment and pile type:
