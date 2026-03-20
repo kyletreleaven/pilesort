@@ -301,11 +301,33 @@ private theorem shuffleSeq_order_same {n : Nat} (l : List (Fin n)) (hl : l.Nodup
     (shuffleSeq l types assign).indexOf s < (shuffleSeq l types assign).indexOf t ↔
       (types.get (assign s) = .Q ∧ l.indexOf s < l.indexOf t) ∨
       (types.get (assign s) = .S ∧ l.indexOf t < l.indexOf s) := by
-  -- Rewrite shuffleSeq as lists.flatten.  Use indexOf_flatten_same_val to reduce to the
-  -- within-pile comparison, then apply collectPile_indexOf_iff with
-  -- hs_f : s ∈ dealToPile l assign (assign s) and ht_f : t ∈ dealToPile l assign (assign s)
-  -- (recast via heq).
-  sorry
+  let piles := fun p : Fin types.length => collectPile (types.get p) (dealToPile l assign p)
+  let lists := (List.finRange types.length).map piles
+  have hseq : shuffleSeq l types assign = lists.flatten := by
+    simp only [shuffleSeq, lists]; rfl
+  have hlists_len : lists.length = types.length := by simp [lists]
+  have hs_lt : (assign s).val < lists.length := hlists_len.symm ▸ (assign s).isLt
+  have ht_lt : (assign t).val < lists.length := hlists_len.symm ▸ (assign t).isLt
+  have hs : s ∈ lists[(assign s).val]'hs_lt := by
+    simp only [lists, List.getElem_map, List.getElem_finRange, Fin.eta]
+    exact (mem_collectPile _ _ s).mpr ((mem_dealToPile l assign (assign s) s).mpr
+      ⟨Fin.mem_of_nodup_length hl hlen s, rfl⟩)
+  have ht : t ∈ lists[(assign t).val]'ht_lt := by
+    simp only [lists, List.getElem_map, List.getElem_finRange, Fin.eta]
+    exact (mem_collectPile _ _ t).mpr ((mem_dealToPile l assign (assign t) t).mpr
+      ⟨Fin.mem_of_nodup_length hl hlen t, rfl⟩)
+  have hnd : lists.flatten.Nodup := hseq ▸ shuffleSeq_nodup l hl types assign
+  have ht' : t ∈ lists[(assign s).val]'hs_lt := by
+    simp only [lists, List.getElem_map, List.getElem_finRange, Fin.eta]
+    exact (mem_collectPile _ _ t).mpr ((mem_dealToPile l assign (assign s) t).mpr
+      ⟨Fin.mem_of_nodup_length hl hlen t, heq.symm⟩)
+  have hs_f : s ∈ dealToPile l assign (assign s) :=
+    (mem_dealToPile l assign (assign s) s).mpr ⟨Fin.mem_of_nodup_length hl hlen s, rfl⟩
+  have ht_f : t ∈ dealToPile l assign (assign s) :=
+    (mem_dealToPile l assign (assign s) t).mpr ⟨Fin.mem_of_nodup_length hl hlen t, heq.symm⟩
+  rw [hseq, indexOf_flatten_same_val lists hnd hs_lt hs ht']
+  simp only [lists, List.getElem_map, List.getElem_finRange, Fin.eta]
+  exact collectPile_indexOf_iff l hl types assign (assign s) hs_f ht_f
 
 theorem shuffleSeq_order {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (hlen : l.length = n)
     (types : List PileType) (assign : Fin n → Fin types.length) (s t : Fin n) :
