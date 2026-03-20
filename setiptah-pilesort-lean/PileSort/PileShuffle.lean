@@ -96,6 +96,15 @@ theorem mem_collectPile {α : Type} (t : PileType) (pile : List α) (a : α) :
     a ∈ collectPile t pile ↔ a ∈ pile := by
   cases t <;> simp [collectPile]
 
+theorem collectPile_indexOf_lt {α : Type} [DecidableEq α] (t : PileType) (pile : List α)
+    (hnd : pile.Nodup) {a b : α} (ha : a ∈ pile) (hb : b ∈ pile) :
+    (collectPile t pile).indexOf a < (collectPile t pile).indexOf b ↔
+      (t = .Q ∧ pile.indexOf a < pile.indexOf b) ∨
+      (t = .S ∧ pile.indexOf b < pile.indexOf a) := by
+  cases t with
+  | Q => simp [collectPile]
+  | S => simp [collectPile, indexOf_reverse_lt hnd ha hb]
+
 theorem mem_shuffleSeq {n : Nat} (l : List (Fin n)) (types : List PileType)
     (assign : Fin n → Fin types.length) (c : Fin n) :
     c ∈ shuffleSeq l types assign ↔ c ∈ l := by
@@ -213,7 +222,14 @@ private theorem collectPile_indexOf_iff {n : Nat} (l : List (Fin n)) (hl : l.Nod
     (collectPile (types.get p) (dealToPile l assign p)).indexOf t ↔
       (types.get p = .Q ∧ l.indexOf s < l.indexOf t) ∨
       (types.get p = .S ∧ l.indexOf t < l.indexOf s) := by
-  sorry
+  rw [collectPile_indexOf_lt _ _ (dealToPile_nodup l hl assign p) hs ht]
+  constructor
+  · rintro (⟨hQ, h⟩ | ⟨hS, h⟩)
+    · exact Or.inl ⟨hQ, (indexOf_filter_lt hs ht).mp h⟩
+    · exact Or.inr ⟨hS, (indexOf_filter_lt ht hs).mp h⟩
+  · rintro (⟨hQ, h⟩ | ⟨hS, h⟩)
+    · exact Or.inl ⟨hQ, (indexOf_filter_lt hs ht).mpr h⟩
+    · exact Or.inr ⟨hS, (indexOf_filter_lt ht hs).mpr h⟩
 
 /-
   Both lemmas work with:
