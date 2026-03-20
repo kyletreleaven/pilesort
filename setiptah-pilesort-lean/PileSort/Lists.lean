@@ -97,6 +97,25 @@ theorem val_ge_of_mem_drop_finRange {n k : Nat} {p : Fin n}
     omega
   omega
 
+/-- p.val < k implies p is in the first k elements of finRange n. -/
+private theorem mem_take_finRange_of_lt {n k : Nat} {p : Fin n} (h : p.val < k) :
+    p ∈ (List.finRange n).take k := by
+  rw [List.mem_take_iff_getElem]
+  exact ⟨p.val, by simp; omega, by simp [List.getElem_finRange, Fin.ext_iff]⟩
+
+/-- indexOf in a concatenation when a is in the prefix. -/
+private theorem indexOf_append_of_mem {α : Type} [DecidableEq α] {a : α} {l₁ l₂ : List α}
+    (h : a ∈ l₁) : (l₁ ++ l₂).indexOf a = l₁.indexOf a := by
+  induction l₁ with
+  | nil => exact absurd h (List.not_mem_nil _)
+  | cons x xs ih =>
+    by_cases hax : x = a
+    · subst hax; simp [List.indexOf_cons]
+    · have h' : a ∈ xs := (List.mem_cons.mp h).resolve_left (Ne.symm hax)
+      simp only [List.cons_append, List.indexOf_cons,
+                 show (x == a) = false from by simp [hax], cond_false]
+      exact congrArg (· + 1) (ih h')
+
 /-- finRange m splits at position j: take ++ [j] ++ drop. -/
 theorem finRange_split {m : Nat} (j : Fin m) :
     List.finRange m =
