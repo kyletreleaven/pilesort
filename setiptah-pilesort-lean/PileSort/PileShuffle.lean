@@ -18,7 +18,7 @@
 
   3. `shuffleRound` — lifts `shuffleSeq` to `Deck n` via `Deck.toList` and
      `Deck.fromDeckSeq`.  The proof obligations are discharged by the list-level
-     lemmas (TODO: `shuffleSeq_nodup`, `shuffleSeq_length`).
+     lemmas (`shuffleSeq_nodup`, `shuffleSeq_length`).
 
   4. `Sortable`, `shuffleRound_order` — higher-level results.
 
@@ -204,43 +204,6 @@ theorem Deck.toList_indexOf {n : Nat} (d : Deck n) (s : Fin n) :
       = d.toList.indexOf (d.toList[(d.posOf s).val]'hlt) := by rw [hget]
     _ = (d.posOf s).val := indexOf_getElem d.toList_nodup (d.posOf s).val hlt
 
-/-
-  List-level version of shuffleRound_order: order in shuffleSeq output
-  is determined by pile assignment and pile type.
-
-  Proof outline:
-
-  1. Membership. Establish hs_f : s ∈ dealToPile l assign (assign s) via mem_dealToPile +
-     Fin.mem_of_nodup_length; similarly ht_f for t. Keep these in dealToPile form throughout.
-
-  2. Apply indexOf_flatMap_order. shuffleSeq is definitionally
-     (finRange types.length).flatMap (fun p => collectPile (types.get p) (dealToPile l assign p)),
-     so `rw [show shuffleSeq ... = flatMap ... from rfl]` exposes this. Then
-     `rw [indexOf_flatMap_order ...]` rewrites the goal to:
-       (assign s < assign t ∨ assign s = assign t ∧ (pile at assign s).idx s < ... .idx t)
-       ↔ (assign s < assign t ∨ ∃ _ : assign s = assign t, Q-or-S)
-
-  3. Bridge ∧ vs ∃. constructor; both directions: the assign s < assign t arm passes
-     through; the inner arm uses rintro ⟨heq, hlt⟩ / refine ⟨heq, ?_⟩. Derive
-     ht_f' : t ∈ dealToPile l assign (assign s) by rw [heq]; exact ht_f.
-
-  4. Case-split on pile type. `cases htp : types.get (assign s)` adds htp to context but
-     does NOT substitute in hlt (only in the goal). Use `simp only [htp, collectPile] at hlt`
-     to reduce hlt to dealToPile form (Q) or dealToPile.reverse form (S). Do NOT add dealToPile
-     to the simp set — that would unfold to l.filter and break indexOf_reverse_lt's pattern match.
-
-     Q branch: hlt : (dealToPile ...).idx s < (dealToPile ...).idx t.
-       Apply (indexOf_filter_lt hs_f ht_f').mp hlt. Lean unfolds dealToPile at semireducible
-       level to infer f; the type checker accepts hlt in dealToPile form via definitional equality.
-
-     S branch: hlt : (dealToPile ...).reverse.idx s < (dealToPile ...).reverse.idx t.
-       Apply (indexOf_reverse_lt (dealToPile_nodup ...) hs_f ht_f').mp hlt to get
-       (dealToPile ...).idx t < (dealToPile ...).idx s. Then apply
-       (indexOf_filter_lt ht_f' hs_f).mp to get l.idx t < l.idx s.
-       Term-mode .mp uses the type checker, which accepts dealToPile/l.filter via definitional eq.
-
-     Backward direction is symmetric.
--/
 /-- The indexOf order within a collected pile reduces to the original list order,
     mediated by pile type: Q preserves order, S reverses it. -/
 private theorem collectPile_indexOf_iff {n : Nat} (l : List (Fin n)) (hl : l.Nodup)
