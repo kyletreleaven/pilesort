@@ -48,6 +48,7 @@
 import PileSort.Basic
 import PileSort.Lists
 import PileSort.Permutations
+import PileSort.CatOrder
 
 /-! ## List-level pile shuffle -/
 
@@ -240,6 +241,50 @@ theorem Deck.toList_indexOf {n : Nat} (d : Deck n) (s : Fin n) :
 
      Backward direction is symmetric.
 -/
+/-- The indexOf order within a collected pile reduces to the original list order,
+    mediated by pile type: Q preserves order, S reverses it. -/
+private theorem collectPile_indexOf_iff {n : Nat} (l : List (Fin n)) (hl : l.Nodup)
+    (types : List PileType) (assign : Fin n → Fin types.length) (p : Fin types.length)
+    {s t : Fin n} (hs : s ∈ dealToPile l assign p) (ht : t ∈ dealToPile l assign p) :
+    (collectPile (types.get p) (dealToPile l assign p)).indexOf s <
+    (collectPile (types.get p) (dealToPile l assign p)).indexOf t ↔
+      (types.get p = .Q ∧ l.indexOf s < l.indexOf t) ∨
+      (types.get p = .S ∧ l.indexOf t < l.indexOf s) := by
+  sorry
+
+/-
+  Both lemmas work with:
+    piles p  = collectPile (types.get p) (dealToPile l assign p)
+    lists    = (finRange types.length).map piles
+  so that shuffleSeq l types assign = lists.flatten, and lists[p.val] = piles p
+  by getElem_map + getElem_finRange.  Membership: s ∈ lists[(assign s).val], etc.
+-/
+
+/-- When s and t are dealt to different piles, their order in the shuffleSeq output
+    equals the pile assignment order. -/
+private theorem shuffleSeq_order_diff {n : Nat} (l : List (Fin n)) (hl : l.Nodup)
+    (hlen : l.length = n) (types : List PileType) (assign : Fin n → Fin types.length)
+    (s t : Fin n) (hne : assign s ≠ assign t) :
+    (shuffleSeq l types assign).indexOf s < (shuffleSeq l types assign).indexOf t ↔
+      assign s < assign t := by
+  -- Rewrite shuffleSeq as lists.flatten, then apply indexOf_flatten_of_lt_val in each direction.
+  -- The assign s > assign t direction is a contradiction via the reversed inequality.
+  sorry
+
+/-- When s and t are dealt to the same pile p, their order in the shuffleSeq output
+    is determined by collectPile_indexOf_iff: Q preserves l-order, S reverses it. -/
+private theorem shuffleSeq_order_same {n : Nat} (l : List (Fin n)) (hl : l.Nodup)
+    (hlen : l.length = n) (types : List PileType) (assign : Fin n → Fin types.length)
+    (s t : Fin n) (heq : assign s = assign t) :
+    (shuffleSeq l types assign).indexOf s < (shuffleSeq l types assign).indexOf t ↔
+      (types.get (assign s) = .Q ∧ l.indexOf s < l.indexOf t) ∨
+      (types.get (assign s) = .S ∧ l.indexOf t < l.indexOf s) := by
+  -- Rewrite shuffleSeq as lists.flatten.  Use indexOf_flatten_same_val to reduce to the
+  -- within-pile comparison, then apply collectPile_indexOf_iff with
+  -- hs_f : s ∈ dealToPile l assign (assign s) and ht_f : t ∈ dealToPile l assign (assign s)
+  -- (recast via heq).
+  sorry
+
 theorem shuffleSeq_order {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (hlen : l.length = n)
     (types : List PileType) (assign : Fin n → Fin types.length) (s t : Fin n) :
     (shuffleSeq l types assign).indexOf s < (shuffleSeq l types assign).indexOf t ↔
@@ -247,7 +292,19 @@ theorem shuffleSeq_order {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (hlen : l.l
       ∃ _ : assign s = assign t,
         (types.get (assign s) = .Q ∧ l.indexOf s < l.indexOf t) ∨
         (types.get (assign s) = .S ∧ l.indexOf t < l.indexOf s) := by
-  sorry
+  by_cases heq : assign s = assign t
+  · constructor
+    · intro h
+      exact Or.inr ⟨heq, (shuffleSeq_order_same l hl hlen types assign s t heq).mp h⟩
+    · rintro (h | ⟨_, hQS⟩)
+      · exact absurd heq (Fin.ne_of_lt h)
+      · exact (shuffleSeq_order_same l hl hlen types assign s t heq).mpr hQS
+  · constructor
+    · intro h
+      exact Or.inl ((shuffleSeq_order_diff l hl hlen types assign s t heq).mp h)
+    · rintro (h | ⟨heq', _⟩)
+      · exact (shuffleSeq_order_diff l hl hlen types assign s t heq).mpr h
+      · exact absurd heq' heq
 
 /-- The order of cards in the output deck is determined by pile assignment and pile type:
     d'.posOf s < d'.posOf t iff

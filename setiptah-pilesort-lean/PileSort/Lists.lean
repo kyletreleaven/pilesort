@@ -74,6 +74,11 @@ theorem List.flatMap_congr {α β : Type} {f g : α → List β} {l : List α}
     simp only [List.flatMap_cons]
     rw [h a (List.mem_cons_self a t), ih (fun b hb => h b (List.mem_cons_of_mem a hb))]
 
+/-- The i-th element of (finRange m).map f is f i. -/
+theorem finRange_map_get {α : Type} {m : Nat} (f : Fin m → α) (i : Fin m) :
+    ((List.finRange m).map f).get ⟨i.val, by simp⟩ = f i := by
+  simp [List.getElem_map, List.getElem_finRange, Fin.ext_iff]
+
 /-- Elements in take k of finRange n have value < k. -/
 theorem val_lt_of_mem_take_finRange {n k : Nat} {p : Fin n}
     (h : p ∈ (List.finRange n).take k) : p.val < k := by
@@ -104,7 +109,7 @@ private theorem mem_take_finRange_of_lt {n k : Nat} {p : Fin n} (h : p.val < k) 
   exact ⟨p.val, by simp; omega, by simp [List.getElem_finRange, Fin.ext_iff]⟩
 
 /-- indexOf in a concatenation when a is in the prefix. -/
-private theorem indexOf_append_of_mem {α : Type} [DecidableEq α] {a : α} {l₁ l₂ : List α}
+theorem indexOf_append_of_mem {α : Type} [DecidableEq α] {a : α} {l₁ l₂ : List α}
     (h : a ∈ l₁) : (l₁ ++ l₂).indexOf a = l₁.indexOf a := by
   induction l₁ with
   | nil => exact absurd h (List.not_mem_nil _)
@@ -245,7 +250,7 @@ theorem list_split_two {α : Type} [DecidableEq α] {l : List α} {a b : α}
          not_mem_take_indexOf⟩
 
 -- indexOf in a concatenation when a is not in the prefix
-private theorem indexOf_append_not_mem {α : Type} [DecidableEq α] {a : α} (l₁ l₂ : List α)
+theorem indexOf_append_not_mem {α : Type} [DecidableEq α] {a : α} (l₁ l₂ : List α)
     (h : a ∉ l₁) : (l₁ ++ l₂).indexOf a = l₁.length + l₂.indexOf a := by
   induction l₁ with
   | nil => simp
