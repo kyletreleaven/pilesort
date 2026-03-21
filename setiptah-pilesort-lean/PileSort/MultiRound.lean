@@ -26,27 +26,21 @@
   `deckSeqNat word = aux 0 word` is a permutation of `{0, .., word.length}`
   with the property that `indexOf k < indexOf (k+1)` iff `word[k] = .a`.
 
-  ### Proof steps
+  ### Proof steps (all complete ✅)
 
-  1. `deckSeqNat_length`   — `(aux start w).length = w.length + 1` ✅
-  2. `deckSeqNat_mem`      — elements of `aux start w` are exactly `{start, .., start + w.length}`;
-                             in particular all < `word.length + 1` (enabling cast to `Fin`) ✅
-  3. `deckSeqNat_nodup`    — Nodup, from the mem lemma (all elements distinct) ✅
-  4. `deckOfWord`          — `Deck.fromDeckSeq` on the cast list; type `Deck (word.length + 1)` ✅
+  1. `deckSeqNat_length`       — `(aux start w).length = w.length + 1`
+  2. `deckSeqNat_mem`          — elements are exactly `{start, .., start + w.length}`
+  3. `deckSeqNat_nodup`        — Nodup
+  4. `deckOfWord`              — `Deck.fromDeckSeq` on the cast list; type `Deck (word.length + 1)`
+  5. `pmap_getElem_val`        — `(l.pmap f H)[i].val = l[i]` for val-preserving `f`
+  6. `deckSeqFin_get_val`      — corollary for our specific pmap
+  7. `indexOf_pmap_fin`        — `indexOf ⟨k,_⟩ (deckSeqFin w) = indexOf k (deckSeqNat 0 w)`
+  8. `deckSeqNat_a_zero` / `deckSeqNat_d_zero` — base cases for the order lemma
+  9. `indexOf_order_iff_aux`   — `indexOf (start+k) < indexOf (start+k+1) ↔ w[k] = .a`
+  10. `deckOfWord_changeProfile` — `Deck.changeProfile (deckOfWord word) = word`
 
-  **Next milestone**: `deckOfWord_changeProfile` (steps 5–6)
-
-  New infrastructure needed (not yet in the codebase):
-    · `indexOf_pmap`       — bridge: `indexOf ⟨k,_⟩ (deckSeqFin w) = indexOf k (deckSeqNat 0 w)`
-    · `indexOf_append_mem` — `k ∈ l → indexOf k (l ++ l') = indexOf k l`
-    · `indexOf_append_new` — `k ∉ l → indexOf k (l ++ [k]) = l.length`
-
-  5. `indexOf_order_iff`   — key order lemma: `indexOf k (deckSeqNat 0 w) < indexOf (k+1) (deckSeqNat 0 w)
-                             ↔ w[k] = .a`; induction using `indexOf_cons_ne` + append helpers above
-  6. `deckOfWord_changeProfile` — `Deck.changeProfile (deckOfWord word) = word`
-                             from step 5 via `indexOf_pmap` bridge + `changeProfile_get` + `List.ext`
-  7. `formulaWord_correct_sortable` — compose `sortable_iff_accepts` +
-                             `deckOfWord_changeProfile` + `formulaWord_correct`
+  **Next**: `formulaWord_correct_sortable` — compose `sortable_iff_accepts` +
+            `deckOfWord_changeProfile` + `formulaWord_correct`
 -/
 import PileSort.PileShuffle
 import PileSort.VirtualPileTypes

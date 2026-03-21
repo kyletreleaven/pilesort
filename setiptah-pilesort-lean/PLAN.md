@@ -5,12 +5,28 @@
 - `sortable_iff_accepts` ✅ — `Sortable d types ↔ accepts types (Deck.changeProfile d)`
 - `formulaWord_correct` ✅ — consumption-form proof stack complete
   (TestChain → ClauseWordNew → FormulaWordNew → FormulaWord)
+- `deckOfWord_changeProfile` ✅ — `Deck.changeProfile (deckOfWord word) = word`
+  (MultiRound.lean; enables formulaWord_correct_sortable)
 
 ---
 
-## Next goal: multi-round reduces to single-round on virtual piles
+## Next goal: `formulaWord_correct_sortable`
 
-Target theorem (in PileShuffle.lean or a new file):
+Compose the three completed results:
+
+```
+sortable_iff_accepts + deckOfWord_changeProfile + formulaWord_correct
+  ⟹  formulaWord_correct_sortable
+```
+
+Concretely: given `word` and pile types `types`, the deck `deckOfWord word` is
+sortable by `types` iff the formula word accepts (or equivalent SAT condition).
+
+---
+
+## Multi-round reduces to single-round on virtual piles
+
+Target theorem (in MultiRound.lean):
 
 ```
 shuffleRound (shuffleRound d pt1 assign1) pt2 assign2
@@ -23,20 +39,16 @@ This says two successive pile-shuffle rounds are equivalent to one round on
 ### Proof roadmap
 
 1. **`shuffleRound_order`** ✅ — the output ordering of `shuffleRound d types assign`
-   is determined solely by the pile assignment and pile types: earlier pile wins;
-   within a pile, Q preserves deck order and S reverses it.
+   is determined solely by the pile assignment and pile types.
 
-2. **`combinedAssign`** — define the combined assignment:
+2. **`combinedAssign`** ✅ — defined:
    `combinedAssign c = assign2 c * pt1.length + f(assign2 c, assign1 c)`
-   where `f` adjusts the round-1 index based on whether `pt2[assign2 c]` is Q
-   (identity) or S (reversed block).
+   where `f` adjusts based on whether `pt2[assign2 c]` is Q (identity) or S (reversed).
 
 3. **`virtualPileTypes_getElem`** — the virtual pile type at index
    `j * pt1.length + i` matches the composed condition from both rounds.
 
-4. **Main equality** — by `Deck.ext` (posOf agreement suffices): apply
-   `shuffleRound_order` twice on the LHS and once on the RHS, then use
-   `virtualPileTypes_getElem` to match pile types at the combined index.
+4. **`shuffleRound_virtualPileTypes`** (sorry) — main equality by `Deck.ext`.
 
 ---
 
