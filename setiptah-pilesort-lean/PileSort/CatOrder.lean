@@ -22,7 +22,25 @@ private theorem nodup_append_not_mem {α : Type} {l₁ l₂ : List α}
 private theorem indexOf_flatten_eq {α : Type} [DecidableEq α] (lists : List (List α))
     (hnd : lists.flatten.Nodup) (i : Fin lists.length) {a : α} (ha : a ∈ lists.get i) :
     lists.flatten.indexOf a = (lists.take i.val).flatten.length + (lists.get i).indexOf a := by
-  sorry
+  induction lists with
+  | nil => exact i.elim0
+  | cons hd tl ih =>
+    cases i using Fin.cases with
+    | zero =>
+      simp only [Fin.zero_eta, List.get_cons_zero] at ha
+      simp [List.flatten_cons, indexOf_append_of_mem ha]
+    | succ k =>
+      have hnd' : (hd ++ tl.flatten).Nodup := by simpa [List.flatten_cons] using hnd
+      simp only [Fin.val_succ, List.take_succ_cons, List.get_eq_getElem,
+                 List.getElem_cons_succ, List.flatten_cons]
+      have ha' : a ∈ tl.get k := by rwa [List.get_eq_getElem]
+      have ha_tl : a ∈ tl.flatten :=
+        List.mem_flatten.mpr ⟨tl.get k, List.get_mem tl k, ha'⟩
+      have hnd_tl : tl.flatten.Nodup :=
+        hnd'.sublist (List.sublist_append_right hd _)
+      have ha_nhd : a ∉ hd := fun h => absurd ha_tl (nodup_append_not_mem hnd' h)
+      rw [indexOf_append_not_mem _ _ ha_nhd, ← List.get_eq_getElem, ih hnd_tl k ha']
+      simp [List.length_append]; omega
 
 /-- If the flatten of a list of lists is Nodup, and a ∈ lists[i], b ∈ lists[j] with i < j,
     then a precedes b in the flatten. -/
