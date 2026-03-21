@@ -12,7 +12,6 @@ import PileSort.Lists
     · getElem_indexOf         — l.Nodup → a ∈ l → l[l.indexOf a] = a
     · indexOf_getElem         — l.Nodup → l.indexOf l[k] = k
     · Fin.mem_of_nodup_length — Nodup list of Fin n with length n contains every element
-    · Fin.invFun_spec         — injective Fin n → Fin n is surjective
 -/
 
 def Injective {α β : Type} (f : α → β) : Prop :=
@@ -62,9 +61,6 @@ theorem indexOf_getElem {l : List α} (hnd : l.Nodup)
   by induction on `n`, using a compression map that removes one element from
   `Fin (n+1)` to produce an element of `Fin n`.
 
-  `Fin.invFun_spec` (injective `Fin n → Fin n` is surjective) is then an
-  immediate corollary: map `List.finRange n` through `f` to get a Nodup list
-  of length `n`, apply `Fin.mem_of_nodup_length`, and unpack.
 -/
 
 /-- Compress Fin (n+1) to Option (Fin n) by omitting the value a.
@@ -172,19 +168,6 @@ theorem Fin.mem_of_nodup_length {n : Nat} {l : List (Fin n)}
         -- Injectivity: x = c
         have hxc : x = c := compressOpt_injective hd x c v hx_v hcv
         exact List.mem_cons.mpr (Or.inr (hxc ▸ hx_mem))
-
-/-- An injective function Fin n → Fin n is surjective. -/
-theorem Fin.invFun_spec {n : Nat} {f : Fin n → Fin n}
-    (hinj : Injective f) (c : Fin n) : ∃ k : Fin n, f k = c := by
-  -- (List.finRange n).map f is Nodup with length n, so contains c.
-  have hnodup : ((List.finRange n).map f).Nodup :=
-    (nodup_finRange n).map (f := f) (fun a b hne heq => hne (hinj heq))
-  have hlen : ((List.finRange n).map f).length = n := by simp
-  have hmem : c ∈ (List.finRange n).map f :=
-    Fin.mem_of_nodup_length hnodup hlen c
-  rw [List.mem_map] at hmem
-  obtain ⟨k, _, hk⟩ := hmem
-  exact ⟨k, hk⟩
 
 /-! ## Computable inverse of an injective Fin n → Fin n -/
 
