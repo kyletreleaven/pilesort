@@ -28,19 +28,23 @@
 
   ### Proof steps
 
-  1. `deckSeqNat_length`   — `(aux start w).length = w.length + 1`
-  2. `deckSeqNat_range`    — elements of `aux start w` are exactly `{start, .., start + w.length}`;
-                             in particular all < `word.length + 1` (enabling cast to `Fin`)
-  3. `deckSeqNat_nodup`    — Nodup, from the range lemma (all elements distinct)
-  4. `deckOfWord`          — `Deck.fromDeckSeq` on the cast list; type `Deck (word.length + 1)`
+  1. `deckSeqNat_length`   — `(aux start w).length = w.length + 1` ✅
+  2. `deckSeqNat_mem`      — elements of `aux start w` are exactly `{start, .., start + w.length}`;
+                             in particular all < `word.length + 1` (enabling cast to `Fin`) ✅
+  3. `deckSeqNat_nodup`    — Nodup, from the mem lemma (all elements distinct) ✅
+  4. `deckOfWord`          — `Deck.fromDeckSeq` on the cast list; type `Deck (word.length + 1)` ✅
 
-  **Milestone**: steps 1–4 (the construction and its basic properties)
+  **Next milestone**: `deckOfWord_changeProfile` (steps 5–6)
 
-  5. `indexOf_order_iff`   — key order lemma: `indexOf k (aux start w) < indexOf (k+1) (aux start w)
-                             ↔ w[k - start] = .a`; by induction using `indexOf_cons_ne` +
-                             a new `indexOf_append` helper
+  New infrastructure needed (not yet in the codebase):
+    · `indexOf_pmap`       — bridge: `indexOf ⟨k,_⟩ (deckSeqFin w) = indexOf k (deckSeqNat 0 w)`
+    · `indexOf_append_mem` — `k ∈ l → indexOf k (l ++ l') = indexOf k l`
+    · `indexOf_append_new` — `k ∉ l → indexOf k (l ++ [k]) = l.length`
+
+  5. `indexOf_order_iff`   — key order lemma: `indexOf k (deckSeqNat 0 w) < indexOf (k+1) (deckSeqNat 0 w)
+                             ↔ w[k] = .a`; induction using `indexOf_cons_ne` + append helpers above
   6. `deckOfWord_changeProfile` — `Deck.changeProfile (deckOfWord word) = word`
-                             from step 5 via `changeProfile_get` + `List.ext`
+                             from step 5 via `indexOf_pmap` bridge + `changeProfile_get` + `List.ext`
   7. `formulaWord_correct_sortable` — compose `sortable_iff_accepts` +
                              `deckOfWord_changeProfile` + `formulaWord_correct`
 -/
@@ -55,6 +59,94 @@ structure ShuffleSpec (n : Nat) where
 /-- Apply a sequence of shuffle rounds to a deck, left to right. -/
 def multiShuffleRound {n : Nat} (d : Deck n) (rounds : List (ShuffleSpec n)) : Deck n :=
   rounds.foldl (fun acc r => shuffleRound acc r.types r.assign) d
+
+/-! ## Construction: deck realizing a given word as its change profile -/
+
+/-- Place card `start` first (.a) or last (.d), recurse with start+1.
+    `deckSeqNat 0 word` is a permutation of {0,..,word.length} with
+    indexOf k < indexOf (k+1) iff word[k] = .a. -/
+private def deckSeqNat (start : Nat) : List Action → List Nat
+  | []         => [start]
+  | .a :: rest => start :: deckSeqNat (start + 1) rest
+  | .d :: rest => deckSeqNat (start + 1) rest ++ [start]
+
+private theorem deckSeqNat_length (start : Nat) (word : List Action) :
+    (deckSeqNat start word).length = word.length + 1 := by
+  induction word generalizing start with
+  | nil => simp [deckSeqNat]
+  | cons act rest ih => cases act <;> simp [deckSeqNat, ih]
+
+private theorem deckSeqNat_mem (start : Nat) (word : List Action) (k : Nat) :
+    k ∈ deckSeqNat start word ↔ start ≤ k ∧ k ≤ start + word.length := by
+  induction word generalizing start with
+  | nil =>
+    simp only [deckSeqNat, List.mem_singleton, List.length_nil, Nat.add_zero]
+    constructor <;> intro h <;> omega
+  | cons act rest ih =>
+    cases act with
+    | a =>
+      simp only [deckSeqNat, List.mem_cons, ih, List.length_cons]
+      constructor
+      · rintro (rfl | ⟨h1, h2⟩) <;> omega
+      · intro ⟨h1, h2⟩
+        rcases Nat.eq_or_lt_of_le h1 with rfl | hlt
+        · exact Or.inl rfl
+        · exact Or.inr ⟨hlt, by omega⟩
+    | d =>
+      simp only [deckSeqNat, List.mem_append, List.mem_singleton, ih, List.length_cons]
+      constructor
+      · rintro (⟨h1, h2⟩ | rfl) <;> omega
+      · intro ⟨h1, h2⟩
+        rcases Nat.eq_or_lt_of_le h1 with rfl | hlt
+        · exact Or.inr rfl
+        · exact Or.inl ⟨hlt, by omega⟩
+
+private theorem deckSeqNat_nodup (start : Nat) (word : List Action) :
+    (deckSeqNat start word).Nodup := by
+  induction word generalizing start with
+  | nil => simp [deckSeqNat]
+  | cons act rest ih =>
+    cases act with
+    | a =>
+      exact List.nodup_cons.mpr
+        ⟨fun h => absurd ((deckSeqNat_mem _ _ _).mp h).1 (by omega), ih _⟩
+    | d =>
+      simp only [deckSeqNat]
+      have hnotmem : start ∉ deckSeqNat (start + 1) rest :=
+        fun h => absurd ((deckSeqNat_mem _ _ _).mp h).1 (by omega)
+      suffices ∀ (l : List Nat), l.Nodup → start ∉ l → (l ++ [start]).Nodup from
+        this _ (ih _) hnotmem
+      intro l hnd hni
+      induction l with
+      | nil => simp
+      | cons hd tl ihtl =>
+        apply List.nodup_cons.mpr
+        constructor
+        · intro hmem
+          rcases List.mem_append.mp hmem with h | h
+          · exact (List.nodup_cons.mp hnd).1 h
+          · exact hni (List.mem_singleton.mp h ▸ List.mem_cons_self hd tl)
+        · exact ihtl (List.nodup_cons.mp hnd).2
+                     (fun h => hni (List.mem_cons_of_mem _ h))
+
+/-- Cast to Fin; bound follows from deckSeqNat_mem. -/
+private def deckSeqFin (word : List Action) : List (Fin (word.length + 1)) :=
+  (deckSeqNat 0 word).pmap
+    (fun k hk => ⟨k, by have := (deckSeqNat_mem 0 word k).mp hk; omega⟩)
+    (fun k hk => hk)
+
+private theorem deckSeqFin_length (word : List Action) :
+    (deckSeqFin word).length = word.length + 1 := by
+  unfold deckSeqFin; rw [List.length_pmap, deckSeqNat_length]
+
+private theorem deckSeqFin_nodup (word : List Action) : (deckSeqFin word).Nodup :=
+  (deckSeqNat_nodup 0 word).pmap
+    (fun _ hk => hk)
+    (fun ⦃_⦄ _ ⦃_⦄ _ hne heq => hne (congrArg Fin.val heq))
+
+/-- A deck whose change profile equals word. -/
+def deckOfWord (word : List Action) : Deck (word.length + 1) :=
+  Deck.fromDeckSeq (deckSeqFin word) (deckSeqFin_nodup word) (deckSeqFin_length word)
 
 /-! ## Two-round reduction to single round on virtual pile types -/
 
