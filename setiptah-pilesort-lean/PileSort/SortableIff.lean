@@ -15,6 +15,7 @@
 -/
 import PileSort.PileShuffle
 import PileSort.Mono
+import PileSort.Reduction
 
 /-! ## Change profile of a deck -/
 
@@ -203,7 +204,7 @@ theorem minAssign_sorts {n : Nat} (d : Deck n) (types : List PileType)
 /-- A deck is sortable by a pile type list iff the automaton (compile types) accepts
     the deck's change profile starting from state 0 (i.e., ends in a valid state). -/
 theorem sortable_iff_accepts {n : Nat} (hn : 0 < n) (d : Deck n) (types : List PileType) :
-    Sortable d types ↔ applyWord (Deck.changeProfile d) (compile types) 0 < types.length := by
+    Sortable d types ↔ accepts types (Deck.changeProfile d) := by
   constructor
   · -- Forward: extract assign from Sortable, apply assign_dominates_applyWord at k = n-1.
     intro ⟨assign, hsort⟩
