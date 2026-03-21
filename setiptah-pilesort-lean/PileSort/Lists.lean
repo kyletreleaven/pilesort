@@ -22,13 +22,9 @@
        `l.reverse.indexOf a < l.reverse.indexOf b ↔ l.indexOf b < l.indexOf a`
      Uses 1 and nodup on the reversed decomposition (possibly inlining 2).
 
-  5. `indexOf_flatMap_order` — for a nodup `(finRange m).flatMap piles` with `s ∈ piles ps`, `t ∈ piles pt`:
-       `indexOf s (...) < indexOf t (...) ↔ ps < pt ∨ (ps = pt ∧ (piles ps).indexOf s < (piles ps).indexOf t)`
-     Uses 2 and `finRange_flatMap_split`.
-
   ### PileShuffle.lean
 
-  6. `shuffleSeq_order` — list-level version of shuffleRound_order:
+  5. `shuffleSeq_order` — list-level version of shuffleRound_order:
        `(shuffleSeq l types assign).indexOf s < (...).indexOf t ↔ ...`
      Applies 5, then 3 (Q case) and 4 (S case) for within-pile comparison.
      Connects `l.indexOf s` to `d.posOf s` via `indexOf_getElem` + `left_inv` (inlined).
@@ -386,13 +382,3 @@ theorem flatMap_filter_perm {α : Type} {m : Nat} (l : List α) (f : α → Fin 
   | nil => simp
   | cons a t ih => exact (flatMap_filter_cons a t f).trans (ih.cons a)
 
-/-- Order in a flatMap: for a nodup flatMap, indexOf s < indexOf t iff
-    the pile index of s is smaller, or the piles are equal and s comes before t within the pile. -/
-theorem indexOf_flatMap_order {n m : Nat} (piles : Fin m → List (Fin n))
-    (hnd : ((List.finRange m).flatMap piles).Nodup)
-    {s t : Fin n} {ps pt : Fin m}
-    (hs : s ∈ piles ps) (ht : t ∈ piles pt) :
-    ((List.finRange m).flatMap piles).indexOf s <
-    ((List.finRange m).flatMap piles).indexOf t ↔
-      ps < pt ∨ (ps = pt ∧ (piles ps).indexOf s < (piles ps).indexOf t) := by
-  sorry
