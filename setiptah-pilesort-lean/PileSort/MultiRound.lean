@@ -195,12 +195,20 @@ private theorem indexOf_pmap_fin (word : List Action) (k : Nat) (hk : k < word.l
 private theorem deckSeqNat_a_zero (start : Nat) (rest : List Action) :
     (start :: deckSeqNat (start + 1) rest).indexOf start <
     (start :: deckSeqNat (start + 1) rest).indexOf (start + 1) := by
-  sorry
+  rw [indexOf_cons_eq _ _ _ rfl, indexOf_cons_ne _ _ _ (by omega)]
+  omega
 
 private theorem deckSeqNat_d_zero (start : Nat) (rest : List Action) :
     ¬ ((deckSeqNat (start + 1) rest ++ [start]).indexOf start <
        (deckSeqNat (start + 1) rest ++ [start]).indexOf (start + 1)) := by
-  sorry
+  have hmem : start + 1 ∈ deckSeqNat (start + 1) rest :=
+    (deckSeqNat_mem _ _ _).mpr ⟨Nat.le_refl _, Nat.le_add_right _ _⟩
+  have hnotmem : start ∉ deckSeqNat (start + 1) rest :=
+    fun h => absurd ((deckSeqNat_mem _ _ _).mp h).1 (by omega)
+  rw [indexOf_append_of_mem hmem, indexOf_append_not_mem _ _ hnotmem,
+      indexOf_cons_eq start start [] rfl]
+  have := indexOf_lt_length hmem
+  omega
 
 private theorem indexOf_order_iff_aux (start : Nat) (word : List Action)
     (k : Nat) (hk : k < word.length) :
