@@ -151,15 +151,43 @@ def deckOfWord (word : List Action) : Deck (word.length + 1) :=
 
 /-! ## indexOf bridge: deckSeqFin ↔ deckSeqNat -/
 
-/-- pmap with the Nat → Fin inclusion preserves indexOf. -/
-private theorem pmap_indexOf_fin {m : Nat} (l : List Nat)
-    (H : ∀ k ∈ l, k < m) (k : Nat) (hk : k < m) (hmem : k ∈ l) :
-    (l.pmap (fun j hj => (⟨j, hj⟩ : Fin m)) H).indexOf ⟨k, hk⟩ = l.indexOf k := by
-sorry
+-- getElem of a pmap into Fin has the same val as the original list,
+-- provided the mapping function is val-preserving.
+private theorem pmap_getElem_val {m : Nat} {p : Nat → Prop} (f : ∀ k, p k → Fin m)
+    (hf : ∀ k h, (f k h).val = k)
+    (l : List Nat) (H : ∀ k ∈ l, p k)
+    (i : Nat) (hi : i < (l.pmap f H).length) (hi' : i < l.length) :
+    ((l.pmap f H)[i]'hi).val = l[i]'hi' := by
+  induction l generalizing i with
+  | nil => exact absurd hi' (Nat.not_lt_zero _)
+  | cons x xs ih =>
+    cases i with
+    | zero => simp [List.pmap, hf]
+    | succ i =>
+      simp only [List.pmap, List.getElem_cons_succ]
+      exact ih (fun j hj => H j (List.mem_cons_of_mem x hj)) i
+               (by simpa [List.length_pmap] using hi) (Nat.lt_of_succ_lt_succ hi')
+
+-- The i-th element of deckSeqFin has the same val as the i-th element of deckSeqNat.
+private theorem deckSeqFin_get_val (word : List Action) (i : Nat)
+    (hi_fin : i < (deckSeqFin word).length) (hi_nat : i < (deckSeqNat 0 word).length) :
+    ((deckSeqFin word)[i]'hi_fin).val = (deckSeqNat 0 word)[i]'hi_nat := by
+  unfold deckSeqFin
+  exact pmap_getElem_val _ (fun _ _ => rfl) _ _ _ _ hi_nat
 
 private theorem indexOf_pmap_fin (word : List Action) (k : Nat) (hk : k < word.length + 1) :
     (deckSeqFin word).indexOf ⟨k, hk⟩ = (deckSeqNat 0 word).indexOf k := by
-sorry
+  have hmem : k ∈ deckSeqNat 0 word :=
+    (deckSeqNat_mem 0 word k).mpr ⟨Nat.zero_le _, by omega⟩
+  have hi_lt : (deckSeqNat 0 word).indexOf k < (deckSeqNat 0 word).length :=
+    indexOf_lt_length hmem
+  have hi_fin : (deckSeqNat 0 word).indexOf k < (deckSeqFin word).length := by
+    rwa [deckSeqFin_length, ← deckSeqNat_length]
+  have hget : (deckSeqFin word)[(deckSeqNat 0 word).indexOf k]'hi_fin = ⟨k, hk⟩ := by
+    apply Fin.ext
+    rw [deckSeqFin_get_val _ _ hi_fin hi_lt, getElem_indexOf hmem]
+  rw [← hget]
+  exact indexOf_getElem (deckSeqFin_nodup word) _ hi_fin
 
 /-! ## Key order lemma -/
 
