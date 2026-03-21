@@ -21,11 +21,11 @@ variable {α : Type} [DecidableEq α]
 
 -- indexOf_cons spells out the cons case; used throughout.
 -- Note the argument order: x == y (head == needle).
-private theorem indexOf_cons_eq (x y : α) (xs : List α) (h : x = y) :
+theorem indexOf_cons_eq (x y : α) (xs : List α) (h : x = y) :
     (x :: xs).indexOf y = 0 := by
   subst h; simp [List.indexOf_cons]
 
-private theorem indexOf_cons_ne (x y : α) (xs : List α) (h : x ≠ y) :
+theorem indexOf_cons_ne (x y : α) (xs : List α) (h : x ≠ y) :
     (x :: xs).indexOf y = xs.indexOf y + 1 := by
   simp only [List.indexOf_cons]
   cases hb : (x == y) with

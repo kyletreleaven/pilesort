@@ -192,12 +192,50 @@ private theorem indexOf_pmap_fin (word : List Action) (k : Nat) (hk : k < word.l
 /-! ## Key order lemma -/
 
 /-- indexOf (start+k) in deckSeqNat start word precedes indexOf (start+k+1) iff word[k] = .a. -/
+private theorem deckSeqNat_a_zero (start : Nat) (rest : List Action) :
+    (start :: deckSeqNat (start + 1) rest).indexOf start <
+    (start :: deckSeqNat (start + 1) rest).indexOf (start + 1) := by
+  sorry
+
+private theorem deckSeqNat_d_zero (start : Nat) (rest : List Action) :
+    ¬ ((deckSeqNat (start + 1) rest ++ [start]).indexOf start <
+       (deckSeqNat (start + 1) rest ++ [start]).indexOf (start + 1)) := by
+  sorry
+
 private theorem indexOf_order_iff_aux (start : Nat) (word : List Action)
     (k : Nat) (hk : k < word.length) :
     (deckSeqNat start word).indexOf (start + k) <
     (deckSeqNat start word).indexOf (start + k + 1) ↔
     word[k]'hk = .a := by
-sorry
+  induction word generalizing start k with
+  | nil => exact absurd hk (Nat.not_lt_zero _)
+  | cons act rest ih =>
+    cases k with
+    | zero =>
+      simp only [Nat.add_zero]
+      cases act with
+      | a => simp only [deckSeqNat]
+             exact iff_of_true (deckSeqNat_a_zero start rest) rfl
+      | d => simp only [deckSeqNat, List.getElem_cons_zero]
+             exact iff_of_false (deckSeqNat_d_zero start rest) (by decide)
+    | succ k' =>
+      have hk' : k' < rest.length := Nat.lt_of_succ_lt_succ hk
+      -- normalize Nat.succ k' → k' + 1 so arithmetic rewrites find their targets
+      simp only [Nat.succ_eq_add_one] at *
+      have eq1 : start + (k' + 1) = (start + 1) + k' := by omega
+      cases act with
+      | a =>
+        simp only [deckSeqNat]
+        rw [indexOf_cons_ne _ _ _ (by omega : start ≠ start + (k' + 1)),
+            indexOf_cons_ne _ _ _ (by omega : start ≠ start + (k' + 1) + 1),
+            eq1, Nat.add_lt_add_iff_right]
+        exact ih (start + 1) k' hk'
+      | d =>
+        simp only [deckSeqNat]
+        rw [indexOf_append_of_mem ((deckSeqNat_mem _ _ _).mpr ⟨by omega, by omega⟩),
+            indexOf_append_of_mem ((deckSeqNat_mem _ _ _).mpr ⟨by omega, by omega⟩),
+            eq1]
+        exact ih (start + 1) k' hk'
 
 private theorem indexOf_order_iff (word : List Action) (k : Nat) (hk : k < word.length) :
     (deckSeqNat 0 word).indexOf k < (deckSeqNat 0 word).indexOf (k + 1) ↔
