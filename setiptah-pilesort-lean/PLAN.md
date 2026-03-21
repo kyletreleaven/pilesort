@@ -1,72 +1,49 @@
 # Plan
 
-## `Sortable ↔ automaton accepts` — remaining steps
+## Completed
 
-Main goal: `Sortable d types ↔ applyWord (Deck.changeProfile d) (compile types) 0 < types.length`
-
-Already proved:
-- `compile_consecutive` ✅
-- `assign_dominates_applyWord` ✅
-
-### Step 0 — `@[ext]` on `Deck` (PileShuffle.lean) ✅
-### Step 1 — `strictMono_consec_is_id` (Permutations.lean) ✅
-
-### Step 2 — `minAssign` definition (SortableIff.lean) ✅
-Value: `applyWord ((Deck.changeProfile d).take k.val) (compile types) 0`
-
-Bound proof: `applyWord (take k.val) ... 0 ≤ applyWord word ... 0 < types.length`
-- `≤`: `word = take k.val ++ drop k.val`, so `applyWord_append` + `applyWord_ge` on the suffix
-- `< types.length`: the acceptance hypothesis
-
-### Step 3 — `minAssign_consecutive` (SortableIff.lean) ✅
-For `k+1 < n`:
-`(minAssign ⟨k+1,_⟩).val = compile types ((Deck.changeProfile d)[k]) (minAssign ⟨k,_⟩).val`
-
-Proof: unfold both sides via `applyWord_take_succ`.
-
-### Step 4 — `minAssign_sorts` (SortableIff.lean) ✅
-Goal: `shuffleRound d types (minAssign d types h) = Deck.sorted n`
-
-a. For each `k+1 < n`: by `minAssign_consecutive` + `changeProfile_get`, get
-   `compile types act (minAssign ⟨k,_⟩).val ≤ (minAssign ⟨k+1,_⟩).val`.
-   By `compile_consecutive.mpr`: `posOf ⟨k,_⟩ < posOf ⟨k+1,_⟩`.
-b. Apply `strictMono_consec_is_id` → `posOf = id`.
-c. `cardAt = id`: `cardAt c = cardAt (posOf c) = c` by `left_inv` + step b.
-d. `Deck.ext`: closes the goal.
-
-### Step 5 — Main theorem (SortableIff.lean) ✅
-```
-theorem sortable_iff_accepts {n : Nat} (hn : 0 < n) (d : Deck n) (types : List PileType) :
-    Sortable d types ↔ applyWord (Deck.changeProfile d) (compile types) 0 < types.length
-```
-Note: `0 < n` required — for n=0, LHS is vacuously true but RHS can fail.
-Note: RHS is automaton acceptance — states `{0..types.length-1}` accept; `types.length` is the absorbing sink/reject state.
-
-Forward (→): `assign_dominates_applyWord` at `k = n-1` gives `applyWord word ... 0 ≤ (assign ⟨n-1,_⟩).val < types.length`. Use `word.take (n-1) = word` (length = n-1).
-
-Backward (←): witness `minAssign d types h`; `minAssign_sorts` closes the goal.
+- `sortable_iff_accepts` ✅ — `Sortable d types ↔ accepts types (Deck.changeProfile d)`
+- `formulaWord_correct` ✅ — consumption-form proof stack complete
+  (TestChain → ClauseWordNew → FormulaWordNew → FormulaWord)
 
 ---
 
-## Status
+## Next goal: multi-round reduces to single-round on virtual piles
 
-The consumption-form proof stack for `formulaWord_correct` is complete:
+Target theorem (in PileShuffle.lean or a new file):
 
-- **TestChain.lean** — plain-chain and end-capped consumption lemmas for
-  `testWord` sequences.  Design notes and lemma inventory in the module docstring.
-- **ClauseWordNew.lean** — `clauseWord_start_sat_cons`, `clauseWord_start_nonsat_cons`,
-  `clauseWord_chain_consumption`, plus the representation-mismatch bridge lemmas
-  `hasMatchingAssignment_some_matchesLiteral` and `hasMatchingAssignment_activation`.
-- **FormulaWordNew.lean** — `clauseNext_good_consumption`, `clauseNext_bad_consumption`,
-  `clauseNext_chain_consumption`.
-- **FormulaWord.lean** — `formulaWord_correct` proved via the consumption stack.
+```
+shuffleRound (shuffleRound d pt1 assign1) pt2 assign2
+  = shuffleRound d (virtualPileTypes pt1 pt2) combinedAssign
+```
 
-Old proof machinery has been moved to `Legacy/` or deleted.
+This says two successive pile-shuffle rounds are equivalent to one round on
+`virtualPileTypes pt1 pt2`, with a combined assignment that encodes both rounds.
+
+### Proof roadmap
+
+1. **`shuffleRound_order`** ✅ — the output ordering of `shuffleRound d types assign`
+   is determined solely by the pile assignment and pile types: earlier pile wins;
+   within a pile, Q preserves deck order and S reverses it.
+
+2. **`combinedAssign`** — define the combined assignment:
+   `combinedAssign c = assign2 c * pt1.length + f(assign2 c, assign1 c)`
+   where `f` adjusts the round-1 index based on whether `pt2[assign2 c]` is Q
+   (identity) or S (reversed block).
+
+3. **`virtualPileTypes_getElem`** — the virtual pile type at index
+   `j * pt1.length + i` matches the composed condition from both rounds.
+
+4. **Main equality** — by `Deck.ext` (posOf agreement suffices): apply
+   `shuffleRound_order` twice on the LHS and once on the RHS, then use
+   `virtualPileTypes_getElem` to match pile types at the combined index.
+
+---
 
 ## Remaining cleanup
 
-`ClauseWord.lean` still contains two index-form theorems that are dead code:
-`testChain_actd` and `testChain_nactd_old`.  Once deleted the file body is empty
+`ClauseWord.lean` still contains two dead-code theorems:
+`testChain_actd` and `testChain_nactd_old`. Once deleted the file body is empty
 and the file itself can be removed (update imports in `FormulaWord.lean` and
 `PileSort.lean` accordingly).
 
