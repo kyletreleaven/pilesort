@@ -18,13 +18,13 @@ Bound proof: `applyWord (take k.val) ... 0 ≤ applyWord word ... 0 < types.leng
 - `≤`: `word = take k.val ++ drop k.val`, so `applyWord_append` + `applyWord_ge` on the suffix
 - `< types.length`: the acceptance hypothesis
 
-### Step 3 — `minAssign_consecutive` (SortableIff.lean)
+### Step 3 — `minAssign_consecutive` (SortableIff.lean) ✅
 For `k+1 < n`:
 `(minAssign ⟨k+1,_⟩).val = compile types ((Deck.changeProfile d)[k]) (minAssign ⟨k,_⟩).val`
 
 Proof: unfold both sides via `applyWord_take_succ`.
 
-### Step 4 — `minAssign_sorts` (SortableIff.lean)
+### Step 4 — `minAssign_sorts` (SortableIff.lean) ✅
 Goal: `shuffleRound d types (minAssign d types h) = Deck.sorted n`
 
 a. For each `k+1 < n`: by `minAssign_consecutive` + `changeProfile_get`, get
@@ -34,12 +34,13 @@ b. Apply `strictMono_consec_is_id` → `posOf = id`.
 c. `cardAt = id`: `cardAt c = cardAt (posOf c) = c` by `left_inv` + step b.
 d. `Deck.ext`: closes the goal.
 
-### Step 5 — Main theorem (SortableIff.lean)
+### Step 5 — Main theorem (SortableIff.lean) ✅
 ```
 theorem sortable_iff_accepts {n : Nat} (hn : 0 < n) (d : Deck n) (types : List PileType) :
     Sortable d types ↔ applyWord (Deck.changeProfile d) (compile types) 0 < types.length
 ```
 Note: `0 < n` required — for n=0, LHS is vacuously true but RHS can fail.
+Note: RHS is automaton acceptance — states `{0..types.length-1}` accept; `types.length` is the absorbing sink/reject state.
 
 Forward (→): `assign_dominates_applyWord` at `k = n-1` gives `applyWord word ... 0 ≤ (assign ⟨n-1,_⟩).val < types.length`. Use `word.take (n-1) = word` (length = n-1).
 

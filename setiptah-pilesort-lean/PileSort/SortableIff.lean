@@ -149,7 +149,7 @@ theorem assign_dominates_applyWord {n : Nat} (d : Deck n) (types : List PileType
     -- Goal: compile types act (applyWord (take k) ... 0) ≤ (assign ⟨k+1,_⟩).val
     exact Nat.le_trans (compile_step_mono types _ _ _ (ih hkn)) hci
 
-/-! ## Minimum assignment -/
+/-! ## Minimum assignment and its properties -/
 
 /-- The minimum pile assignment: card k goes to the automaton state after k steps. -/
 def minAssign {n : Nat} (d : Deck n) (types : List PileType)
@@ -162,3 +162,59 @@ def minAssign {n : Nat} (d : Deck n) (types : List PileType)
           (applyWord ((Deck.changeProfile d).take k.val) (compile types) 0) := by
       rw [← applyWord_append, List.take_append_drop]
     rw [hsplit]; exact applyWord_ge _ _ _⟩
+
+/-- The successor step of minAssign equals one compile call on the predecessor. -/
+theorem minAssign_consecutive {n : Nat} (d : Deck n) (types : List PileType)
+    (h : applyWord (Deck.changeProfile d) (compile types) 0 < types.length)
+    (k : Nat) (hk : k + 1 < n) :
+    let hkw : k < (Deck.changeProfile d).length := by simp [changeProfile_length]; omega
+    (minAssign d types h ⟨k + 1, hk⟩).val =
+    compile types ((Deck.changeProfile d)[k]'hkw) (minAssign d types h ⟨k, by omega⟩).val :=
+  applyWord_take_succ _ _ _ _ (by simp [changeProfile_length]; omega)
+
+/-- The minimum assignment sorts the deck. -/
+theorem minAssign_sorts {n : Nat} (d : Deck n) (types : List PileType)
+    (h : applyWord (Deck.changeProfile d) (compile types) 0 < types.length) :
+    shuffleRound d types (minAssign d types h) = Deck.sorted n := by
+  -- Step 1: posOf = id via strictMono_consec_is_id
+  have hposOf : (shuffleRound d types (minAssign d types h)).posOf = id := by
+    funext k
+    apply strictMono_consec_is_id
+    intro j hj
+    apply (compile_consecutive d types (minAssign d types h) ⟨j, by omega⟩ hj).mpr
+    have hkw : j < (Deck.changeProfile d).length := by simp [changeProfile_length]; omega
+    rw [minAssign_consecutive d types h j hj, changeProfile_get d j hkw]
+    exact Nat.le_refl _
+  -- Step 2: cardAt = id via left_inv + posOf = id
+  have hcardAt : (shuffleRound d types (minAssign d types h)).cardAt = id := by
+    funext k
+    have hpk : (shuffleRound d types (minAssign d types h)).posOf k = k :=
+      congrFun hposOf k
+    have hlv := (shuffleRound d types (minAssign d types h)).left_inv k
+    rw [hpk] at hlv
+    exact hlv
+  -- Step 3: Deck.ext
+  apply Deck.ext
+  · rw [hposOf]; rfl
+  · rw [hcardAt]; rfl
+
+/-! ## Main theorem -/
+
+/-- A deck is sortable by a pile type list iff the automaton (compile types) accepts
+    the deck's change profile starting from state 0 (i.e., ends in a valid state). -/
+theorem sortable_iff_accepts {n : Nat} (hn : 0 < n) (d : Deck n) (types : List PileType) :
+    Sortable d types ↔ applyWord (Deck.changeProfile d) (compile types) 0 < types.length := by
+  constructor
+  · -- Forward: extract assign from Sortable, apply assign_dominates_applyWord at k = n-1.
+    intro ⟨assign, hsort⟩
+    have hk : n - 1 < n := by omega
+    have hdom := assign_dominates_applyWord d types assign hsort (n - 1) hk
+    -- (changeProfile d).take (n-1) = changeProfile d, since length = n-1
+    have htake : (Deck.changeProfile d).take (n - 1) = Deck.changeProfile d := by
+      apply List.take_of_length_le
+      simp [changeProfile_length]
+    rw [htake] at hdom
+    exact Nat.lt_of_le_of_lt hdom (assign ⟨n - 1, hk⟩).isLt
+  · -- Backward: witness minAssign, use minAssign_sorts.
+    intro h
+    exact ⟨minAssign d types h, minAssign_sorts d types h⟩
