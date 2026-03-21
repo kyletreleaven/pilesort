@@ -45,6 +45,7 @@
 import PileSort.PileShuffle
 import PileSort.VirtualPileTypes
 import PileSort.SortableIff
+import PileSort.FormulaWord
 
 /-- One round's worth of pile-shuffle parameters. -/
 structure ShuffleSpec (n : Nat) where
@@ -290,3 +291,17 @@ theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
     shuffleRound (shuffleRound d pt1 assign1) pt2 assign2 =
     shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2) := by
   sorry
+
+/-- Main reduction theorem: the deck realizing a formula word is sortable by the
+    pile-sort machine iff the formula is satisfiable. -/
+theorem formulaWord_correct_sortable (n : Nat) (clauses : List Clause)
+    (xs : List PileType)
+    (hn : n ≥ 1)
+    (hxs_len : xs.length = n + 1)
+    (hne : clauses ≠ []) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate clauses.length PileType.Q)
+    Sortable (deckOfWord (formulaWord n clauses)) types ↔
+      HasMatchingAssignment n xs (satisfiesFormula · clauses) := by
+  intro types
+  rw [sortable_iff_accepts (Nat.succ_pos _), deckOfWord_changeProfile]
+  exact formulaWord_correct n clauses xs hn hxs_len hne
