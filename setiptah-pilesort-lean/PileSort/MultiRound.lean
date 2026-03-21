@@ -39,8 +39,22 @@
   9. `indexOf_order_iff_aux`   — `indexOf (start+k) < indexOf (start+k+1) ↔ w[k] = .a`
   10. `deckOfWord_changeProfile` — `Deck.changeProfile (deckOfWord word) = word`
 
-  **Next**: `formulaWord_correct_sortable` — compose `sortable_iff_accepts` +
-            `deckOfWord_changeProfile` + `formulaWord_correct`
+  `formulaWord_correct_sortable` ✅ — single-round form; proved by composing
+  `sortable_iff_accepts` + `deckOfWord_changeProfile` + `formulaWord_correct`.
+
+  ## Multi-round form
+
+  `MultiSortable` generalises `Sortable` to a sequence of rounds (list of pile-type
+  lists).  The main target is:
+
+    `formulaWord_correct_multiSortable` — `MultiSortable (deckOfWord (formulaWord n clauses))
+      [ALIGN, xs, replicate clauses.length Q] ↔ HasMatchingAssignment n xs (satisfiesFormula · clauses)`
+
+  ### Sorry proofs remaining
+
+  - `shuffleRound_virtualPileTypes` — two rounds on pt1, pt2 equal one round on
+    `virtualPileTypes pt1 pt2` with `combinedAssign`.
+  - `formulaWord_correct_multiSortable` — depends on `shuffleRound_virtualPileTypes`.
 -/
 import PileSort.PileShuffle
 import PileSort.VirtualPileTypes
