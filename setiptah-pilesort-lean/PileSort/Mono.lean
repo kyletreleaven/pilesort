@@ -146,3 +146,18 @@ theorem applyWord_append_truncate (word : List Action) (A B : List PileType) (s 
         _ ≤ compile (A ++ B) act A.length := compile_step_ge (A ++ B) act A.length
         _ ≤ applyWord rest (compile (A ++ B)) (compile (A ++ B) act A.length) :=
             applyWord_ge rest (A ++ B) _
+
+/-- The advance delta: 0 if the pile type permits staying at this action, 1 otherwise. -/
+def advanceDelta (types : List PileType) (p : Fin types.length) (act : Action) : Nat :=
+  match types.get p, act with
+  | .Q, .a => 0
+  | .S, .d => 0
+  | _,  _  => 1
+
+/-- compile is exactly p.val + advanceDelta. -/
+theorem compile_eq (types : List PileType) (act : Action) (p : Fin types.length) :
+    compile types act p.val = p.val + advanceDelta types p act := by
+  simp only [advanceDelta, List.get_eq_getElem]
+  unfold compile
+  rw [dif_pos p.isLt]
+  cases types[p.val] <;> cases act <;> simp
