@@ -100,13 +100,13 @@ theorem compile_consecutive {n : Nat} (d : Deck n) (types : List PileType)
 
 private theorem sorted_posOf {n : Nat} (s : Fin n) : (Deck.sorted n).posOf s = s := rfl
 
-private theorem changeProfile_length {n : Nat} (d : Deck n) :
+theorem changeProfile_length {n : Nat} (d : Deck n) :
     (Deck.changeProfile d).length = n - 1 := by
   simp [Deck.changeProfile, List.length_zipWith, List.length_tail, List.length_finRange]
   omega
 
 /-- The k-th action in the change profile is .a iff card k comes before card k+1. -/
-private theorem changeProfile_get {n : Nat} (d : Deck n) (k : Nat)
+theorem changeProfile_get {n : Nat} (d : Deck n) (k : Nat)
     (hk : k < (Deck.changeProfile d).length) :
     let hkn  : k < n     := by simp [changeProfile_length] at hk; omega
     let hk1n : k + 1 < n := by simp [changeProfile_length] at hk; omega

@@ -50,6 +50,7 @@
 -/
 import PileSort.PileShuffle
 import PileSort.VirtualPileTypes
+import PileSort.SortableIff
 
 /-- One round's worth of pile-shuffle parameters. -/
 structure ShuffleSpec (n : Nat) where
@@ -147,6 +148,53 @@ private theorem deckSeqFin_nodup (word : List Action) : (deckSeqFin word).Nodup 
 /-- A deck whose change profile equals word. -/
 def deckOfWord (word : List Action) : Deck (word.length + 1) :=
   Deck.fromDeckSeq (deckSeqFin word) (deckSeqFin_nodup word) (deckSeqFin_length word)
+
+/-! ## indexOf bridge: deckSeqFin ↔ deckSeqNat -/
+
+/-- pmap with the Nat → Fin inclusion preserves indexOf. -/
+private theorem pmap_indexOf_fin {m : Nat} (l : List Nat)
+    (H : ∀ k ∈ l, k < m) (k : Nat) (hk : k < m) (hmem : k ∈ l) :
+    (l.pmap (fun j hj => (⟨j, hj⟩ : Fin m)) H).indexOf ⟨k, hk⟩ = l.indexOf k := by
+sorry
+
+private theorem indexOf_pmap_fin (word : List Action) (k : Nat) (hk : k < word.length + 1) :
+    (deckSeqFin word).indexOf ⟨k, hk⟩ = (deckSeqNat 0 word).indexOf k := by
+sorry
+
+/-! ## Key order lemma -/
+
+/-- indexOf (start+k) in deckSeqNat start word precedes indexOf (start+k+1) iff word[k] = .a. -/
+private theorem indexOf_order_iff_aux (start : Nat) (word : List Action)
+    (k : Nat) (hk : k < word.length) :
+    (deckSeqNat start word).indexOf (start + k) <
+    (deckSeqNat start word).indexOf (start + k + 1) ↔
+    word[k]'hk = .a := by
+sorry
+
+private theorem indexOf_order_iff (word : List Action) (k : Nat) (hk : k < word.length) :
+    (deckSeqNat 0 word).indexOf k < (deckSeqNat 0 word).indexOf (k + 1) ↔
+    word[k]'hk = .a := by
+  have := indexOf_order_iff_aux 0 word k hk
+  simpa using this
+
+/-! ## deckOfWord has the right change profile -/
+
+theorem deckOfWord_changeProfile (word : List Action) :
+    Deck.changeProfile (deckOfWord word) = word := by
+  apply List.ext_getElem
+  · simp [changeProfile_length]
+  · intro i hi _
+    have hkw : i < word.length := by rw [changeProfile_length] at hi; exact hi
+    rw [changeProfile_get (deckOfWord word) i hi]
+    -- Match the exact bounds changeProfile_get used in its let-bindings
+    have hlt_iff :
+        (deckOfWord word).posOf ⟨i, by rw [changeProfile_length] at hi; omega⟩ <
+        (deckOfWord word).posOf ⟨i+1, by rw [changeProfile_length] at hi; omega⟩ ↔
+        word[i]'hkw = .a := by
+      simp only [deckOfWord, Deck.fromDeckSeq, Fin.lt_def]
+      rw [indexOf_pmap_fin, indexOf_pmap_fin, indexOf_order_iff _ _ hkw]
+    simp only [hlt_iff]
+    cases word[i]'hkw <;> rfl
 
 /-! ## Two-round reduction to single round on virtual pile types -/
 
