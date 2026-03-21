@@ -8,21 +8,10 @@ Already proved:
 - `compile_consecutive` ✅
 - `assign_dominates_applyWord` ✅
 
-### Step 0 — `@[ext]` on `Deck` (PileShuffle.lean)
-Add `@[ext]` to the `Deck` structure.
-Gives: to prove `d1 = d2`, it suffices to prove `d1.posOf = d2.posOf` and `d1.cardAt = d2.cardAt`.
+### Step 0 — `@[ext]` on `Deck` (PileShuffle.lean) ✅
+### Step 1 — `strictMono_consec_is_id` (Permutations.lean) ✅
 
-### Step 1 — `strictMono_consec_is_id` (Permutations.lean)
-Statement: if `f : Fin n → Fin n` satisfies `∀ k (hk : k+1 < n), f ⟨k,_⟩ < f ⟨k+1,_⟩`,
-then `∀ k, f k = k`.
-
-Sub-lemmas (both by induction on k):
-- `f_ge`: `∀ k, k.val ≤ (f k).val` — upward: base trivial; step: `f (k+1) > f k ≥ k`
-- `f_le`: `∀ k, (f k).val ≤ k.val` — downward: `f (n-1) < n` so `≤ n-1`; step: `f k < f (k+1) ≤ k+1`
-
-Conclude: `f k = k` by `Nat.le_antisymm`.
-
-### Step 2 — `minAssign` definition (SortableIff.lean)
+### Step 2 — `minAssign` definition (SortableIff.lean) ✅
 Value: `applyWord ((Deck.changeProfile d).take k.val) (compile types) 0`
 
 Bound proof: `applyWord (take k.val) ... 0 ≤ applyWord word ... 0 < types.length`

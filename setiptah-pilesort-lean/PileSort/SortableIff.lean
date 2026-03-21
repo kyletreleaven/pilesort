@@ -148,3 +148,17 @@ theorem assign_dominates_applyWord {n : Nat} (d : Deck n) (types : List PileType
     rw [applyWord_take_succ _ _ _ _ hkw, changeProfile_get d k hkw]
     -- Goal: compile types act (applyWord (take k) ... 0) ≤ (assign ⟨k+1,_⟩).val
     exact Nat.le_trans (compile_step_mono types _ _ _ (ih hkn)) hci
+
+/-! ## Minimum assignment -/
+
+/-- The minimum pile assignment: card k goes to the automaton state after k steps. -/
+def minAssign {n : Nat} (d : Deck n) (types : List PileType)
+    (h : applyWord (Deck.changeProfile d) (compile types) 0 < types.length)
+    (k : Fin n) : Fin types.length :=
+  ⟨applyWord ((Deck.changeProfile d).take k.val) (compile types) 0, by
+    apply Nat.lt_of_le_of_lt _ h
+    have hsplit : applyWord (Deck.changeProfile d) (compile types) 0 =
+        applyWord ((Deck.changeProfile d).drop k.val) (compile types)
+          (applyWord ((Deck.changeProfile d).take k.val) (compile types) 0) := by
+      rw [← applyWord_append, List.take_append_drop]
+    rw [hsplit]; exact applyWord_ge _ _ _⟩

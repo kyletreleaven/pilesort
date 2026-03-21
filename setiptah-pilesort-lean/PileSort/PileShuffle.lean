@@ -139,6 +139,7 @@ theorem shuffleSeq_nodup {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (types : Li
 /-! ## Deck -/
 
 /-- A deck of n cards: both directions of the permutation, mutually inverse. -/
+@[ext]
 structure Deck (n : Nat) where
   posOf  : Fin n → Fin n  -- card value  → position in deck
   cardAt : Fin n → Fin n  -- position    → card value

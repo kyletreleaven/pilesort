@@ -207,3 +207,42 @@ theorem Fin.invOf_left {n : Nat} {f : Fin n → Fin n} (hinj : Injective f) (c :
     simp [preimgList, List.getElem_map]
   rw [← himg_c]
   exact indexOf_getElem (preimgList_nodup hinj) c.val hclt)
+
+/-- A function Fin n → Fin n that is strictly increasing at every consecutive pair
+    must be the identity. -/
+theorem strictMono_consec_is_id {n : Nat} (f : Fin n → Fin n)
+    (hmono : ∀ k (hk : k + 1 < n), f ⟨k, by omega⟩ < f ⟨k + 1, hk⟩)
+    (k : Fin n) : f k = k := by
+  have f_ge : ∀ j (hj : j < n), j ≤ (f ⟨j, hj⟩).val := by
+    intro j
+    induction j with
+    | zero => intro; exact Nat.zero_le _
+    | succ j ih =>
+      intro hj
+      have hstep := hmono j hj
+      have hprev := ih (by omega)
+      omega
+  have f_le : ∀ j (hj : j < n), (f ⟨j, hj⟩).val ≤ j := by
+    intro j hj
+    have chain : ∀ m (hm : j + m < n),
+        (f ⟨j, hj⟩).val + m ≤ (f ⟨j + m, by omega⟩).val := by
+      intro m
+      induction m with
+      | zero => intro; simp
+      | succ m ih =>
+        intro hm
+        have step : (f ⟨j + m, by omega⟩).val < (f ⟨j + (m + 1), hm⟩).val :=
+          hmono (j + m) hm
+        have prev := ih (by omega)
+        omega
+    have final := chain (n - 1 - j) (by omega)
+    -- Extract the nat equality first so omega has hj in scope
+    have hjn  : j + (n - 1 - j) = n - 1 := by omega
+    have hn1  : n - 1 < n             := by omega
+    have hval : (f ⟨j + (n - 1 - j), by omega⟩).val = (f ⟨n - 1, hn1⟩).val :=
+      congrArg (fun x => (f x).val) (Fin.ext hjn)
+    have hfinal : (f ⟨j, hj⟩).val + (n - 1 - j) ≤ (f ⟨n - 1, hn1⟩).val :=
+      Nat.le_trans final (Nat.le_of_eq hval)
+    have bound := (f ⟨n - 1, hn1⟩).isLt
+    omega
+  exact Fin.ext (Nat.le_antisymm (f_le k.val k.isLt) (f_ge k.val k.isLt))
