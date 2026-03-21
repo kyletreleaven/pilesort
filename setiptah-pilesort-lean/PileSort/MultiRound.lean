@@ -56,6 +56,13 @@ structure ShuffleSpec (n : Nat) where
 def multiShuffleRound {n : Nat} (d : Deck n) (rounds : List (ShuffleSpec n)) : Deck n :=
   rounds.foldl (fun acc r => shuffleRound acc r.types r.assign) d
 
+/-- A deck is multi-round sortable by a sequence of pile-type lists if there exist
+    per-round assignments (of the given types) that together sort the deck. -/
+def MultiSortable {n : Nat} (d : Deck n) (rounds : List (List PileType)) : Prop :=
+  ∃ specs : List (ShuffleSpec n),
+    specs.map (·.types) = rounds ∧
+    multiShuffleRound d specs = Deck.sorted n
+
 /-! ## Construction: deck realizing a given word as its change profile -/
 
 /-- Place card `start` first (.a) or last (.d), recurse with start+1.
@@ -305,3 +312,15 @@ theorem formulaWord_correct_sortable (n : Nat) (clauses : List Clause)
   intro types
   rw [sortable_iff_accepts (Nat.succ_pos _), deckOfWord_changeProfile]
   exact formulaWord_correct n clauses xs hn hxs_len hne
+
+/-- Main reduction theorem (multi-round form): the deck realizing a formula word is
+    sortable in three rounds (ALIGN, xs, replicate Q) iff the formula is satisfiable. -/
+theorem formulaWord_correct_multiSortable (n : Nat) (clauses : List Clause)
+    (xs : List PileType)
+    (hn : n ≥ 1)
+    (hxs_len : xs.length = n + 1)
+    (hne : clauses ≠ []) :
+    MultiSortable (deckOfWord (formulaWord n clauses))
+      [ALIGN, xs, List.replicate clauses.length PileType.Q] ↔
+      HasMatchingAssignment n xs (satisfiesFormula · clauses) := by
+  sorry
