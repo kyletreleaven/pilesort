@@ -143,6 +143,20 @@ theorem virtualPileTypes_replicate_Q_length (inner : List PileType) (m : Nat) :
     (virtualPileTypes inner (List.replicate m .Q)).length = m * inner.length := by
   rw [virtualPileTypes_length, List.length_replicate]
 
+/-- [Q] is a left identity for virtualPileTypes. -/
+theorem virtualPileTypes_leftId (pt : List PileType) :
+    virtualPileTypes [PileType.Q] pt = pt := by
+  induction pt with
+  | nil => simp [virtualPileTypes]
+  | cons t rest ih =>
+    show applyPile t [PileType.Q] ++ virtualPileTypes [PileType.Q] rest = t :: rest
+    rw [ih]
+    cases t <;> simp [applyPile, applyStack, invertType]
+
+/-- Fold a list of pile-type rounds into a single equivalent round. -/
+def foldVirtualPileTypes (rounds : List (List PileType)) : List PileType :=
+  rounds.foldl virtualPileTypes [PileType.Q]
+
 /-- Peeling one block from a two-level replicated virtualPileTypes:
     the outer Q-replication is converted to flat form with the first pt2-block
     separated from the remaining (m-1) repetitions. -/

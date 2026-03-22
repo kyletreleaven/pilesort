@@ -327,6 +327,13 @@ theorem formulaWord_correct_sortable (n : Nat) (clauses : List Clause)
   rw [sortable_iff_accepts (Nat.succ_pos _), deckOfWord_changeProfile]
   exact formulaWord_correct n clauses xs hn hxs_len hne
 
+/-- Multi-round sortability is equivalent to single-round sortability on the
+    folded virtual pile types. -/
+theorem multiSortable_iff_sortable {n : Nat} (d : Deck n)
+    (rounds : List (List PileType)) :
+    MultiSortable d rounds ↔ Sortable d (foldVirtualPileTypes rounds) := by
+  sorry
+
 /-- Main reduction theorem (multi-round form): the deck realizing a formula word is
     sortable in three rounds (ALIGN, xs, replicate Q) iff the formula is satisfiable. -/
 theorem formulaWord_correct_multiSortable (n : Nat) (clauses : List Clause)
@@ -337,4 +344,6 @@ theorem formulaWord_correct_multiSortable (n : Nat) (clauses : List Clause)
     MultiSortable (deckOfWord (formulaWord n clauses))
       [ALIGN, xs, List.replicate clauses.length PileType.Q] ↔
       HasMatchingAssignment n xs (satisfiesFormula · clauses) := by
-  sorry
+  rw [multiSortable_iff_sortable]
+  simp only [foldVirtualPileTypes, List.foldl, virtualPileTypes_leftId]
+  exact formulaWord_correct_sortable n clauses xs hn hxs_len hne
