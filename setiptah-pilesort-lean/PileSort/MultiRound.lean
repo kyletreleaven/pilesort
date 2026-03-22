@@ -360,12 +360,56 @@ theorem multiShuffleRound_eq_shuffleRound {n : Nat} (d : Deck n)
       (foldedAssign specs) := by
   sorry
 
+/-! ## Backward direction helpers for `multiSortable_iff_sortable` -/
+
+-- Structural recursion on the reversed round list: each cons peels one round
+-- from the right of the original, splitting the assign via `splitAssign`.
+private def unfoldedAssignAux {n : Nat} :
+    (rev : List (List PileType)) →
+    (Fin n → Fin (foldVirtualPileTypes rev.reverse).length) →
+    List (ShuffleSpec n)
+  | [], _ => []
+  | last :: rest, assign =>
+    have hfold : foldVirtualPileTypes (last :: rest).reverse =
+        virtualPileTypes (foldVirtualPileTypes rest.reverse) last := by
+      simp [List.reverse_cons, foldVirtualPileTypes_append_singleton]
+    let split := fun c => splitAssign (foldVirtualPileTypes rest.reverse) last
+                   ((assign c).cast (congrArg List.length hfold))
+    unfoldedAssignAux rest (fun c => (split c).1) ++ [⟨last, fun c => (split c).2⟩]
+
+private def unfoldedAssign {n : Nat} (rounds : List (List PileType))
+    (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
+    List (ShuffleSpec n) :=
+  unfoldedAssignAux rounds.reverse
+    (fun c => (assign c).cast (by simp [foldVirtualPileTypes, List.reverse_reverse]))
+
+private theorem unfoldedAssign_types {n : Nat} (rounds : List (List PileType))
+    (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
+    (unfoldedAssign rounds assign).map (·.types) = rounds := sorry
+
+-- Bundles the type cast and val-roundtrip into a single shuffle equality,
+-- avoiding a dependent-rewrite issue in `multiSortable_iff_sortable`.
+private theorem foldedAssign_unfoldedAssign_shuffle {n : Nat} (d : Deck n)
+    (rounds : List (List PileType))
+    (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
+    shuffleRound d (foldVirtualPileTypes ((unfoldedAssign rounds assign).map (·.types)))
+                   (foldedAssign (unfoldedAssign rounds assign)) =
+    shuffleRound d (foldVirtualPileTypes rounds) assign := sorry
+
 /-- Multi-round sortability is equivalent to single-round sortability on the
     folded virtual pile types. -/
 theorem multiSortable_iff_sortable {n : Nat} (d : Deck n)
     (rounds : List (List PileType)) :
     MultiSortable d rounds ↔ Sortable d (foldVirtualPileTypes rounds) := by
-  sorry
+  constructor
+  · rintro ⟨specs, htypes, hresult⟩
+    subst htypes
+    exact ⟨foldedAssign specs,
+           (multiShuffleRound_eq_shuffleRound d specs).symm.trans hresult⟩
+  · rintro ⟨assign, hresult⟩
+    exact ⟨unfoldedAssign rounds assign, unfoldedAssign_types rounds assign,
+           (multiShuffleRound_eq_shuffleRound d (unfoldedAssign rounds assign)).trans
+           ((foldedAssign_unfoldedAssign_shuffle d rounds assign).trans hresult)⟩
 
 /-- Main reduction theorem (multi-round form): the deck realizing a formula word is
     sortable in three rounds (ALIGN, xs, replicate Q) iff the formula is satisfiable. -/

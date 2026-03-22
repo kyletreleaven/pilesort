@@ -157,6 +157,13 @@ theorem virtualPileTypes_leftId (pt : List PileType) :
 def foldVirtualPileTypes (rounds : List (List PileType)) : List PileType :=
   rounds.foldl virtualPileTypes [PileType.Q]
 
+/-- Appending one more round folds into a binary composition on the right. -/
+theorem foldVirtualPileTypes_append_singleton (init : List (List PileType))
+    (last : List PileType) :
+    foldVirtualPileTypes (init ++ [last]) =
+    virtualPileTypes (foldVirtualPileTypes init) last := by
+  simp [foldVirtualPileTypes, List.foldl_append]
+
 /-- Peeling one block from a two-level replicated virtualPileTypes:
     the outer Q-replication is converted to flat form with the first pt2-block
     separated from the remaining (m-1) repetitions. -/
