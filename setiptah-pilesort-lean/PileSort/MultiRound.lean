@@ -482,15 +482,7 @@ private theorem combinedAssign_split_val (pt1 pt2 : List PileType)
 private theorem foldedAssign_unfoldedAssignAux_val {n : Nat} :
     ∀ (rev : List (List PileType))
       (assign : Fin n → Fin (foldVirtualPileTypes rev.reverse).length) (c : Fin n),
-    (foldedAssign (unfoldedAssignAux rev assign) c).val = (assign c).val
-  | [], assign, c => by
-    -- Fin 1: both vals are 0
-    simp [unfoldedAssignAux, foldedAssign, foldedAssignAux, foldVirtualPileTypes]
-  | last :: rest, assign, c => by
-    -- unfoldedAssignAux (last :: rest) assign = unfoldedAssignAux rest inner ++ [⟨last, last_fn⟩]
-    -- foldedAssign_snoc_val reduces to combinedAssign of inner result with last_fn
-    -- combinedAssign_split_val + IH closes the val equality,
-    -- but requires unfoldedAssignAux_types to align the pt1 argument.
+    (foldedAssign (unfoldedAssignAux rev assign) c).val = (assign c).val := by
     sorry
 
 -- The val-roundtrip: foldedAssign undoes unfoldedAssign pointwise.
