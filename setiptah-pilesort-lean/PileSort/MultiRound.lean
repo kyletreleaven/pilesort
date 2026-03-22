@@ -5,56 +5,43 @@
   round.  `multiShuffleRound` applies a sequence of specs to a deck via
   `shuffleRound`, folding left.
 
-  Note: reversing a pile index (m - 1 - x) is `Fin.rev` from core Lean.
-
-  ## Shuffle version of formulaWord_correct
-
-  Goal: rephrase `formulaWord_correct` in terms of `Sortable` rather than
-  `accepts`, using `sortable_iff_accepts`.
-
-  Since `sortable_iff_accepts` requires a concrete deck whose `changeProfile`
-  equals the formula word, we construct one.
-
-  ### Construction: `deckSeqNat`
-
-  Given `word : List Action`, define `deckSeqNat : Nat → List Action → List Nat`
-  by `aux start`:
-    · `aux start []         = [start]`
-    · `aux start (.a :: w)  = start :: aux (start+1) w`   -- start placed first
-    · `aux start (.d :: w)  = aux (start+1) w ++ [start]` -- start placed last
-
-  `deckSeqNat word = aux 0 word` is a permutation of `{0, .., word.length}`
-  with the property that `indexOf k < indexOf (k+1)` iff `word[k] = .a`.
-
-  ### Proof steps (all complete ✅)
-
-  1. `deckSeqNat_length`       — `(aux start w).length = w.length + 1`
-  2. `deckSeqNat_mem`          — elements are exactly `{start, .., start + w.length}`
-  3. `deckSeqNat_nodup`        — Nodup
-  4. `deckOfWord`              — `Deck.fromDeckSeq` on the cast list; type `Deck (word.length + 1)`
-  5. `pmap_getElem_val`        — `(l.pmap f H)[i].val = l[i]` for val-preserving `f`
-  6. `deckSeqFin_get_val`      — corollary for our specific pmap
-  7. `indexOf_pmap_fin`        — `indexOf ⟨k,_⟩ (deckSeqFin w) = indexOf k (deckSeqNat 0 w)`
-  8. `deckSeqNat_a_zero` / `deckSeqNat_d_zero` — base cases for the order lemma
-  9. `indexOf_order_iff_aux`   — `indexOf (start+k) < indexOf (start+k+1) ↔ w[k] = .a`
-  10. `deckOfWord_changeProfile` — `Deck.changeProfile (deckOfWord word) = word`
+  ## Status
 
   `formulaWord_correct_sortable` ✅ — single-round form; proved by composing
   `sortable_iff_accepts` + `deckOfWord_changeProfile` + `formulaWord_correct`.
 
-  ## Multi-round form
+  `formulaWord_correct_multiSortable` ✅ — proved via `multiSortable_iff_sortable`
+  (sorry) + `foldVirtualPileTypes` reduction + `formulaWord_correct_sortable`.
 
-  `MultiSortable` generalises `Sortable` to a sequence of rounds (list of pile-type
-  lists).  The main target is:
+  ## Remaining work: proving `multiSortable_iff_sortable`
 
-    `formulaWord_correct_multiSortable` — `MultiSortable (deckOfWord (formulaWord n clauses))
-      [ALIGN, xs, replicate clauses.length Q] ↔ HasMatchingAssignment n xs (satisfiesFormula · clauses)`
+  `multiSortable_iff_sortable` — `MultiSortable d rounds ↔ Sortable d (foldVirtualPileTypes rounds)`.
+  Proof plan:
 
-  ### Sorry proofs remaining
+  1. `shuffleRound_virtualPileTypes` (sorry) — two rounds on pt1, pt2 equal one
+     round on `virtualPileTypes pt1 pt2` with `combinedAssign`.
 
-  - `shuffleRound_virtualPileTypes` — two rounds on pt1, pt2 equal one round on
-    `virtualPileTypes pt1 pt2` with `combinedAssign`.
-  - `formulaWord_correct_multiSortable` — depends on `shuffleRound_virtualPileTypes`.
+  2. `splitAssign` — inverse of `combinedAssign` in the pile-index argument.
+     Given `v : Fin (virtualPileTypes pt1 pt2).length`, returns
+     `(j, b) : Fin pt1.length × Fin pt2.length` by block-decoding
+     `v = b * pt1.length + j` (with `Fin.rev j` when `pt2[b] = S`).
+
+  3. `combinedAssign_split` — roundtrip lemma:
+     `combinedAssign pt1 pt2 (splitAssign v).1 (splitAssign v).2 = v`.
+
+  4. `foldedAssign` — left-fold of `combinedAssign` over a spec list, producing
+     a single assign into `foldVirtualPileTypes (specs.map (·.types))`.
+
+  5. `unfoldedAssign` — left-fold of `splitAssign` over a round list, splitting
+     a single assign back into per-round assigns.  Inverse of `foldedAssign`.
+
+  6. `multiShuffleRound_eq_shuffleRound` — fold version of `shuffleRound_virtualPileTypes`:
+     `multiShuffleRound d specs = shuffleRound d (foldVirtualPileTypes (specs.map (·.types))) (foldedAssign specs)`.
+
+  7. `multiSortable_iff_sortable` — bidirectional constructive proof:
+     · forward  uses `foldedAssign` as the single-round witness;
+     · backward uses `unfoldedAssign` to reconstruct specs, closed by
+       `combinedAssign_split`.
 -/
 import PileSort.PileShuffle
 import PileSort.VirtualPileTypes
