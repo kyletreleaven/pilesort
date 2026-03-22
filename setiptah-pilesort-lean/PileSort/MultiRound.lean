@@ -442,10 +442,11 @@ private theorem shuffleRound_congr_val {n : Nat} (d : Deck n)
 -- `foldedAssign` on a snoc list equals `combinedAssign` of the folded prefix
 -- with the last spec.  Follows from left-fold structure of `foldedAssignAux`.
 private theorem foldedAssign_snoc_val {n : Nat}
-    (specs : List (ShuffleSpec n)) (s : ShuffleSpec n) (c : Fin n) :
-    (foldedAssign (specs ++ [s]) c).val =
-    (combinedAssign (foldVirtualPileTypes (specs.map (·.types))) s.types
-                    (foldedAssign specs) s.assign c).val := sorry
+    (specs : List (ShuffleSpec n)) (types : List PileType)
+    (sassign : Fin n → Fin types.length) (c : Fin n) :
+    (foldedAssign (specs ++ [⟨types, sassign⟩]) c).val =
+    (combinedAssign (foldVirtualPileTypes (specs.map (·.types))) types
+                    (foldedAssign specs) sassign c).val := sorry
 
 -- `combinedAssign` respects pointwise equality of input assignments.
 private theorem combinedAssign_congr {n : Nat} (pt1 pt2 : List PileType)
@@ -477,35 +478,37 @@ private theorem combinedAssign_split_val (pt1 pt2 : List PileType)
   (combinedAssign_val_congr pt1 pt2 assign1 _ assign2 _ c h1 h2).trans
     (congrArg Fin.val (combinedAssign_split pt1 pt2 v c))
 
--- Unfolds the cons case of `unfoldedAssignAux`, with `hfold` explicit so the cast
--- proof is named and can be reused in the surrounding proof.  Provable by rfl.
-private theorem unfoldedAssignAux_cons_eq {n : Nat}
-    (last : List PileType) (rest : List (List PileType))
-    (assign : Fin n → Fin (foldVirtualPileTypes (last :: rest).reverse).length)
-    (hfold : foldVirtualPileTypes (last :: rest).reverse =
-             virtualPileTypes (foldVirtualPileTypes rest.reverse) last) :
-    unfoldedAssignAux (last :: rest) assign =
-    unfoldedAssignAux rest
-      (fun c => (splitAssign (foldVirtualPileTypes rest.reverse) last
-                   ((assign c).cast (congrArg List.length hfold))).1) ++
-    [⟨last, fun c => (splitAssign (foldVirtualPileTypes rest.reverse) last
-                        ((assign c).cast (congrArg List.length hfold))).2⟩] := sorry
 
--- Core induction: unfoldedAssignAux + foldedAssign roundtrip, over the
--- reversed round list.
-private theorem foldedAssign_unfoldedAssignAux_val {n : Nat} :
-    ∀ (rev : List (List PileType))
-      (assign : Fin n → Fin (foldVirtualPileTypes rev.reverse).length) (c : Fin n),
-    (foldedAssign (unfoldedAssignAux rev assign) c).val = (assign c).val := by
-  sorry
+-- Standard snoc induction for lists (not in Lean 4 core).
+private def reverseRecOn {α : Type} {C : List α → Sort _} (l : List α)
+    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) : C l := sorry
+
+-- Unfolding `init ++ [last]` gives the unfolding of `init` followed by one spec for `last`.
+private theorem unfoldedAssign_snoc {n : Nat} (init : List (List PileType))
+    (last : List PileType)
+    (assign : Fin n → Fin (foldVirtualPileTypes (init ++ [last])).length) :
+    let hfold := foldVirtualPileTypes_append_singleton init last
+    let v := fun c => (assign c).cast (congrArg List.length hfold)
+    unfoldedAssign (init ++ [last]) assign =
+    unfoldedAssign init (fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).1) ++
+    [⟨last, fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).2⟩] := sorry
 
 -- The val-roundtrip: foldedAssign undoes unfoldedAssign pointwise.
 private theorem foldedAssign_unfoldedAssign_val {n : Nat} (rounds : List (List PileType))
     (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) (c : Fin n) :
     (foldedAssign (unfoldedAssign rounds assign) c).val = (assign c).val := by
-  simp only [unfoldedAssign]
-  rw [foldedAssign_unfoldedAssignAux_val]
-  simp
+  revert assign
+  apply reverseRecOn rounds
+  · intro assign
+    simp [unfoldedAssign, unfoldedAssignAux, foldedAssign, foldedAssignAux, foldVirtualPileTypes]
+  · intro init last ih assign
+    rw [unfoldedAssign_snoc init last assign, foldedAssign_snoc_val]
+    simp only [unfoldedAssign_types]
+    apply combinedAssign_split_val _ _
+      ((assign c).cast (congrArg List.length (foldVirtualPileTypes_append_singleton init last)))
+      _ _ c
+    · exact ih _
+    · rfl
 
 -- Bundles `unfoldedAssign_types` + `foldedAssign_unfoldedAssign_val` into the
 -- shuffle equality needed by `multiSortable_iff_sortable`.
