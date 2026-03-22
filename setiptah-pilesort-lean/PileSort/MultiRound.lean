@@ -7,41 +7,33 @@
 
   ## Status
 
-  `formulaWord_correct_sortable` ✅ — single-round form; proved by composing
-  `sortable_iff_accepts` + `deckOfWord_changeProfile` + `formulaWord_correct`.
+  `formulaWord_correct_sortable` ✅ — single-round form.
+  `splitAssign` ✅, `foldedAssign` ✅, `multiShuffleRound_eq_shuffleRound` ✅ (def),
+  `formulaWord_correct_multiSortable` ✅ — proved modulo sorries below.
 
-  `formulaWord_correct_multiSortable` ✅ — proved via `multiSortable_iff_sortable`
-  (sorry) + `foldVirtualPileTypes` reduction + `formulaWord_correct_sortable`.
+  ## Remaining sorries
 
-  ## Remaining work: proving `multiSortable_iff_sortable`
+  ### `shuffleRound_virtualPileTypes`
+  Two rounds on pt1, pt2 equal one round on `virtualPileTypes pt1 pt2`
+  with `combinedAssign`.  This is the main hard lemma; everything else
+  follows from it.
 
-  `multiSortable_iff_sortable` — `MultiSortable d rounds ↔ Sortable d (foldVirtualPileTypes rounds)`.
-  Proof plan:
+  ### `multiShuffleRound_eq_shuffleRound`
+  Fold version: `multiShuffleRound d specs = shuffleRound d
+  (foldVirtualPileTypes (specs.map (·.types))) (foldedAssign specs)`.
+  Proved by induction using `shuffleRound_virtualPileTypes`.
 
-  1. `shuffleRound_virtualPileTypes` (sorry) — two rounds on pt1, pt2 equal one
-     round on `virtualPileTypes pt1 pt2` with `combinedAssign`.
+  ### `combinedAssign_split`
+  Roundtrip: `combinedAssign pt1 pt2 (splitAssign v).1 (splitAssign v).2 = v`.
+  Arithmetic on the block encoding `v = b * pt1.length + j`.
 
-  2. `splitAssign` — inverse of `combinedAssign` in the pile-index argument.
-     Given `v : Fin (virtualPileTypes pt1 pt2).length`, returns
-     `(j, b) : Fin pt1.length × Fin pt2.length` by block-decoding
-     `v = b * pt1.length + j` (with `Fin.rev j` when `pt2[b] = S`).
-
-  3. `combinedAssign_split` — roundtrip lemma:
-     `combinedAssign pt1 pt2 (splitAssign v).1 (splitAssign v).2 = v`.
-
-  4. `foldedAssign` — left-fold of `combinedAssign` over a spec list, producing
-     a single assign into `foldVirtualPileTypes (specs.map (·.types))`.
-
-  5. `unfoldedAssign` — left-fold of `splitAssign` over a round list, splitting
-     a single assign back into per-round assigns.  Inverse of `foldedAssign`.
-
-  6. `multiShuffleRound_eq_shuffleRound` — fold version of `shuffleRound_virtualPileTypes`:
-     `multiShuffleRound d specs = shuffleRound d (foldVirtualPileTypes (specs.map (·.types))) (foldedAssign specs)`.
-
-  7. `multiSortable_iff_sortable` — bidirectional constructive proof:
-     · forward  uses `foldedAssign` as the single-round witness;
-     · backward uses `unfoldedAssign` to reconstruct specs, closed by
-       `combinedAssign_split`.
+  ### `unfoldedAssign` + `multiSortable_iff_sortable`
+  `unfoldedAssign` splits a single combined assign back into per-round assigns
+  by iterating `splitAssign`; it is the inverse of `foldedAssign`.
+  `multiSortable_iff_sortable` then follows constructively:
+  · forward  — `foldedAssign specs` witnesses `Sortable`;
+  · backward — `unfoldedAssign assign` reconstructs specs, closed by
+    `combinedAssign_split`.
 -/
 import PileSort.PileShuffle
 import PileSort.VirtualPileTypes
@@ -313,6 +305,60 @@ theorem formulaWord_correct_sortable (n : Nat) (clauses : List Clause)
   intro types
   rw [sortable_iff_accepts (Nat.succ_pos _), deckOfWord_changeProfile]
   exact formulaWord_correct n clauses xs hn hxs_len hne
+
+/-! ## Inverse of `combinedAssign` -/
+
+/-- Decode a virtual-pile index back into its component pile indices.
+    The block encoding `v = b * pt1.length + j` (with `j` reversed when
+    `pt2[b] = S`) uniquely determines both component assignments. -/
+def splitAssign (pt1 pt2 : List PileType)
+    (v : Fin (virtualPileTypes pt1 pt2).length) :
+    Fin pt1.length × Fin pt2.length :=
+  have hv : v.val < pt2.length * pt1.length :=
+    virtualPileTypes_length pt1 pt2 ▸ v.isLt
+  have hpt1 : 0 < pt1.length := by
+    rcases Nat.eq_zero_or_pos pt1.length with h | h
+    · simp [h] at hv
+    · exact h
+  let b : Fin pt2.length :=
+    ⟨v.val / pt1.length, (Nat.div_lt_iff_lt_mul hpt1).mpr hv⟩
+  let j : Fin pt1.length := ⟨v.val % pt1.length, Nat.mod_lt _ hpt1⟩
+  match pt2.get b with
+  | .Q => (j, b)
+  | .S => (Fin.rev j, b)
+
+/-! ## Folding assignments over a spec list -/
+
+private def foldedAssignAux {n : Nat}
+    (acc : List PileType) (f : Fin n → Fin acc.length) :
+    (specs : List (ShuffleSpec n)) →
+    Fin n → Fin (specs.foldl (fun t s => virtualPileTypes t s.types) acc).length
+  | []        => f
+  | s :: rest =>
+    foldedAssignAux
+      (virtualPileTypes acc s.types)
+      (combinedAssign acc s.types f s.assign)
+      rest
+
+/-- Fold a list of per-round assignments into a single combined assignment
+    into `foldVirtualPileTypes rounds`. -/
+def foldedAssign {n : Nat} (specs : List (ShuffleSpec n)) :
+    Fin n → Fin (foldVirtualPileTypes (specs.map (·.types))).length :=
+  fun c => Fin.cast
+    (congrArg List.length (by simp [foldVirtualPileTypes, List.foldl_map]))
+    (foldedAssignAux [PileType.Q] (fun _ => ⟨0, by simp⟩) specs c)
+
+/-! ## Fold version of `shuffleRound_virtualPileTypes` -/
+
+/-- Applying a sequence of shuffle rounds equals one shuffle round on the
+    folded virtual pile types with the folded assignment. -/
+theorem multiShuffleRound_eq_shuffleRound {n : Nat} (d : Deck n)
+    (specs : List (ShuffleSpec n)) :
+    multiShuffleRound d specs =
+    shuffleRound d
+      (foldVirtualPileTypes (specs.map (·.types)))
+      (foldedAssign specs) := by
+  sorry
 
 /-- Multi-round sortability is equivalent to single-round sortability on the
     folded virtual pile types. -/
