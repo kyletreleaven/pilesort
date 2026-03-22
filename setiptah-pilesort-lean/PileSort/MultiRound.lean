@@ -477,13 +477,27 @@ private theorem combinedAssign_split_val (pt1 pt2 : List PileType)
   (combinedAssign_val_congr pt1 pt2 assign1 _ assign2 _ c h1 h2).trans
     (congrArg Fin.val (combinedAssign_split pt1 pt2 v c))
 
+-- Unfolds the cons case of `unfoldedAssignAux`, with `hfold` explicit so the cast
+-- proof is named and can be reused in the surrounding proof.  Provable by rfl.
+private theorem unfoldedAssignAux_cons_eq {n : Nat}
+    (last : List PileType) (rest : List (List PileType))
+    (assign : Fin n → Fin (foldVirtualPileTypes (last :: rest).reverse).length)
+    (hfold : foldVirtualPileTypes (last :: rest).reverse =
+             virtualPileTypes (foldVirtualPileTypes rest.reverse) last) :
+    unfoldedAssignAux (last :: rest) assign =
+    unfoldedAssignAux rest
+      (fun c => (splitAssign (foldVirtualPileTypes rest.reverse) last
+                   ((assign c).cast (congrArg List.length hfold))).1) ++
+    [⟨last, fun c => (splitAssign (foldVirtualPileTypes rest.reverse) last
+                        ((assign c).cast (congrArg List.length hfold))).2⟩] := sorry
+
 -- Core induction: unfoldedAssignAux + foldedAssign roundtrip, over the
 -- reversed round list.
 private theorem foldedAssign_unfoldedAssignAux_val {n : Nat} :
     ∀ (rev : List (List PileType))
       (assign : Fin n → Fin (foldVirtualPileTypes rev.reverse).length) (c : Fin n),
     (foldedAssign (unfoldedAssignAux rev assign) c).val = (assign c).val := by
-    sorry
+  sorry
 
 -- The val-roundtrip: foldedAssign undoes unfoldedAssign pointwise.
 private theorem foldedAssign_unfoldedAssign_val {n : Nat} (rounds : List (List PileType))
