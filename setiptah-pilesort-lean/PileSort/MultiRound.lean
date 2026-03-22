@@ -327,6 +327,39 @@ def splitAssign (pt1 pt2 : List PileType)
   | .Q => (j, b)
   | .S => (Fin.rev j, b)
 
+-- n / k * k + n % k = n  (Nat.div_add_mod uses the other multiplication order)
+private theorem div_mul_add_mod (n k : Nat) : n / k * k + n % k = n := by
+  rw [Nat.mul_comm]; exact Nat.div_add_mod n k
+
+-- Fin.rev is an involution.
+private theorem fin_rev_rev {n : Nat} (i : Fin n) : Fin.rev (Fin.rev i) = i :=
+  Fin.ext (by simp [Fin.val_rev])
+
+/-- `splitAssign` is a left inverse of `combinedAssign`: decoding the virtual-pile
+    index produced by combining two component assigns recovers the original index. -/
+theorem combinedAssign_split (pt1 pt2 : List PileType)
+    (v : Fin (virtualPileTypes pt1 pt2).length) {n : Nat} (c : Fin n) :
+    combinedAssign pt1 pt2
+      (fun _ => (splitAssign pt1 pt2 v).1)
+      (fun _ => (splitAssign pt1 pt2 v).2) c = v := by
+  apply Fin.ext
+  have hv : v.val < pt2.length * pt1.length := virtualPileTypes_length pt1 pt2 ▸ v.isLt
+  have hpt1 : 0 < pt1.length := by
+    rcases Nat.eq_zero_or_pos pt1.length with h | h; simp [h] at hv; exact h
+  have hb : v.val / pt1.length < pt2.length := (Nat.div_lt_iff_lt_mul hpt1).mpr hv
+  -- h' lets simp evaluate pt2.get at the block index regardless of proof term.
+  cases h : pt2.get ⟨v.val / pt1.length, hb⟩ with
+  | Q =>
+    have h' : ∀ p, pt2.get ⟨v.val / pt1.length, p⟩ = .Q :=
+      fun p => (congrArg pt2.get (Fin.ext rfl)).trans h
+    simp only [combinedAssign, splitAssign, h']
+    exact div_mul_add_mod v.val pt1.length
+  | S =>
+    have h' : ∀ p, pt2.get ⟨v.val / pt1.length, p⟩ = .S :=
+      fun p => (congrArg pt2.get (Fin.ext rfl)).trans h
+    simp only [combinedAssign, splitAssign, h', fin_rev_rev]
+    exact div_mul_add_mod v.val pt1.length
+
 /-! ## Folding assignments over a spec list -/
 
 private def foldedAssignAux {n : Nat}
@@ -398,14 +431,87 @@ private theorem unfoldedAssign_types {n : Nat} (rounds : List (List PileType))
     (unfoldedAssign rounds assign).map (·.types) = rounds := by
   simp [unfoldedAssign, unfoldedAssignAux_types]
 
--- Bundles the type cast and val-roundtrip into a single shuffle equality,
--- avoiding a dependent-rewrite issue in `multiSortable_iff_sortable`.
+private theorem shuffleRound_congr_val {n : Nat} (d : Deck n)
+    (types1 types2 : List PileType) (h : types1 = types2)
+    (assign1 : Fin n → Fin types1.length) (assign2 : Fin n → Fin types2.length)
+    (hval : ∀ c, (assign1 c).val = (assign2 c).val) :
+    shuffleRound d types1 assign1 = shuffleRound d types2 assign2 := by
+  subst h
+  exact congrArg (shuffleRound d types1) (funext (fun c => Fin.ext (hval c)))
+
+-- `foldedAssign` on a snoc list equals `combinedAssign` of the folded prefix
+-- with the last spec.  Follows from left-fold structure of `foldedAssignAux`.
+private theorem foldedAssign_snoc_val {n : Nat}
+    (specs : List (ShuffleSpec n)) (s : ShuffleSpec n) (c : Fin n) :
+    (foldedAssign (specs ++ [s]) c).val =
+    (combinedAssign (foldVirtualPileTypes (specs.map (·.types))) s.types
+                    (foldedAssign specs) s.assign c).val := sorry
+
+-- `combinedAssign` respects pointwise equality of input assignments.
+private theorem combinedAssign_congr {n : Nat} (pt1 pt2 : List PileType)
+    (assign1 assign1' : Fin n → Fin pt1.length)
+    (assign2 assign2' : Fin n → Fin pt2.length) (c : Fin n)
+    (h1 : assign1 c = assign1' c) (h2 : assign2 c = assign2' c) :
+    combinedAssign pt1 pt2 assign1 assign2 c =
+    combinedAssign pt1 pt2 assign1' assign2' c := by
+  simp only [combinedAssign, h1, h2]
+
+-- Output val depends only on input vals.
+private theorem combinedAssign_val_congr {n : Nat} (pt1 pt2 : List PileType)
+    (assign1 assign1' : Fin n → Fin pt1.length)
+    (assign2 assign2' : Fin n → Fin pt2.length) (c : Fin n)
+    (h1 : (assign1 c).val = (assign1' c).val)
+    (h2 : (assign2 c).val = (assign2' c).val) :
+    (combinedAssign pt1 pt2 assign1 assign2 c).val =
+    (combinedAssign pt1 pt2 assign1' assign2' c).val :=
+  congrArg Fin.val (combinedAssign_congr pt1 pt2 assign1 assign1' assign2 assign2' c
+    (Fin.ext h1) (Fin.ext h2))
+
+-- Val-level roundtrip: follows from congruence + `combinedAssign_split`.
+private theorem combinedAssign_split_val (pt1 pt2 : List PileType)
+    (v : Fin (virtualPileTypes pt1 pt2).length) {n : Nat}
+    (assign1 : Fin n → Fin pt1.length) (assign2 : Fin n → Fin pt2.length) (c : Fin n)
+    (h1 : (assign1 c).val = (splitAssign pt1 pt2 v).1.val)
+    (h2 : (assign2 c).val = (splitAssign pt1 pt2 v).2.val) :
+    (combinedAssign pt1 pt2 assign1 assign2 c).val = v.val :=
+  (combinedAssign_val_congr pt1 pt2 assign1 _ assign2 _ c h1 h2).trans
+    (congrArg Fin.val (combinedAssign_split pt1 pt2 v c))
+
+-- Core induction: unfoldedAssignAux + foldedAssign roundtrip, over the
+-- reversed round list.
+private theorem foldedAssign_unfoldedAssignAux_val {n : Nat} :
+    ∀ (rev : List (List PileType))
+      (assign : Fin n → Fin (foldVirtualPileTypes rev.reverse).length) (c : Fin n),
+    (foldedAssign (unfoldedAssignAux rev assign) c).val = (assign c).val
+  | [], assign, c => by
+    -- Fin 1: both vals are 0
+    simp [unfoldedAssignAux, foldedAssign, foldedAssignAux, foldVirtualPileTypes]
+  | last :: rest, assign, c => by
+    -- unfoldedAssignAux (last :: rest) assign = unfoldedAssignAux rest inner ++ [⟨last, last_fn⟩]
+    -- foldedAssign_snoc_val reduces to combinedAssign of inner result with last_fn
+    -- combinedAssign_split_val + IH closes the val equality,
+    -- but requires unfoldedAssignAux_types to align the pt1 argument.
+    sorry
+
+-- The val-roundtrip: foldedAssign undoes unfoldedAssign pointwise.
+private theorem foldedAssign_unfoldedAssign_val {n : Nat} (rounds : List (List PileType))
+    (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) (c : Fin n) :
+    (foldedAssign (unfoldedAssign rounds assign) c).val = (assign c).val := by
+  simp only [unfoldedAssign]
+  rw [foldedAssign_unfoldedAssignAux_val]
+  simp
+
+-- Bundles `unfoldedAssign_types` + `foldedAssign_unfoldedAssign_val` into the
+-- shuffle equality needed by `multiSortable_iff_sortable`.
 private theorem foldedAssign_unfoldedAssign_shuffle {n : Nat} (d : Deck n)
     (rounds : List (List PileType))
     (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
     shuffleRound d (foldVirtualPileTypes ((unfoldedAssign rounds assign).map (·.types)))
                    (foldedAssign (unfoldedAssign rounds assign)) =
-    shuffleRound d (foldVirtualPileTypes rounds) assign := sorry
+    shuffleRound d (foldVirtualPileTypes rounds) assign :=
+  shuffleRound_congr_val d _ _
+    (congrArg foldVirtualPileTypes (unfoldedAssign_types rounds assign))
+    _ _ (foldedAssign_unfoldedAssign_val rounds assign)
 
 /-- Multi-round sortability is equivalent to single-round sortability on the
     folded virtual pile types. -/
