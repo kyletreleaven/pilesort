@@ -383,9 +383,20 @@ private def unfoldedAssign {n : Nat} (rounds : List (List PileType))
   unfoldedAssignAux rounds.reverse
     (fun c => (assign c).cast (by simp [foldVirtualPileTypes, List.reverse_reverse]))
 
+private theorem unfoldedAssignAux_types {n : Nat} :
+    ∀ (rev : List (List PileType))
+      (assign : Fin n → Fin (foldVirtualPileTypes rev.reverse).length),
+    (unfoldedAssignAux rev assign).map (·.types) = rev.reverse
+  | [],            _      => rfl
+  | last :: rest,  assign => by
+    simp only [unfoldedAssignAux, List.map_append, List.map_singleton]
+    rw [unfoldedAssignAux_types rest]
+    simp [List.reverse_cons]
+
 private theorem unfoldedAssign_types {n : Nat} (rounds : List (List PileType))
     (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
-    (unfoldedAssign rounds assign).map (·.types) = rounds := sorry
+    (unfoldedAssign rounds assign).map (·.types) = rounds := by
+  simp [unfoldedAssign, unfoldedAssignAux_types]
 
 -- Bundles the type cast and val-roundtrip into a single shuffle equality,
 -- avoiding a dependent-rewrite issue in `multiSortable_iff_sortable`.
