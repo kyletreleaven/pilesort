@@ -378,11 +378,3 @@ theorem shuffleRound_consecutive {n : Nat} (d : Deck n) (types : List PileType)
     · exact Or.inl h
     · exact Or.inr ⟨heq, h⟩
 
-/-- The change profile of a sequence: label each consecutive pair as ascent (.a)
-    or descent (.d).  Requires Nodup to guarantee no ties; the equal branch is
-    unreachable. -/
-def changeProfile {n : Nat} (l : List (Fin n)) (_ : l.Nodup) : List Action :=
-  (l.zip l.tail).map fun (x, y) =>
-    if x < y then .a
-    else if y < x then .d
-    else unreachable!
