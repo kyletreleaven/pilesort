@@ -478,6 +478,21 @@ private theorem combinedAssign_split_val (pt1 pt2 : List PileType)
   (combinedAssign_val_congr pt1 pt2 assign1 _ assign2 _ c h1 h2).trans
     (congrArg Fin.val (combinedAssign_split pt1 pt2 v c))
 
+-- Changing the first folded pile-type list along an equality preserves the
+-- combined assignment value, provided the first component assignment value is
+-- preserved pointwise.
+private theorem combinedAssign_val_congr_first {n : Nat}
+    (pt1 pt1' pt2 : List PileType)
+    (h : pt1 = pt1')
+    (assign1 : Fin n → Fin pt1.length)
+    (assign1' : Fin n → Fin pt1'.length)
+    (assign2 : Fin n → Fin pt2.length)
+    (c : Fin n)
+    (hval : (assign1 c).val = (assign1' c).val) :
+    (combinedAssign pt1 pt2 assign1 assign2 c).val =
+    (combinedAssign pt1' pt2 assign1' assign2 c).val := by
+  sorry
+
 
 -- Standard snoc induction for lists (not in Lean 4 core).
 private def reverseRecOn {α : Type} {C : List α → Sort _} (l : List α)
@@ -503,12 +518,45 @@ private theorem foldedAssign_unfoldedAssign_val {n : Nat} (rounds : List (List P
     simp [unfoldedAssign, unfoldedAssignAux, foldedAssign, foldedAssignAux, foldVirtualPileTypes]
   · intro init last ih assign
     rw [unfoldedAssign_snoc init last assign, foldedAssign_snoc_val]
-    simp only [unfoldedAssign_types]
-    apply combinedAssign_split_val _ _
-      ((assign c).cast (congrArg List.length (foldVirtualPileTypes_append_singleton init last)))
-      _ _ c
-    · exact ih _
-    · rfl
+    let v : Fin n → Fin (foldVirtualPileTypes (init ++ [last])).length := fun c => assign c
+    let prefixAssign : Fin n → Fin (foldVirtualPileTypes init).length :=
+      fun c =>
+        (splitAssign (foldVirtualPileTypes init) last
+          ((v c).cast (congrArg List.length
+            (foldVirtualPileTypes_append_singleton init last)))).1
+    let suffixAssign : Fin n → Fin last.length :=
+      fun c =>
+        (splitAssign (foldVirtualPileTypes init) last
+          ((v c).cast (congrArg List.length
+            (foldVirtualPileTypes_append_singleton init last)))).2
+    have htypes : (unfoldedAssign init prefixAssign).map (·.types) = init :=
+      unfoldedAssign_types init prefixAssign
+    have hprefix :
+        (foldedAssign (unfoldedAssign init prefixAssign) c).val = (prefixAssign c).val := by
+      simpa [prefixAssign] using ih prefixAssign
+    have hstep :
+        (combinedAssign
+          (foldVirtualPileTypes ((unfoldedAssign init prefixAssign).map (·.types)))
+          last
+          (foldedAssign (unfoldedAssign init prefixAssign))
+          suffixAssign c).val =
+        (combinedAssign (foldVirtualPileTypes init) last
+          prefixAssign suffixAssign c).val := by
+      exact combinedAssign_val_congr_first
+        (foldVirtualPileTypes ((unfoldedAssign init prefixAssign).map (·.types)))
+        (foldVirtualPileTypes init)
+        last
+        (congrArg foldVirtualPileTypes htypes)
+        (foldedAssign (unfoldedAssign init prefixAssign))
+        prefixAssign
+        suffixAssign
+        c
+        hprefix
+    exact hstep.trans <|
+      combinedAssign_split_val (foldVirtualPileTypes init) last
+        ((v c).cast (congrArg List.length
+          (foldVirtualPileTypes_append_singleton init last)))
+        prefixAssign suffixAssign c rfl rfl
 
 -- Bundles `unfoldedAssign_types` + `foldedAssign_unfoldedAssign_val` into the
 -- shuffle equality needed by `multiSortable_iff_sortable`.
