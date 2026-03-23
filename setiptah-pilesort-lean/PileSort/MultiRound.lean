@@ -491,12 +491,28 @@ private theorem combinedAssign_val_congr_first {n : Nat}
     (hval : (assign1 c).val = (assign1' c).val) :
     (combinedAssign pt1 pt2 assign1 assign2 c).val =
     (combinedAssign pt1' pt2 assign1' assign2 c).val := by
-  sorry
+  subst h
+  cases hget : pt2[(assign2 c).val] with
+  | Q =>
+      simpa [combinedAssign, hget] using hval
+  | S =>
+      have hrev : (Fin.rev (assign1 c)).val = (Fin.rev (assign1' c)).val := by
+        simp [Fin.val_rev, hval]
+      simpa [combinedAssign, hget] using hrev
 
 
 -- Standard snoc induction for lists (not in Lean 4 core).
+private def reverseRecAux {α : Type} {C : List α → Sort _}
+    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) :
+    (rev : List α) → C rev.reverse
+  | [] => by simpa using H0
+  | last :: rest => by
+      have ih : C rest.reverse := reverseRecAux H0 H1 rest
+      simpa [List.reverse_cons] using H1 rest.reverse last ih
+
 private def reverseRecOn {α : Type} {C : List α → Sort _} (l : List α)
-    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) : C l := sorry
+    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) : C l := by
+  simpa using reverseRecAux H0 H1 l.reverse
 
 -- Unfolding `init ++ [last]` gives the unfolding of `init` followed by one spec for `last`.
 private theorem unfoldedAssign_snoc {n : Nat} (init : List (List PileType))
@@ -506,7 +522,8 @@ private theorem unfoldedAssign_snoc {n : Nat} (init : List (List PileType))
     let v := fun c => (assign c).cast (congrArg List.length hfold)
     unfoldedAssign (init ++ [last]) assign =
     unfoldedAssign init (fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).1) ++
-    [⟨last, fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).2⟩] := sorry
+    [⟨last, fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).2⟩] := by
+  sorry
 
 -- The val-roundtrip: foldedAssign undoes unfoldedAssign pointwise.
 private theorem foldedAssign_unfoldedAssign_val {n : Nat} (rounds : List (List PileType))
