@@ -306,6 +306,17 @@ private def reverseRecOn {α : Type} {C : List α → Sort _} (l : List α)
     (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) : C l := by
   simpa using reverseRecAux H0 H1 l.reverse
 
+private theorem unfoldedAssignAux_cons {n : Nat}
+    (last : List PileType)
+    (rest : List (List PileType))
+    (assign : Fin n → Fin (foldVirtualPileTypes (last :: rest).reverse).length) :
+    unfoldedAssignAux (last :: rest) assign =
+    let split := fun c => splitAssign (foldVirtualPileTypes rest.reverse) last
+      ((assign c).cast (congrArg List.length (by
+        simp [List.reverse_cons, foldVirtualPileTypes_append_singleton])))
+    unfoldedAssignAux rest (fun c => (split c).1) ++ [⟨last, fun c => (split c).2⟩] := by
+  simp [unfoldedAssignAux]
+
 -- Unfolding `init ++ [last]` gives the unfolding of `init` followed by one spec for `last`.
 private theorem unfoldedAssign_snoc {n : Nat} (init : List (List PileType))
     (last : List PileType)
