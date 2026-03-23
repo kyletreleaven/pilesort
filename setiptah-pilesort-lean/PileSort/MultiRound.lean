@@ -187,41 +187,45 @@ theorem multiShuffleRound_eq_shuffleRound {n : Nat} (d : Deck n)
 
 /-! ## Backward direction helpers for `multiSortable_iff_sortable` -/
 
--- Structural recursion on the reversed round list: each cons peels one round
--- from the right of the original, splitting the assign via `splitAssign`.
-private def unfoldedAssignAux {n : Nat} :
-    (rev : List (List PileType)) →
-    (Fin n → Fin (foldVirtualPileTypes rev.reverse).length) →
+-- Standard snoc induction for lists (not in Lean 4 core).
+private def reverseRecAux {α : Type} {C : List α → Sort _}
+    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) :
+    (rev : List α) → C rev.reverse
+  | [] => by simpa using H0
+  | last :: rest => by
+      have ih : C rest.reverse := reverseRecAux H0 H1 rest
+      simpa [List.reverse_cons] using H1 rest.reverse last ih
+
+private def reverseRecOn {α : Type} {C : List α → Sort _} (l : List α)
+    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) : C l := by
+  simpa using reverseRecAux H0 H1 l.reverse
+
+private theorem reverseRecOn_nil {α : Type} {C : List α → Sort _}
+    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) :
+    reverseRecOn ([] : List α) H0 H1 = H0 := by
+  simp [reverseRecOn, reverseRecAux]
+
+private theorem reverseRecOn_snoc {α : Type} {C : List α → Sort _}
+    (init : List α) (last : α)
+    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) :
+    reverseRecOn (init ++ [last]) H0 H1 =
+    H1 init last (reverseRecOn init H0 H1) := by
+  sorry
+
+private def unfoldedAssign {n : Nat} :
+    (rounds : List (List PileType)) →
+    (Fin n → Fin (foldVirtualPileTypes rounds).length) →
     List (ShuffleSpec n)
-  | [], _ => []
-  | last :: rest, assign =>
-    have hfold : foldVirtualPileTypes (last :: rest).reverse =
-        virtualPileTypes (foldVirtualPileTypes rest.reverse) last := by
-      simp [List.reverse_cons, foldVirtualPileTypes_append_singleton]
-    let split := fun c => splitAssign (foldVirtualPileTypes rest.reverse) last
-                   ((assign c).cast (congrArg List.length hfold))
-    unfoldedAssignAux rest (fun c => (split c).1) ++ [⟨last, fun c => (split c).2⟩]
-
-private def unfoldedAssign {n : Nat} (rounds : List (List PileType))
-    (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
-    List (ShuffleSpec n) :=
-  unfoldedAssignAux rounds.reverse
-    (fun c => (assign c).cast (by simp [foldVirtualPileTypes, List.reverse_reverse]))
-
-private theorem unfoldedAssignAux_types {n : Nat} :
-    ∀ (rev : List (List PileType))
-      (assign : Fin n → Fin (foldVirtualPileTypes rev.reverse).length),
-    (unfoldedAssignAux rev assign).map (·.types) = rev.reverse
-  | [],            _      => rfl
-  | last :: rest,  assign => by
-    simp only [unfoldedAssignAux, List.map_append, List.map_singleton]
-    rw [unfoldedAssignAux_types rest]
-    simp [List.reverse_cons]
-
-private theorem unfoldedAssign_types {n : Nat} (rounds : List (List PileType))
-    (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
-    (unfoldedAssign rounds assign).map (·.types) = rounds := by
-  simp [unfoldedAssign, unfoldedAssignAux_types]
+  | rounds, assign =>
+      reverseRecOn rounds
+        (C := fun rs => (Fin n → Fin (foldVirtualPileTypes rs).length) → List (ShuffleSpec n))
+        (fun _ => [])
+        (fun init last ih assign =>
+          let v := fun c => (assign c).cast
+            (congrArg List.length (foldVirtualPileTypes_append_singleton init last))
+          ih (fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).1) ++
+            [⟨last, fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).2⟩])
+        assign
 
 private theorem shuffleRound_congr_val {n : Nat} (d : Deck n)
     (types1 types2 : List PileType) (h : types1 = types2)
@@ -292,31 +296,6 @@ private theorem combinedAssign_val_congr_first {n : Nat}
         simp [Fin.val_rev, hval]
       simpa [combinedAssign, hget] using hrev
 
-
--- Standard snoc induction for lists (not in Lean 4 core).
-private def reverseRecAux {α : Type} {C : List α → Sort _}
-    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) :
-    (rev : List α) → C rev.reverse
-  | [] => by simpa using H0
-  | last :: rest => by
-      have ih : C rest.reverse := reverseRecAux H0 H1 rest
-      simpa [List.reverse_cons] using H1 rest.reverse last ih
-
-private def reverseRecOn {α : Type} {C : List α → Sort _} (l : List α)
-    (H0 : C []) (H1 : ∀ init last, C init → C (init ++ [last])) : C l := by
-  simpa using reverseRecAux H0 H1 l.reverse
-
-private theorem unfoldedAssignAux_cons {n : Nat}
-    (last : List PileType)
-    (rest : List (List PileType))
-    (assign : Fin n → Fin (foldVirtualPileTypes (last :: rest).reverse).length) :
-    unfoldedAssignAux (last :: rest) assign =
-    let split := fun c => splitAssign (foldVirtualPileTypes rest.reverse) last
-      ((assign c).cast (congrArg List.length (by
-        simp [List.reverse_cons, foldVirtualPileTypes_append_singleton])))
-    unfoldedAssignAux rest (fun c => (split c).1) ++ [⟨last, fun c => (split c).2⟩] := by
-  simp [unfoldedAssignAux]
-
 -- Unfolding `init ++ [last]` gives the unfolding of `init` followed by one spec for `last`.
 private theorem unfoldedAssign_snoc {n : Nat} (init : List (List PileType))
     (last : List PileType)
@@ -326,7 +305,18 @@ private theorem unfoldedAssign_snoc {n : Nat} (init : List (List PileType))
     unfoldedAssign (init ++ [last]) assign =
     unfoldedAssign init (fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).1) ++
     [⟨last, fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).2⟩] := by
-  sorry
+  simp [unfoldedAssign, reverseRecOn_snoc]
+
+private theorem unfoldedAssign_types {n : Nat} (rounds : List (List PileType))
+    (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
+    (unfoldedAssign rounds assign).map (·.types) = rounds := by
+  revert assign
+  apply reverseRecOn rounds
+  · intro assign
+    simp [unfoldedAssign, reverseRecOn_nil]
+  · intro init last ih assign
+    rw [unfoldedAssign_snoc init last assign]
+    simp [ih]
 
 -- The val-roundtrip: foldedAssign undoes unfoldedAssign pointwise.
 private theorem foldedAssign_unfoldedAssign_val {n : Nat} (rounds : List (List PileType))
@@ -335,7 +325,7 @@ private theorem foldedAssign_unfoldedAssign_val {n : Nat} (rounds : List (List P
   revert assign
   apply reverseRecOn rounds
   · intro assign
-    simp [unfoldedAssign, unfoldedAssignAux, foldedAssign, foldedAssignAux, foldVirtualPileTypes]
+    simp [unfoldedAssign, reverseRecOn_nil, foldedAssign, foldedAssignAux, foldVirtualPileTypes]
   · intro init last ih assign
     rw [unfoldedAssign_snoc init last assign, foldedAssign_snoc_val]
     let v : Fin n → Fin (foldVirtualPileTypes (init ++ [last])).length := fun c => assign c
