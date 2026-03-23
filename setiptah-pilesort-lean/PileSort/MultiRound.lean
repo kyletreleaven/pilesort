@@ -217,15 +217,26 @@ private def unfoldedAssign {n : Nat} :
     (Fin n → Fin (foldVirtualPileTypes rounds).length) →
     List (ShuffleSpec n)
   | rounds, assign =>
-      reverseRecOn rounds
-        (C := fun rs => (Fin n → Fin (foldVirtualPileTypes rs).length) → List (ShuffleSpec n))
-        (fun _ => [])
-        (fun init last ih assign =>
-          let v := fun c => (assign c).cast
-            (congrArg List.length (foldVirtualPileTypes_append_singleton init last))
-          ih (fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).1) ++
-            [⟨last, fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).2⟩])
-        assign
+      if h : rounds = [] then
+        []
+      else
+        let init := rounds.dropLast
+        let last := rounds.getLast h
+        let hfold : foldVirtualPileTypes rounds =
+            virtualPileTypes (foldVirtualPileTypes init) last := by
+          rw [← List.dropLast_concat_getLast h]
+          exact foldVirtualPileTypes_append_singleton init last
+        let v := fun c => (assign c).cast (congrArg List.length hfold)
+        unfoldedAssign init (fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).1) ++
+          [⟨last, fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).2⟩]
+termination_by
+  rounds => rounds.length
+decreasing_by
+  simp_wf
+  exact Nat.sub_lt (Nat.pos_of_ne_zero (by
+    intro hlen
+    apply h
+    exact List.eq_nil_of_length_eq_zero hlen)) (by decide)
 
 private theorem shuffleRound_congr_val {n : Nat} (d : Deck n)
     (types1 types2 : List PileType) (h : types1 = types2)
@@ -305,7 +316,7 @@ private theorem unfoldedAssign_snoc {n : Nat} (init : List (List PileType))
     unfoldedAssign (init ++ [last]) assign =
     unfoldedAssign init (fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).1) ++
     [⟨last, fun c => (splitAssign (foldVirtualPileTypes init) last (v c)).2⟩] := by
-  simp [unfoldedAssign, reverseRecOn_snoc]
+  sorry
 
 private theorem unfoldedAssign_types {n : Nat} (rounds : List (List PileType))
     (assign : Fin n → Fin (foldVirtualPileTypes rounds).length) :
@@ -325,7 +336,11 @@ private theorem foldedAssign_unfoldedAssign_val {n : Nat} (rounds : List (List P
   revert assign
   apply reverseRecOn rounds
   · intro assign
-    simp [unfoldedAssign, reverseRecOn_nil, foldedAssign, foldedAssignAux, foldVirtualPileTypes]
+    have hunf : unfoldedAssign [] assign = [] := by
+      simp [unfoldedAssign]
+    unfold foldedAssign
+    rw [hunf]
+    simp [foldedAssignAux, foldVirtualPileTypes]
   · intro init last ih assign
     rw [unfoldedAssign_snoc init last assign, foldedAssign_snoc_val]
     let v : Fin n → Fin (foldVirtualPileTypes (init ++ [last])).length := fun c => assign c
