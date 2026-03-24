@@ -41,18 +41,6 @@ import PileSort.SortableIff
 import PileSort.FormulaWord
 import PileSort.MultiRoundCommon
 
-/-! ## Two-round reduction to single round on virtual pile types -/
-
-/-- Two rounds of pile shuffle equal one round on virtual pile types with the
-    combined assignment. -/
-theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
-    (pt1 pt2 : List PileType)
-    (assign1 : Fin n → Fin pt1.length)
-    (assign2 : Fin n → Fin pt2.length) :
-    shuffleRound (shuffleRound d pt1 assign1) pt2 assign2 =
-    shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2) := by
-  sorry
-
 /-- Main reduction theorem: the deck realizing a formula word is sortable by the
     pile-sort machine iff the formula is satisfiable. -/
 theorem formulaWord_correct_sortable (n : Nat) (clauses : List Clause)

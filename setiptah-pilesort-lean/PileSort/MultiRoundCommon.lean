@@ -34,6 +34,16 @@ def combinedAssign {n : Nat} (pt1 pt2 : List PileType)
     ⟨(assign2 c).val * pt1.length + j.val,
       by rw [virtualPileTypes_length]; exact block_index_bound (assign2 c).isLt j.isLt⟩
 
+/-- Two rounds of pile shuffle equal one round on virtual pile types with the
+    combined assignment. -/
+theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
+    (pt1 pt2 : List PileType)
+    (assign1 : Fin n → Fin pt1.length)
+    (assign2 : Fin n → Fin pt2.length) :
+    shuffleRound (shuffleRound d pt1 assign1) pt2 assign2 =
+    shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2) := by
+  sorry
+
 /-! ## Inverse of `combinedAssign` -/
 
 /-- Decode a virtual-pile index back into its component pile indices.
