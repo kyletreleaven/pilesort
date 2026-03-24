@@ -44,6 +44,14 @@ theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
     shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2) := by
   sorry
 
+/-- Virtual pile type composition should reassociate in the same order as
+    sequential shuffle rounds.  This is recorded here as a potential algebraic
+    helper for future-oriented fold proofs. -/
+theorem virtualPileTypes_assoc (pt1 pt2 pt3 : List PileType) :
+    virtualPileTypes (virtualPileTypes pt1 pt2) pt3 =
+    virtualPileTypes pt1 (virtualPileTypes pt2 pt3) := by
+  sorry
+
 /-! ## Inverse of `combinedAssign` -/
 
 /-- Decode a virtual-pile index back into its component pile indices.
