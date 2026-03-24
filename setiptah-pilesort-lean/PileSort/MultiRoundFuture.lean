@@ -37,10 +37,22 @@ import PileSort.MultiRoundCommon
      `combinedAssign_split`) is sufficient unchanged.
   2. Prove the basic recursion equations and type-list equations for the three
      new definitions.
-  3. Rebuild the local equivalence theorems against the new orientation.
+  3. Rebuild the forward composition theorem
+     `multiShuffleRound_eq_shuffleRound`.
+     This is the critical direction: it should drive the forward implication in
+     `multiSortable_iff_sortable`.
+  4. Rebuild the local equivalence theorem
+     `multiSortable_iff_sortable` against the new orientation.
+  5. Rebuild the remaining inverse/decomposition support theorems used for the
+     backward implication.
 
   The goal is to keep names natural in this file and switch over later at the
-  module/import boundary once the redesign is stable.
+  module/import boundary once the redesign is stable.  In particular, a major
+  success criterion for this file is a clean reproving of
+  `multiSortable_iff_sortable`, with the proof split as:
+
+  · forward: composition correctness via `multiShuffleRound_eq_shuffleRound`;
+  · backward: existence of an inverse decomposition via `unfoldedAssign`.
 -/
 
 /-- Fold round types in current/future orientation:
