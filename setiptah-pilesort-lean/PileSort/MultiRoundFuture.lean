@@ -1,4 +1,4 @@
-import PileSort.MultiRound
+import PileSort.MultiRoundCommon
 
 /-!
   Experimental redesign space for `PileSort.MultiRound`.
