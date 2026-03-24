@@ -34,40 +34,6 @@
   · forward  — `foldedAssign specs` witnesses `Sortable`;
   · backward — `unfoldedAssign assign` reconstructs specs, closed by
     `combinedAssign_split`.
-
-  ## Current design note
-
-  The hard local proofs are not failing because the mathematical statements look
-  false; they are failing because the current fold/orientation is awkward for
-  the proofs we want.
-
-  The current code tends to treat the accumulator as "what has already been
-  folded".  The more natural semantic picture for the inverse construction seems
-  to be the opposite:
-
-  · the current round is the left/current input;
-  · the accumulator represents the effect of all future rounds;
-  · recursion should therefore align with `current :: future`.
-
-  In particular, the unpleasant transport/cast obligations around
-  `unfoldedAssign_snoc` appear to be a symptom of this mismatch rather than the
-  real mathematical difficulty.
-
-  ## TODOs
-
-  1. Reorient virtual-pile folding so the recursive equation is on
-     `current :: future`, with the accumulated term interpreted as the effect of
-     future rounds.
-  2. Reorient `combinedAssign` / `splitAssign` to match that same semantic
-     direction.
-  3. Reorient `foldedAssign` to match the new fold direction.
-  4. Redefine `unfoldedAssign` in the same direction, so its main equation is a
-     direct computation rule instead of a transport lemma.
-  5. Reprove `multiShuffleRound_eq_shuffleRound` and
-     `multiSortable_iff_sortable` against the new orientation.
-
-  Until that redesign lands, the remaining snoc-style/local inversion proofs are
-  expected to stay proof-engineering-heavy.
 -/
 import PileSort.ChangeProfiles
 import PileSort.VirtualPileTypes
