@@ -88,3 +88,14 @@ def unfoldedAssign {n : Nat} :
       let split := fun c =>
         splitAssign current (foldVirtualPileTypesFuture future) (assign c)
       ⟨current, fun c => (split c).1⟩ :: unfoldedAssign future (fun c => (split c).2)
+
+/-- Critical forward composition theorem for the future-oriented fold:
+    executing many rounds left-to-right equals one round on the folded future
+    virtual pile types with the folded assignment. -/
+theorem multiShuffleRound_eq_shuffleRound {n : Nat} (d : Deck n)
+    (specs : List (ShuffleSpec n)) :
+    multiShuffleRound d specs =
+    shuffleRound d
+      (foldVirtualPileTypesFuture (specs.map (·.types)))
+      (foldedAssign specs) := by
+  sorry
