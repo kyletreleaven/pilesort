@@ -158,36 +158,6 @@ private theorem foldedAssign_snoc_val {n : Nat}
     (combinedAssign (foldVirtualPileTypes (specs.map (·.types))) types
                     (foldedAssign specs) sassign c).val := sorry
 
--- `combinedAssign` respects pointwise equality of input assignments.
-private theorem combinedAssign_congr {n : Nat} (pt1 pt2 : List PileType)
-    (assign1 assign1' : Fin n → Fin pt1.length)
-    (assign2 assign2' : Fin n → Fin pt2.length) (c : Fin n)
-    (h1 : assign1 c = assign1' c) (h2 : assign2 c = assign2' c) :
-    combinedAssign pt1 pt2 assign1 assign2 c =
-    combinedAssign pt1 pt2 assign1' assign2' c := by
-  simp only [combinedAssign, h1, h2]
-
--- Output val depends only on input vals.
-private theorem combinedAssign_val_congr {n : Nat} (pt1 pt2 : List PileType)
-    (assign1 assign1' : Fin n → Fin pt1.length)
-    (assign2 assign2' : Fin n → Fin pt2.length) (c : Fin n)
-    (h1 : (assign1 c).val = (assign1' c).val)
-    (h2 : (assign2 c).val = (assign2' c).val) :
-    (combinedAssign pt1 pt2 assign1 assign2 c).val =
-    (combinedAssign pt1 pt2 assign1' assign2' c).val :=
-  congrArg Fin.val (combinedAssign_congr pt1 pt2 assign1 assign1' assign2 assign2' c
-    (Fin.ext h1) (Fin.ext h2))
-
--- Val-level roundtrip: follows from congruence + `combinedAssign_split`.
-private theorem combinedAssign_split_val (pt1 pt2 : List PileType)
-    (v : Fin (virtualPileTypes pt1 pt2).length) {n : Nat}
-    (assign1 : Fin n → Fin pt1.length) (assign2 : Fin n → Fin pt2.length) (c : Fin n)
-    (h1 : (assign1 c).val = (splitAssign pt1 pt2 v).1.val)
-    (h2 : (assign2 c).val = (splitAssign pt1 pt2 v).2.val) :
-    (combinedAssign pt1 pt2 assign1 assign2 c).val = v.val :=
-  (combinedAssign_val_congr pt1 pt2 assign1 _ assign2 _ c h1 h2).trans
-    (congrArg Fin.val (combinedAssign_split pt1 pt2 v c))
-
 -- Changing the first folded pile-type list along an equality preserves the
 -- combined assignment value, provided the first component assignment value is
 -- preserved pointwise.
