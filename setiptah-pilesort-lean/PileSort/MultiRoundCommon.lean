@@ -62,6 +62,14 @@ def combinedSpec {n : Nat} (spec1 spec2 : ShuffleSpec n) : ShuffleSpec n where
   types := virtualPileTypes spec1.types spec2.types
   assign := combinedAssign spec1.types spec2.types spec1.assign spec2.assign
 
+/-- Binary spec composition should reassociate in the same order as sequential
+    shuffle rounds. -/
+theorem combinedSpec_assoc {n : Nat}
+    (spec1 spec2 spec3 : ShuffleSpec n) :
+    combinedSpec (combinedSpec spec1 spec2) spec3 =
+    combinedSpec spec1 (combinedSpec spec2 spec3) := by
+  sorry
+
 /-- Two rounds of pile shuffle equal one round on virtual pile types with the
     combined assignment. -/
 theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
@@ -113,6 +121,14 @@ def splitSpec {n : Nat} (spec : ShuffleSpec n) (pt1 pt2 : List PileType)
       assign := fun c => (split c).1 }
   , { types := pt2
       assign := fun c => (split c).2 } )
+
+/-- Splitting a combined spec and recombining the two recovered component specs
+    gives back the original combined spec. -/
+theorem combinedSpec_splitSpec {n : Nat}
+    (spec : ShuffleSpec n) (pt1 pt2 : List PileType)
+    (h : spec.types = virtualPileTypes pt1 pt2) :
+    combinedSpec (splitSpec spec pt1 pt2 h).1 (splitSpec spec pt1 pt2 h).2 = spec := by
+  sorry
 
 -- n / k * k + n % k = n  (Nat.div_add_mod uses the other multiplication order)
 private theorem div_mul_add_mod (n k : Nat) : n / k * k + n % k = n := by
