@@ -54,6 +54,14 @@ def combinedAssign' {n : Nat} (pt1 pt2 : List PileType)
       rw [h]
       exact block_index_bound (assign2 c).isLt j.isLt⟩
 
+/-- Package the two-round binary composition as a single `ShuffleSpec`.
+    TODO: move the binary assignment-combination logic directly under this
+    spec-level operation, rather than treating `combinedAssign` as the primary
+    interface. -/
+def combinedSpec {n : Nat} (spec1 spec2 : ShuffleSpec n) : ShuffleSpec n where
+  types := virtualPileTypes spec1.types spec2.types
+  assign := combinedAssign spec1.types spec2.types spec1.assign spec2.assign
+
 /-- Two rounds of pile shuffle equal one round on virtual pile types with the
     combined assignment. -/
 theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
@@ -92,6 +100,19 @@ def splitAssign (pt1 pt2 : List PileType)
   match pt2.get b with
   | .Q => (j, b)
   | .S => (Fin.rev j, b)
+
+/-- Package the binary inverse of `combinedAssign` at the `ShuffleSpec` level.
+    Given explicit component type lists and a combined spec whose types match
+    their virtual composition, recover the two component specs by splitting the
+    combined assignment cardwise. -/
+def splitSpec {n : Nat} (spec : ShuffleSpec n) (pt1 pt2 : List PileType)
+    (h : spec.types = virtualPileTypes pt1 pt2) :
+    ShuffleSpec n × ShuffleSpec n :=
+  let split := fun c => splitAssign pt1 pt2 ((spec.assign c).cast (by simpa [h]))
+  ( { types := pt1
+      assign := fun c => (split c).1 }
+  , { types := pt2
+      assign := fun c => (split c).2 } )
 
 -- n / k * k + n % k = n  (Nat.div_add_mod uses the other multiplication order)
 private theorem div_mul_add_mod (n k : Nat) : n / k * k + n % k = n := by
