@@ -34,6 +34,26 @@ def combinedAssign {n : Nat} (pt1 pt2 : List PileType)
     ⟨(assign2 c).val * pt1.length + j.val,
       by rw [virtualPileTypes_length]; exact block_index_bound (assign2 c).isLt j.isLt⟩
 
+/-- Variant of `combinedAssign` with codomain sizes factored out from the list
+    expressions. This keeps the visible function types at `Fin m1`, `Fin m2`,
+    and `Fin m`, with equalities recording how those sizes relate to the
+    underlying pile-type lists and their block-product size. -/
+def combinedAssign' {n : Nat} (pt1 pt2 : List PileType)
+    {m1 m2 m : Nat}
+    (_ : m1 = pt1.length)
+    (h2 : m2 = pt2.length)
+    (h : m = m2 * m1)
+    (assign1 : Fin n → Fin m1)
+    (assign2 : Fin n → Fin m2) :
+    Fin n → Fin m :=
+  fun c =>
+    let j : Fin m1 := match pt2.get ((assign2 c).cast h2) with
+      | .Q => assign1 c
+      | .S => Fin.rev (assign1 c)
+    ⟨(assign2 c).val * m1 + j.val, by
+      rw [h]
+      exact block_index_bound (assign2 c).isLt j.isLt⟩
+
 /-- Two rounds of pile shuffle equal one round on virtual pile types with the
     combined assignment. -/
 theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
