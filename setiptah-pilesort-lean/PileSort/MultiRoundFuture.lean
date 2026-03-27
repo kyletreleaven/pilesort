@@ -28,23 +28,19 @@ import PileSort.MultiRoundCommon
   Current status:
 
   1. `foldVirtualPileTypesFuture` defined.
-  2. Future-oriented `foldedAssign` defined.
-  3. Future-oriented `unfoldedAssign` defined.
+  2. Future-oriented `foldedSpec` defined.
+  3. Future-oriented `unfoldedSpec` defined.
+  4. Spec-level inverse/decomposition lemmas proved.
+  5. `multiSortable_iff_sortable` reproved against the spec-level design.
 
   Next steps in this file:
 
-  1. Check whether the common binary layer (`combinedAssign`, `splitAssign`,
-     `combinedAssign_split`) is sufficient unchanged.
-  2. Prove the basic recursion equations and type-list equations for the three
-     new definitions.
-  3. Rebuild the forward composition theorem
+  1. Prove the forward composition theorem
      `multiShuffleRound_eq_shuffleRound`.
-     This is the critical direction: it should drive the forward implication in
-     `multiSortable_iff_sortable`.
-  4. Rebuild the local equivalence theorem
-     `multiSortable_iff_sortable` against the new orientation.
-  5. Rebuild the remaining inverse/decomposition support theorems used for the
-     backward implication.
+     This is now the main remaining mathematical gap in the file.
+  2. Decide whether the spec-level API should become the permanent interface, or
+     whether any thinner assignment-level wrappers are still worth keeping.
+  3. If the spec-level design sticks, switch over at the module/import boundary.
 
   The goal is to keep names natural in this file and switch over later at the
   module/import boundary once the redesign is stable.  In particular, a major
@@ -52,7 +48,7 @@ import PileSort.MultiRoundCommon
   `multiSortable_iff_sortable`, with the proof split as:
 
   · forward: composition correctness via `multiShuffleRound_eq_shuffleRound`;
-  · backward: existence of an inverse decomposition via `unfoldedAssign`.
+  · backward: existence of an inverse decomposition via `unfoldedSpec`.
 -/
 
 /-- Fold round types in current/future orientation:
@@ -143,6 +139,32 @@ theorem foldedSpec_unfoldedSpec_cons {n : Nat}
           (by simpa [foldVirtualPileTypesFuture] using h)
   exact hmain (current :: future) spec h
 
+/-- The types of the folded spec are exactly the future-oriented fold of the
+    input round-type lists. -/
+theorem foldedSpec_types {n : Nat} (specs : List (ShuffleSpec n)) :
+    (foldedSpec specs).types = foldVirtualPileTypesFuture (specs.map (·.types)) := by
+  induction specs with
+  | nil => rfl
+  | cons current future ih =>
+      simpa [foldedSpec, foldVirtualPileTypesFuture, combinedSpec] using
+        congrArg (virtualPileTypes current.types) ih
+
+/-- The specs reconstructed by `unfoldedSpec` have exactly the requested round
+    types. -/
+theorem unfoldedSpec_types {n : Nat}
+    (rounds : List (List PileType))
+    (spec : ShuffleSpec n)
+    (h : spec.types = foldVirtualPileTypesFuture rounds) :
+    (unfoldedSpec rounds spec h).map (·.types) = rounds := by
+  induction rounds generalizing spec with
+  | nil =>
+      rfl
+  | cons current future ih =>
+      let split := splitSpec spec current (foldVirtualPileTypesFuture future)
+        (by simpa [foldVirtualPileTypesFuture] using h)
+      simp [unfoldedSpec, splitSpec, split]
+      simpa [split] using ih split.2 rfl
+
 /-- Future-oriented equivalence between multi-round sortability and sortability
     by the folded virtual round.  Forward should use
     `multiShuffleRound_eq_shuffleRound`; backward should use `unfoldedAssign`
@@ -150,4 +172,33 @@ theorem foldedSpec_unfoldedSpec_cons {n : Nat}
 theorem multiSortable_iff_sortable {n : Nat} (d : Deck n)
     (rounds : List (List PileType)) :
     MultiSortable d rounds ↔ Sortable d (foldVirtualPileTypesFuture rounds) := by
-  sorry
+  constructor
+  · intro hmulti
+    rcases hmulti with ⟨specs, htypes, hsorted⟩
+    have hspecTypes :
+        (foldedSpec specs).types = foldVirtualPileTypesFuture rounds := by
+      calc
+        (foldedSpec specs).types = foldVirtualPileTypesFuture (specs.map (·.types)) :=
+          foldedSpec_types specs
+        _ = foldVirtualPileTypesFuture rounds := by simpa [htypes]
+    have hforward :
+        multiShuffleRound d specs =
+        shuffleRound d (foldedSpec specs).types (foldedSpec specs).assign := by
+      simpa using multiShuffleRound_eq_shuffleRound d specs
+    rw [← hspecTypes]
+    refine ⟨(foldedSpec specs).assign, hforward.symm.trans hsorted⟩
+  · intro hsort
+    rcases hsort with ⟨assign, hsorted⟩
+    let spec : ShuffleSpec n := {
+      types := foldVirtualPileTypesFuture rounds
+      assign := assign
+    }
+    have hspec : spec.types = foldVirtualPileTypesFuture rounds := rfl
+    refine ⟨unfoldedSpec rounds spec hspec, unfoldedSpec_types rounds spec hspec, ?_⟩
+    have hinv : foldedSpec (unfoldedSpec rounds spec hspec) = spec := by
+      cases rounds with
+      | nil => exact foldedSpec_unfoldedSpec_nil spec hspec
+      | cons current future => exact foldedSpec_unfoldedSpec_cons current future spec hspec
+    have hforward := multiShuffleRound_eq_shuffleRound d (unfoldedSpec rounds spec hspec)
+    rw [hinv] at hforward
+    exact hforward.trans hsorted
