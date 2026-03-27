@@ -31,16 +31,17 @@ import PileSort.MultiRoundCommon
   2. Future-oriented `foldedSpec` defined.
   3. Future-oriented `unfoldedSpec` defined.
   4. Spec-level inverse/decomposition lemmas proved.
-  5. `multiSortable_iff_sortable` reproved against the spec-level design.
+  5. Forward composition theorem `multiShuffleRound_eq_shuffleRound` proved.
+  6. `multiSortable_iff_sortable` reproved against the spec-level design.
 
   Next steps in this file:
 
-  1. Prove the forward composition theorem
-     `multiShuffleRound_eq_shuffleRound`.
-     This is now the main remaining mathematical gap in the file.
-  2. Decide whether the spec-level API should become the permanent interface, or
+  1. Decide whether the spec-level API should become the permanent interface, or
      whether any thinner assignment-level wrappers are still worth keeping.
-  3. If the spec-level design sticks, switch over at the module/import boundary.
+  2. If the spec-level design sticks, switch over at the module/import boundary.
+  3. Discharge the remaining shared `sorry`s in `MultiRoundCommon.lean`
+     (`combinedSpec_assoc`, `shuffleRound_virtualPileTypes`,
+     `combinedSpec_splitSpec`, etc.).
 
   The goal is to keep names natural in this file and switch over later at the
   module/import boundary once the redesign is stable.  In particular, a major
@@ -49,6 +50,9 @@ import PileSort.MultiRoundCommon
 
   · forward: composition correctness via `multiShuffleRound_eq_shuffleRound`;
   · backward: existence of an inverse decomposition via `unfoldedSpec`.
+
+  That reproving is now complete in this sandbox file. The remaining proof work
+  is in the shared binary/spec-level common layer. 
 -/
 
 /-- Fold round types in current/future orientation:
@@ -88,6 +92,29 @@ theorem foldVirtualPileTypesFuture_cons (current : List PileType)
     virtualPileTypes current (foldVirtualPileTypesFuture future) := by
   rfl
 
+private theorem shuffleSeq_singletonQ {n : Nat} (l : List (Fin n))
+    (assign : Fin n → Fin 1) :
+    shuffleSeq l [PileType.Q] assign = l := by
+  have hassign : assign = fun _ => (0 : Fin 1) := by
+    funext c
+    exact Subsingleton.elim _ _
+  cases hassign
+  simp [shuffleSeq, List.finRange, collectPile, dealToPile]
+
+private theorem deck_fromDeckSeq_toList {n : Nat} (d : Deck n) :
+    Deck.fromDeckSeq d.toList d.toList_nodup d.toList_length = d := by
+  apply Deck.ext
+  · funext c
+    apply Fin.ext
+    simpa [Deck.fromDeckSeq] using Deck.toList_indexOf d c
+  · funext c
+    simp [Deck.fromDeckSeq, Deck.toList]
+
+private theorem shuffleRound_singletonQ {n : Nat} (d : Deck n)
+    (assign : Fin n → Fin 1) :
+    shuffleRound d [PileType.Q] assign = d := by
+  simpa [shuffleRound, shuffleSeq_singletonQ _ assign] using deck_fromDeckSeq_toList d
+
 /-- Critical forward composition theorem for the future-oriented fold:
     executing many rounds left-to-right equals one round on the folded future
     spec. -/
@@ -95,7 +122,22 @@ theorem multiShuffleRound_eq_shuffleRound {n : Nat} (d : Deck n)
     (specs : List (ShuffleSpec n)) :
     let spec := foldedSpec specs
     multiShuffleRound d specs = shuffleRound d spec.types spec.assign := by
-  sorry
+  induction specs generalizing d with
+  | nil =>
+      simpa [multiShuffleRound, foldedSpec] using (shuffleRound_singletonQ d (fun _ => 0)).symm
+  | cons current future ih =>
+      calc
+        multiShuffleRound d (current :: future)
+          = multiShuffleRound (shuffleRound d current.types current.assign) future := by
+              rfl
+        _ = shuffleRound (shuffleRound d current.types current.assign)
+              (foldedSpec future).types (foldedSpec future).assign := by
+              simpa using ih (shuffleRound d current.types current.assign)
+        _ = shuffleRound d (combinedSpec current (foldedSpec future)).types
+              (combinedSpec current (foldedSpec future)).assign := by
+              simpa [combinedSpec] using
+                (shuffleRound_virtualPileTypes d current.types (foldedSpec future).types
+                  current.assign (foldedSpec future).assign)
 
 /-- Empty-case left inverse: any spec over `[Q]` folds back from the empty
     unfolding, because assignments into `Fin 1` are unique. -/
