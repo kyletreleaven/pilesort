@@ -101,15 +101,47 @@ theorem multiShuffleRound_eq_shuffleRound {n : Nat} (d : Deck n)
     multiShuffleRound d specs = shuffleRound d spec.types spec.assign := by
   sorry
 
-/-- Spec-level left inverse: unfolding a combined spec against the intended
-    round list and then folding the recovered specs should give back the
-    original combined spec. -/
-theorem foldedSpec_unfoldedSpec {n : Nat}
-    (rounds : List (List PileType))
+/-- Empty-case left inverse: any spec over `[Q]` folds back from the empty
+    unfolding, because assignments into `Fin 1` are unique. -/
+theorem foldedSpec_unfoldedSpec_nil {n : Nat}
     (spec : ShuffleSpec n)
-    (h : spec.types = foldVirtualPileTypesFuture rounds) :
-    foldedSpec (unfoldedSpec rounds spec h) = spec := by
-  sorry
+    (h : spec.types = foldVirtualPileTypesFuture []) :
+    foldedSpec (unfoldedSpec [] spec h) = spec := by
+  cases spec with
+  | mk types assign =>
+      cases h
+      have hassign : assign = fun _ => (⟨0, by decide⟩ : Fin [PileType.Q].length) := by
+        funext c
+        apply Fin.ext
+        exact by simpa using (assign c).isLt
+      cases hassign
+      rfl
+
+/-- Nonempty left inverse: unfolding a combined spec against a nonempty round
+    list and then folding the recovered specs gives back the original spec. -/
+theorem foldedSpec_unfoldedSpec_cons {n : Nat}
+    (current : List PileType)
+    (future : List (List PileType))
+    (spec : ShuffleSpec n)
+    (h : spec.types = foldVirtualPileTypesFuture (current :: future)) :
+    foldedSpec (unfoldedSpec (current :: future) spec h) = spec := by
+  have hmain : ∀ (rounds : List (List PileType)) (spec : ShuffleSpec n)
+      (h : spec.types = foldVirtualPileTypesFuture rounds),
+      foldedSpec (unfoldedSpec rounds spec h) = spec := by
+    intro rounds
+    induction rounds with
+    | nil =>
+        intro spec h
+        exact foldedSpec_unfoldedSpec_nil spec h
+    | cons current future ih =>
+        intro spec h
+        let split := splitSpec spec current (foldVirtualPileTypesFuture future)
+          (by simpa [foldVirtualPileTypesFuture] using h)
+        change combinedSpec split.1 (foldedSpec (unfoldedSpec future split.2 rfl)) = spec
+        rw [ih split.2 rfl]
+        exact combinedSpec_splitSpec spec current (foldVirtualPileTypesFuture future)
+          (by simpa [foldVirtualPileTypesFuture] using h)
+  exact hmain (current :: future) spec h
 
 /-- Future-oriented equivalence between multi-round sortability and sortability
     by the folded virtual round.  Forward should use
