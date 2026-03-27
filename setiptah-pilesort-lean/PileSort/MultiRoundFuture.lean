@@ -101,6 +101,16 @@ theorem multiShuffleRound_eq_shuffleRound {n : Nat} (d : Deck n)
     multiShuffleRound d specs = shuffleRound d spec.types spec.assign := by
   sorry
 
+/-- Spec-level left inverse: unfolding a combined spec against the intended
+    round list and then folding the recovered specs should give back the
+    original combined spec. -/
+theorem foldedSpec_unfoldedSpec {n : Nat}
+    (rounds : List (List PileType))
+    (spec : ShuffleSpec n)
+    (h : spec.types = foldVirtualPileTypesFuture rounds) :
+    foldedSpec (unfoldedSpec rounds spec h) = spec := by
+  sorry
+
 /-- Future-oriented equivalence between multi-round sortability and sortability
     by the folded virtual round.  Forward should use
     `multiShuffleRound_eq_shuffleRound`; backward should use `unfoldedAssign`
