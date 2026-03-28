@@ -6,49 +6,97 @@
 - `formulaWord_correct` ✅ — consumption-form proof stack complete
   (TestChain → ClauseWordNew → FormulaWordNew → FormulaWord)
 - `deckOfWord_changeProfile` ✅ — `Deck.changeProfile (deckOfWord word) = word`
-  (MultiRound.lean; enables formulaWord_correct_sortable)
+  (used by the formula-word correctness stack)
+- `formulaWord_correct_sortable` ✅
+- `PileSort/MultiRoundFuture.lean` theorem stack ✅
+  - spec-centered refactor complete
+  - `multiShuffleRound_eq_shuffleRound` proved
+  - `multiSortable_iff_sortable` proved
+  - formula-word lemmas ported to the future-oriented file
 
 ---
 
-## Next goal: `formulaWord_correct_sortable`
+## Current critical path: binary common lemmas
 
-Compose the three completed results:
+`PileSort/MultiRoundFuture.lean` is now effectively the replacement for the old
+`MultiRound.lean`, modulo the remaining shared binary/spec-level lemmas in
+`PileSort/MultiRoundCommon.lean`.
 
-```
-sortable_iff_accepts + deckOfWord_changeProfile + formulaWord_correct
-  ⟹  formulaWord_correct_sortable
-```
+The remaining `sorry`s there are:
 
-Concretely: given `word` and pile types `types`, the deck `deckOfWord word` is
-sortable by `types` iff the formula word accepts (or equivalent SAT condition).
+- `shuffleRound_virtualPileTypes`
+- `virtualPileTypes_assoc`
+- `combinedSpec_assoc`
+- `combinedSpec_splitSpec`
+
+The main bottleneck is `shuffleRound_virtualPileTypes`; the others sit above or
+beside that binary composition layer.
 
 ---
 
-## Multi-round reduces to single-round on virtual piles
+## `shuffleRound_virtualPileTypes`
 
-Target theorem (in MultiRound.lean):
+Target theorem (now in `MultiRoundCommon.lean`):
 
 ```
 shuffleRound (shuffleRound d pt1 assign1) pt2 assign2
-  = shuffleRound d (virtualPileTypes pt1 pt2) combinedAssign
+  = shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2)
 ```
 
-This says two successive pile-shuffle rounds are equivalent to one round on
-`virtualPileTypes pt1 pt2`, with a combined assignment that encodes both rounds.
+### Current proof strategy
 
-### Proof roadmap
+1. Reduce deck equality to order equality on cards.
+   This is now packaged as `deck_eq_of_order_iff`.
 
-1. **`shuffleRound_order`** ✅ — the output ordering of `shuffleRound d types assign`
-   is determined solely by the pile assignment and pile types.
+2. View one-round shuffle order lexicographically.
+   The paper’s viewpoint is that the output order of one round is determined by
+   the lexicographic key
 
-2. **`combinedAssign`** ✅ — defined:
-   `combinedAssign c = assign2 c * pt1.length + f(assign2 c, assign1 c)`
-   where `f` adjusts based on whether `pt2[assign2 c]` is Q (identity) or S (reversed).
+   ```
+   (assign c, orient (types.get (assign c)) d.posOf c)
+   ```
 
-3. **`virtualPileTypes_getElem`** — the virtual pile type at index
-   `j * pt1.length + i` matches the composed condition from both rounds.
+   where `orient Q x = x` and `orient S x = rev x`.
 
-4. **`shuffleRound_virtualPileTypes`** (sorry) — main equality by `Deck.ext`.
+3. For two rounds, the resulting comparison key has three coordinates:
+
+   ```
+   ( assign2 c
+   , orient (pt2.get (assign2 c)) assign1 c
+   , composite orientation of d.posOf c from both pile-type phases )
+   ```
+
+   Intuitively:
+   - first compare the outer pile
+   - inside a fixed outer pile, compare the inner pile, oriented by the outer pile type
+   - inside a fixed inner pile, compare the original deck position, oriented by
+     the net effect of both pile types
+
+4. Compress the first two coordinates by mixed radix.
+   `combinedAssign` is exactly this compression:
+
+   ```
+   combinedAssign c =
+     assign2 c * pt1.length +
+     (orient (pt2.get (assign2 c)) assign1 c).val
+   ```
+
+   So the two-round lex key should match a one-round lex key for the virtual round.
+
+5. Identify the virtual pile type at the compressed index.
+   `virtualPileTypes_getElem` should show that the virtual pile type at the
+   combined index is exactly the type needed to orient the third coordinate correctly.
+
+### Likely helper lemmas
+
+- one-round lex-order theorem phrased with `orient`
+- block-order lemma for `combinedAssign`
+- same-block comparison lemma reducing `combinedAssign` order to the oriented
+  inner assignment order
+- virtual-pile lookup lemma for the combined index
+
+The goal is to keep the main theorem close to the paper’s lexicographic argument,
+instead of proving it by one long nested case split from `shuffleRound_order`.
 
 ---
 

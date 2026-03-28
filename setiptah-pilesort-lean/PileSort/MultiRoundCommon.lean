@@ -19,6 +19,13 @@ def MultiSortable {n : Nat} (d : Deck n) (rounds : List (List PileType)) : Prop 
 
 /-! ## Two-round reduction to single round on virtual pile types -/
 
+/-- Orient an assignment according to a pile type: `Q` preserves the inner
+    order, while `S` reverses it. -/
+def orient {n m : Nat} (pt : PileType) (assign : Fin n → Fin m) : Fin n → Fin m :=
+  match pt with
+  | .Q => assign
+  | .S => fun c => Fin.rev (assign c)
+
 /-- The combined pile assignment for two rounds.
     Card c goes to virtual pile (assign2 c) * pt1.length + j, where j is:
     - assign1 c            if pt2[assign2 c] = Q  (Q preserves round-1 order)
@@ -28,9 +35,7 @@ def combinedAssign {n : Nat} (pt1 pt2 : List PileType)
     (assign2 : Fin n → Fin pt2.length) :
     Fin n → Fin (virtualPileTypes pt1 pt2).length :=
   fun c =>
-    let j : Fin pt1.length := match pt2.get (assign2 c) with
-      | .Q => assign1 c
-      | .S => Fin.rev (assign1 c)
+    let j : Fin pt1.length := orient (pt2.get (assign2 c)) assign1 c
     ⟨(assign2 c).val * pt1.length + j.val,
       by rw [virtualPileTypes_length]; exact block_index_bound (assign2 c).isLt j.isLt⟩
 
@@ -74,7 +79,7 @@ theorem combinedSpec_assoc {n : Nat}
     (spec1 spec2 spec3 : ShuffleSpec n) :
     combinedSpec (combinedSpec spec1 spec2) spec3 =
     combinedSpec spec1 (combinedSpec spec2 spec3) := by
-  sorry
+  sorry -- But it seems like we don't need it...
 
 /-- Two rounds of pile shuffle equal one round on virtual pile types with the
     combined assignment. -/
@@ -165,7 +170,7 @@ theorem combinedAssign_split (pt1 pt2 : List PileType)
   | S =>
     have h' : ∀ p, pt2.get ⟨v.val / pt1.length, p⟩ = .S :=
       fun p => (congrArg pt2.get (Fin.ext rfl)).trans h
-    simp only [combinedAssign, splitAssign, h', fin_rev_rev]
+    simp only [combinedAssign, splitAssign, orient, h', fin_rev_rev]
     exact div_mul_add_mod v.val pt1.length
 
 -- `combinedAssign` respects pointwise equality of input assignments.
@@ -175,7 +180,16 @@ private theorem combinedAssign_congr {n : Nat} (pt1 pt2 : List PileType)
     (h1 : assign1 c = assign1' c) (h2 : assign2 c = assign2' c) :
     combinedAssign pt1 pt2 assign1 assign2 c =
     combinedAssign pt1 pt2 assign1' assign2' c := by
-  simp only [combinedAssign, h1, h2]
+  apply Fin.ext
+  have h1v : (assign1 c).val = (assign1' c).val := congrArg Fin.val h1
+  have h2v : (assign2 c).val = (assign2' c).val := congrArg Fin.val h2
+  cases h : pt2.get (assign2 c)
+  · have h' : pt2.get (assign2' c) = .Q := by simpa [h2] using h
+    simp only [combinedAssign, orient, h, h', h2v]
+    exact congrArg (fun x => (assign2' c).val * pt1.length + x) h1v
+  · have h' : pt2.get (assign2' c) = .S := by simpa [h2] using h
+    simp only [combinedAssign, orient, h, h', h2v, Fin.val_rev]
+    exact congrArg (fun x => (assign2' c).val * pt1.length + (pt1.length - (x + 1))) h1v
 
 /-- Output val depends only on the two input assignment values for the given
     card. -/
