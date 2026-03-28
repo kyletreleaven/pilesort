@@ -26,6 +26,18 @@ def orient {n m : Nat} (pt : PileType) (assign : Fin n → Fin m) : Fin n → Fi
   | .Q => assign
   | .S => fun c => Fin.rev (assign c)
 
+private theorem orient_Q_lt_iff {n : Nat}
+    (f : Fin n → Fin n) (s t : Fin n) :
+    orient .Q f s < orient .Q f t ↔ f s < f t := by
+  simp [orient]
+
+private theorem orient_S_lt_iff {n : Nat}
+    (f : Fin n → Fin n) (s t : Fin n) :
+    orient .S f s < orient .S f t ↔ f t < f s := by
+  change Fin.rev (f s) < Fin.rev (f t) ↔ f t < f s
+  simp [Fin.lt_def, Fin.val_rev]
+  omega
+
 /-- The combined pile assignment for two rounds.
     Card c goes to virtual pile (assign2 c) * pt1.length + j, where j is:
     - assign1 c            if pt2[assign2 c] = Q  (Q preserves round-1 order)
@@ -120,6 +132,17 @@ theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
     (assign2 : Fin n → Fin pt2.length) :
     shuffleRound (shuffleRound d pt1 assign1) pt2 assign2 =
     shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2) := by
+  sorry
+
+/-- One round of pile shuffle respects the lexicographic two-term key:
+    first by assigned pile, then by the input deck order oriented by that pile. -/
+theorem shuffleRound_respects_key {n : Nat} (d : Deck n)
+    (types : List PileType)
+    (assign : Fin n → Fin types.length) :
+    RespectsOrder
+      (shuffleRound d types assign)
+      (fun c => (assign c, orient (types.get (assign c)) d.posOf c))
+      (fun x y => x.1 < y.1 ∨ (x.1 = y.1 ∧ x.2 < y.2)) := by
   sorry
 
 /-- Virtual pile type composition should reassociate in the same order as
