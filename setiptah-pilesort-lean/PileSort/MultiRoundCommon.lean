@@ -73,6 +73,37 @@ private theorem deck_eq_of_order_iff {n : Nat} (d1 d2 : Deck n)
     exact hc1.trans (d2.left_inv c).symm
   · exact hcardAt
 
+/-- `d` respects the order induced by a key function, compared using the
+    relation `r` on key values. -/
+def RespectsOrder {n : Nat} {α : Type}
+    (d : Deck n) (key : Fin n → α) (r : α → α → Prop) : Prop :=
+  ∀ s t : Fin n, d.posOf s < d.posOf t ↔ r (key s) (key t)
+
+/-- Two key/order presentations are equivalent if they induce the same pairwise
+    comparison relation on cards.
+
+    This is the main payoff of the key-based approach: once a deck is known to
+    respect one key/order pair, any order-equivalent presentation can be used
+    instead.  In particular, this is the mechanism that should let the
+    `shuffleRound_virtualPileTypes` proof move from the three-term key produced
+    by two rounds to the compressed two-term virtual-round key. -/
+def SameOrder {n : Nat} {α β : Type}
+    (key1 : Fin n → α) (r1 : α → α → Prop)
+    (key2 : Fin n → β) (r2 : β → β → Prop) : Prop :=
+  ∀ s t : Fin n, r1 (key1 s) (key1 t) ↔ r2 (key2 s) (key2 t)
+
+/-- A deck that respects one key/order pair also respects any order-equivalent
+    key/order pair. -/
+theorem RespectsOrder.of_sameOrder {n : Nat} {α β : Type}
+    {d : Deck n}
+    {key1 : Fin n → α} {r1 : α → α → Prop}
+    {key2 : Fin n → β} {r2 : β → β → Prop}
+    (hrespects : RespectsOrder d key1 r1)
+    (hsame : SameOrder key1 r1 key2 r2) :
+    RespectsOrder d key2 r2 := by
+  intro s t
+  exact (hrespects s t).trans (hsame s t)
+
 /-- Binary spec composition should reassociate in the same order as sequential
     shuffle rounds. -/
 theorem combinedSpec_assoc {n : Nat}
