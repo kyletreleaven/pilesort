@@ -134,6 +134,15 @@ theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
     shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2) := by
   sorry
 
+-- `orient pt` on a monotone function reverses or preserves order per pile type.
+private theorem orient_lt_iff {n : Nat} (pt : PileType)
+    (f : Fin n → Fin n) (s t : Fin n) :
+    orient pt f s < orient pt f t ↔
+    (pt = .Q ∧ f s < f t) ∨ (pt = .S ∧ f t < f s) := by
+  cases pt
+  · simp [orient_Q_lt_iff]
+  · simp [orient_S_lt_iff]
+
 /-- One round of pile shuffle respects the lexicographic two-term key:
     first by assigned pile, then by the input deck order oriented by that pile. -/
 theorem shuffleRound_respects_key {n : Nat} (d : Deck n)
@@ -143,7 +152,19 @@ theorem shuffleRound_respects_key {n : Nat} (d : Deck n)
       (shuffleRound d types assign)
       (fun c => (assign c, orient (types.get (assign c)) d.posOf c))
       (fun x y => x.1 < y.1 ∨ (x.1 = y.1 ∧ x.2 < y.2)) := by
-  sorry
+  intro s t
+  simp only [shuffleRound_order]
+  constructor
+  · rintro (h | ⟨heq, horient⟩)
+    · exact Or.inl h
+    · refine Or.inr ⟨heq, ?_⟩
+      rw [← heq]
+      exact (orient_lt_iff _ d.posOf s t).mpr horient
+  · rintro (h | ⟨heq, horient⟩)
+    · exact Or.inl h
+    · refine Or.inr ⟨heq, ?_⟩
+      rw [← heq] at horient
+      exact (orient_lt_iff _ d.posOf s t).mp horient
 
 /-- Virtual pile type composition should reassociate in the same order as
     sequential shuffle rounds.  This is recorded here as a potential algebraic
