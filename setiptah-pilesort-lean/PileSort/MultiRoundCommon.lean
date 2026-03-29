@@ -135,7 +135,7 @@ private theorem deck_eq_of_order_iff {n : Nat} (d1 d2 : Deck n)
       intro j hj
       have hk : d1.posOf (d1.cardAt ⟨j, by omega⟩) <
           d1.posOf (d1.cardAt ⟨j + 1, hj⟩) := by
-        simpa [d1.right_inv]
+        simp [d1.right_inv]
       exact (hord _ _).mp hk
     have hid := strictMono_consec_is_id (fun x => d2.posOf (d1.cardAt x)) hmono k
     have hpos : d2.posOf (d1.cardAt k) = k := hid
@@ -318,7 +318,7 @@ def splitAssign (pt1 pt2 : List PileType)
 def splitSpec {n : Nat} (spec : ShuffleSpec n) (pt1 pt2 : List PileType)
     (h : spec.types = virtualPileTypes pt1 pt2) :
     ShuffleSpec n × ShuffleSpec n :=
-  let split := fun c => splitAssign pt1 pt2 ((spec.assign c).cast (by simpa [h]))
+  let split := fun c => splitAssign pt1 pt2 ((spec.assign c).cast (by simp [h]))
   ( { types := pt1
       assign := fun c => (split c).1 }
   , { types := pt2
