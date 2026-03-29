@@ -48,7 +48,7 @@ theorem orient_comp {n m : Nat} (pt1 pt2 : PileType) (f : Fin n → Fin m) (c : 
     orient pt1 (orient pt2 f) c = orient (xorType pt1 pt2) f c := by
   cases pt1 <;> cases pt2 <;> simp [orient, xorType, invertType, Fin.rev_rev]
 
-/-! ## Heterogeneous vector keys -/
+/-! ## Mixed-radix keys -/
 
 /-- Orientation of a single Fin value. -/
 def orientFin {m : Nat} (pt : PileType) (v : Fin m) : Fin m :=
@@ -56,26 +56,29 @@ def orientFin {m : Nat} (pt : PileType) (v : Fin m) : Fin m :=
   | .Q => v
   | .S => Fin.rev v
 
-/-- A heterogeneous vector: values of types Fin ms[0], Fin ms[1], ... -/
-inductive HVec : List Nat → Type
-  | nil  : HVec []
-  | cons {m : Nat} {ms : List Nat} : Fin m → HVec ms → HVec (m :: ms)
+/-- A mixed-radix number: values of types Fin ms[0], Fin ms[1], ...
+    Each "digit" lives in a `Fin` whose bound is the corresponding entry of `ms`. -/
+inductive Radix : List Nat → Type
+  | nil  : Radix []
+  | cons {m : Nat} {ms : List Nat} : Fin m → Radix ms → Radix (m :: ms)
 
-/-- Lexicographic comparison on HVec. -/
-def HVec.lt {ms : List Nat} : HVec ms → HVec ms → Prop
+infixr:67 " ::r " => Radix.cons
+
+/-- Lexicographic comparison on Radix. -/
+def Radix.lt {ms : List Nat} : Radix ms → Radix ms → Prop
   | .nil,        .nil        => False
-  | .cons h1 t1, .cons h2 t2 => h1 < h2 ∨ (h1 = h2 ∧ HVec.lt t1 t2)
+  | h1 ::r t1, h2 ::r t2 => h1 < h2 ∨ (h1 = h2 ∧ Radix.lt t1 t2)
 
-/-- Apply an orientation uniformly to every component of an HVec. -/
-def HVec.orient {ms : List Nat} (pt : PileType) : HVec ms → HVec ms
+/-- Apply an orientation uniformly to every digit of a Radix number. -/
+def Radix.orient {ms : List Nat} (pt : PileType) : Radix ms → Radix ms
   | .nil       => .nil
-  | .cons h t  => .cons (orientFin pt h) (HVec.orient pt t)
+  | h ::r t => (orientFin pt h) ::r (Radix.orient pt t)
 
 /-- Orienting preserves lex order for Q and reverses it for S. -/
-private theorem HVec.orient_lt_iff {ms : List Nat} (pt : PileType) (v w : HVec ms) :
-    HVec.lt (HVec.orient pt v) (HVec.orient pt w) ↔
-    (pt = .Q ∧ HVec.lt v w) ∨ (pt = .S ∧ HVec.lt w v) := by
-  sorry
+private theorem Radix.orient_lt_iff {ms : List Nat} (pt : PileType) (v w : Radix ms) :
+    Radix.lt (Radix.orient pt v) (Radix.orient pt w) ↔
+    (pt = .Q ∧ Radix.lt v w) ∨ (pt = .S ∧ Radix.lt w v) := by
+sorry
 
 /-- The combined pile assignment for two rounds.
     Card c goes to virtual pile (assign2 c) * pt1.length + j, where j is:
@@ -170,24 +173,24 @@ theorem combinedSpec_assoc {n : Nat}
     combinedSpec spec1 (combinedSpec spec2 spec3) := by
   sorry -- But it seems like we don't need it...
 
-/-- If a deck respects an HVec key, then after one shuffle round the result
-    respects the key with the pile assignment prepended and all components
+/-- If a deck respects a Radix key, then after one shuffle round the result
+    respects the key with the pile assignment prepended and all digits
     oriented by the assigned pile type. -/
-theorem shuffleRound_respects_hvec_key {n : Nat} {ms : List Nat} (d : Deck n)
-    (key : Fin n → HVec ms)
-    (hd : RespectsOrder d key HVec.lt)
+theorem shuffleRound_respects_radix_key {n : Nat} {ms : List Nat} (d : Deck n)
+    (key : Fin n → Radix ms)
+    (hd : RespectsOrder d key Radix.lt)
     (types : List PileType) (assign : Fin n → Fin types.length) :
     RespectsOrder
       (shuffleRound d types assign)
-      (fun c => .cons (assign c) (HVec.orient (types.get (assign c)) (key c)))
-      HVec.lt := by
+      (fun c => (assign c) ::r (Radix.orient (types.get (assign c)) (key c)))
+      Radix.lt := by
   intro s t
-  simp only [shuffleRound_order, HVec.lt]
+  simp only [shuffleRound_order, Radix.lt]
   constructor
   · rintro (h | ⟨heq, hcase⟩)
     · exact Or.inl h
     · refine Or.inr ⟨heq, ?_⟩
-      rw [← heq, HVec.orient_lt_iff]
+      rw [← heq, Radix.orient_lt_iff]
       rcases hcase with ⟨hQ, hlt⟩ | ⟨hS, hlt⟩
       · exact Or.inl ⟨hQ, (hd s t).mp hlt⟩
       · exact Or.inr ⟨hS, (hd t s).mp hlt⟩
@@ -195,7 +198,7 @@ theorem shuffleRound_respects_hvec_key {n : Nat} {ms : List Nat} (d : Deck n)
     · exact Or.inl h
     · refine Or.inr ⟨heq, ?_⟩
       rw [← heq] at hlt
-      rw [HVec.orient_lt_iff] at hlt
+      rw [Radix.orient_lt_iff] at hlt
       rcases hlt with ⟨hQ, hlt⟩ | ⟨hS, hlt⟩
       · exact Or.inl ⟨hQ, (hd s t).mpr hlt⟩
       · exact Or.inr ⟨hS, (hd t s).mpr hlt⟩
