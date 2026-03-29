@@ -74,11 +74,33 @@ def Radix.orient {ms : List Nat} (pt : PileType) : Radix ms → Radix ms
   | .nil       => .nil
   | h ::r t => (orientFin pt h) ::r (Radix.orient pt t)
 
+private theorem Radix.orient_Q_id {ms : List Nat} (v : Radix ms) : Radix.orient .Q v = v := by
+  induction v with
+  | nil => rfl
+  | cons h t ih => simp [Radix.orient, orientFin, ih]
+
+private theorem Radix.orient_S_lt_iff {ms : List Nat} (v w : Radix ms) :
+    Radix.lt (Radix.orient .S v) (Radix.orient .S w) ↔ Radix.lt w v := by
+  induction v with
+  | nil => cases w; simp [Radix.orient, Radix.lt]
+  | cons hv tv ih =>
+    cases w with
+    | cons hw tw =>
+      simp only [Radix.orient, Radix.lt, orientFin]
+      constructor
+      · rintro (h | ⟨heq, hrest⟩)
+        · exact Or.inl (by simp [Fin.lt_def, Fin.val_rev] at h; omega)
+        · exact Or.inr ⟨Fin.ext (by have := congrArg Fin.val heq; simp [Fin.val_rev] at this; omega),
+                        (ih tw).mp hrest⟩
+      · rintro (h | ⟨heq, hrest⟩)
+        · exact Or.inl (by simp [Fin.lt_def, Fin.val_rev]; omega)
+        · exact Or.inr ⟨Fin.ext (by simp [Fin.val_rev, heq]), (ih tw).mpr hrest⟩
+
 /-- Orienting preserves lex order for Q and reverses it for S. -/
 private theorem Radix.orient_lt_iff {ms : List Nat} (pt : PileType) (v w : Radix ms) :
     Radix.lt (Radix.orient pt v) (Radix.orient pt w) ↔
     (pt = .Q ∧ Radix.lt v w) ∨ (pt = .S ∧ Radix.lt w v) := by
-sorry
+  cases pt <;> simp [Radix.orient_Q_id, Radix.orient_S_lt_iff]
 
 /-- The combined pile assignment for two rounds.
     Card c goes to virtual pile (assign2 c) * pt1.length + j, where j is:
