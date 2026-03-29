@@ -235,14 +235,13 @@ theorem combinedSpec_assoc {n : Nat}
     combinedSpec spec1 (combinedSpec spec2 spec3) := by
   sorry -- But it seems like we don't need it...
 
-/-- Two leading Radix digits can be combined into one via block encoding.
-    The lex order on `a ::r b ::r rest` equals the lex order on
-    `⟨a * pb + b, _⟩ ::r rest`, where the combined digit has bound `pa * pb`. -/
-private theorem Radix.lt_combine_leading {pa pb : Nat} {ms : List Nat}
-    (a a' : Fin pa) (b b' : Fin pb) (rest rest' : Radix ms) :
-    Radix.lt (a ::r b ::r rest) (a' ::r b' ::r rest') ↔
-    Radix.lt (⟨a.val * pb + b.val, block_index_bound a.isLt b.isLt⟩ ::r rest)
-             (⟨a'.val * pb + b'.val, block_index_bound a'.isLt b'.isLt⟩ ::r rest') := by
+/-- Block-encoding the two leading Radix digits preserves lex order (as a SameOrder).
+    Used to collapse the first two digits of the two-round key into `combinedAssign`. -/
+private theorem Radix.sameOrder_combine_leading {n pa pb : Nat} {ms : List Nat}
+    (a : Fin n → Fin pa) (b : Fin n → Fin pb) (rest : Fin n → Radix ms) :
+    SameOrder
+      (fun c => a c ::r b c ::r rest c) Radix.lt
+      (fun c => (⟨a c * pb + b c, block_index_bound (a c).isLt (b c).isLt⟩ : Fin (pa * pb)) ::r rest c) Radix.lt := by
   sorry
 
 /-- If a deck respects a Radix key, then after one shuffle round the result
@@ -314,6 +313,25 @@ theorem twoShuffleRound_respects_key {n : Nat} (d : Deck n)
       Radix.lt :=
   (shuffleRound_respects_radix_key _ _ (oneShuffleRound_respects_key d pt1 assign1) pt2 assign2).of_sameOrder
     (fun s t => by simp [Radix.orient, orientFin_eq_orient, orient_comp])
+
+/-- Two shuffle rounds respect a two-digit Radix key with the first two digits
+    of the three-digit key collapsed via block encoding. -/
+theorem twoShuffleRound_respects_combined_key {n : Nat} (d : Deck n)
+    (pt1 pt2 : List PileType)
+    (assign1 : Fin n → Fin pt1.length)
+    (assign2 : Fin n → Fin pt2.length) :
+    RespectsOrder
+      (shuffleRound (shuffleRound d pt1 assign1) pt2 assign2)
+      (fun c =>
+        ⟨(assign2 c).val * pt1.length + (orient (pt2.get (assign2 c)) assign1 c).val,
+         block_index_bound (assign2 c).isLt (orient (pt2.get (assign2 c)) assign1 c).isLt⟩ ::r
+        orient (xorType (pt2.get (assign2 c)) (pt1.get (assign1 c))) d.posOf c ::r
+        .nil)
+      Radix.lt :=
+  (twoShuffleRound_respects_key d pt1 pt2 assign1 assign2).of_sameOrder
+    (Radix.sameOrder_combine_leading assign2
+      (fun c => orient (pt2.get (assign2 c)) assign1 c)
+      (fun c => orient (xorType (pt2.get (assign2 c)) (pt1.get (assign1 c))) d.posOf c ::r .nil))
 
 /-- Two rounds of pile shuffle equal one round on virtual pile types with the
     combined assignment. -/
