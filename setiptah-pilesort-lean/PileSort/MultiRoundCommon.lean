@@ -225,6 +225,46 @@ theorem shuffleRound_respects_radix_key {n : Nat} {ms : List Nat} (d : Deck n)
       · exact Or.inl ⟨hQ, (hd s t).mpr hlt⟩
       · exact Or.inr ⟨hS, (hd t s).mpr hlt⟩
 
+-- `orient` and `orientFin` are the same operation: orient pt f c = orientFin pt (f c).
+private theorem orientFin_eq_orient {n m : Nat} (pt : PileType) (f : Fin n → Fin m) (c : Fin n) :
+    orientFin pt (f c) = orient pt f c := by
+  cases pt <;> rfl
+
+/-- A deck respects its own position function as a singleton Radix key.
+    This is the trivial starting point for the key-chain argument. -/
+theorem deck_respects_posOf {n : Nat} (d : Deck n) :
+    RespectsOrder d (fun c => d.posOf c ::r .nil) Radix.lt := by
+  intro s t; simp [Radix.lt]
+
+/-- One shuffle round respects a two-digit Radix key: pile assignment followed by
+    the input deck position oriented by the assigned pile type. -/
+theorem oneShuffleRound_respects_key {n : Nat} (d : Deck n)
+    (types : List PileType) (assign : Fin n → Fin types.length) :
+    RespectsOrder
+      (shuffleRound d types assign)
+      (fun c => assign c ::r orient (types.get (assign c)) d.posOf c ::r .nil)
+      Radix.lt :=
+  (shuffleRound_respects_radix_key d _ (deck_respects_posOf d) types assign).of_sameOrder
+    (fun s t => by simp [Radix.orient, orientFin_eq_orient])
+
+/-- Two shuffle rounds respect a three-digit Radix key: outer pile assignment,
+    inner pile assignment oriented by outer pile type, and deck position oriented
+    by the composed pile types. -/
+theorem twoShuffleRound_respects_key {n : Nat} (d : Deck n)
+    (pt1 pt2 : List PileType)
+    (assign1 : Fin n → Fin pt1.length)
+    (assign2 : Fin n → Fin pt2.length) :
+    RespectsOrder
+      (shuffleRound (shuffleRound d pt1 assign1) pt2 assign2)
+      (fun c =>
+        assign2 c ::r
+        orient (pt2.get (assign2 c)) assign1 c ::r
+        orient (xorType (pt2.get (assign2 c)) (pt1.get (assign1 c))) d.posOf c ::r
+        .nil)
+      Radix.lt :=
+  (shuffleRound_respects_radix_key _ _ (oneShuffleRound_respects_key d pt1 assign1) pt2 assign2).of_sameOrder
+    (fun s t => by simp [Radix.orient, orientFin_eq_orient, orient_comp])
+
 /-- If a deck respects lex order on a two-component key (f1, f2), then after
     one shuffle round it respects the lex key obtained by prepending the pile
     assignment and orienting both components by the assigned pile type. -/
