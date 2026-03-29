@@ -38,23 +38,12 @@ private theorem orient_S_lt_iff {n : Nat}
   simp [Fin.lt_def, Fin.val_rev]
   omega
 
-/-- Pile-type composition: Q is the identity, S flips. -/
-def xorType : PileType → PileType → PileType
-  | .Q, p => p
-  | .S, p => invertType p
-
 /-- Composing two orientations gives a single orientation at their xorType. -/
 theorem orient_comp {n m : Nat} (pt1 pt2 : PileType) (f : Fin n → Fin m) (c : Fin n) :
     orient pt1 (orient pt2 f) c = orient (xorType pt1 pt2) f c := by
   cases pt1 <;> cases pt2 <;> simp [orient, xorType, invertType, Fin.rev_rev]
 
 /-! ## Mixed-radix keys -/
-
-/-- Orientation of a single Fin value. -/
-def orientFin {m : Nat} (pt : PileType) (v : Fin m) : Fin m :=
-  match pt with
-  | .Q => v
-  | .S => Fin.rev v
 
 /-- A mixed-radix number: values of types Fin ms[0], Fin ms[1], ...
     Each "digit" lives in a `Fin` whose bound is the corresponding entry of `ms`. -/
@@ -66,12 +55,12 @@ infixr:67 " ::r " => Radix.cons
 
 /-- Lexicographic comparison on Radix. -/
 def Radix.lt {ms : List Nat} : Radix ms → Radix ms → Prop
-  | .nil,        .nil        => False
+  | .nil,      .nil      => False
   | h1 ::r t1, h2 ::r t2 => h1 < h2 ∨ (h1 = h2 ∧ Radix.lt t1 t2)
 
 /-- Apply an orientation uniformly to every digit of a Radix number. -/
 def Radix.orient {ms : List Nat} (pt : PileType) : Radix ms → Radix ms
-  | .nil       => .nil
+  | .nil    => .nil
   | h ::r t => (orientFin pt h) ::r (Radix.orient pt t)
 
 private theorem Radix.orient_Q_id {ms : List Nat} (v : Radix ms) : Radix.orient .Q v = v := by
@@ -333,6 +322,25 @@ theorem twoShuffleRound_respects_combined_key {n : Nat} (d : Deck n)
       (fun c => orient (pt2.get (assign2 c)) assign1 c)
       (fun c => orient (xorType (pt2.get (assign2 c)) (pt1.get (assign1 c))) d.posOf c ::r .nil))
 
+/-- Two shuffle rounds respect the same key as one virtual round:
+    `combinedAssign` followed by the virtual pile type orientation. -/
+theorem twoShuffleRound_respects_virtualKey {n : Nat} (d : Deck n)
+    (pt1 pt2 : List PileType)
+    (assign1 : Fin n → Fin pt1.length)
+    (assign2 : Fin n → Fin pt2.length) :
+    RespectsOrder
+      (shuffleRound (shuffleRound d pt1 assign1) pt2 assign2)
+      (fun c =>
+        combinedAssign pt1 pt2 assign1 assign2 c ::r
+        orient ((virtualPileTypes pt1 pt2).get (combinedAssign pt1 pt2 assign1 assign2 c))
+               d.posOf c ::r
+        .nil)
+      Radix.lt :=
+  (twoShuffleRound_respects_combined_key d pt1 pt2 assign1 assign2).of_sameOrder
+    (fun s t => by
+      simp only [Radix.lt, combinedAssign, orientFin_eq_orient]
+      sorry) -- virtualPileTypes_getElem + applyPile_orient_getElem align the orientation
+
 /-- Two rounds of pile shuffle equal one round on virtual pile types with the
     combined assignment. -/
 theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
@@ -340,8 +348,11 @@ theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
     (assign1 : Fin n → Fin pt1.length)
     (assign2 : Fin n → Fin pt2.length) :
     shuffleRound (shuffleRound d pt1 assign1) pt2 assign2 =
-    shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2) := by
-  sorry
+    shuffleRound d (virtualPileTypes pt1 pt2) (combinedAssign pt1 pt2 assign1 assign2) :=
+  deck_eq_of_sameOrder _ _ _ _
+    (twoShuffleRound_respects_virtualKey d pt1 pt2 assign1 assign2)
+    (oneShuffleRound_respects_key d (virtualPileTypes pt1 pt2)
+      (combinedAssign pt1 pt2 assign1 assign2))
 
 /-- Virtual pile type composition should reassociate in the same order as
     sequential shuffle rounds.  This is recorded here as a potential algebraic

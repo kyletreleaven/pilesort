@@ -14,6 +14,17 @@ def invertType : PileType → PileType
   | .Q => .S
   | .S => .Q
 
+/-- Orientation of a single Fin value. -/
+def orientFin {m : Nat} (pt : PileType) (v : Fin m) : Fin m :=
+  match pt with
+  | .Q => v
+  | .S => Fin.rev v
+
+/-- Pile-type composition: Q is the identity, S flips. -/
+def xorType : PileType → PileType → PileType
+  | .Q, p => p
+  | .S, p => invertType p
+
 def applyStack (pileTypes : List PileType) : List PileType :=
   (pileTypes.reverse).map invertType
 
@@ -112,6 +123,16 @@ theorem virtualPileTypes_getElem (pt1 pt2 : List PileType) (k j : Nat)
       simp only [hidx, getElem_append_add _ _ _ (by rw [virtualPileTypes_length]
                                                     exact block_index_bound hk' hj)]
       exact ih k' hk' (by rw [virtualPileTypes_length]; exact block_index_bound hk' hj)
+
+/-- Looking up index `(orientFin pt j).val` in `applyPile pt pileTypes` gives
+    `xorType pt (pileTypes.get j)`.  Connects the oriented block index to the
+    composed pile type, bridging `virtualPileTypes_getElem` and `xorType`. -/
+theorem applyPile_orient_getElem (pt : PileType) (pileTypes : List PileType)
+    (j : Fin pileTypes.length) :
+    (applyPile pt pileTypes)[(orientFin pt j).val]'
+      (by rw [applyPile_length]; exact (orientFin pt j).isLt) =
+    xorType pt (pileTypes.get j) := by
+  sorry
 
 theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
     List.replicate (m + 1) x = List.replicate m x ++ [x] := by
