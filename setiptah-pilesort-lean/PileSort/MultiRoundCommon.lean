@@ -181,7 +181,24 @@ theorem shuffleRound_respects_hvec_key {n : Nat} {ms : List Nat} (d : Deck n)
       (shuffleRound d types assign)
       (fun c => .cons (assign c) (HVec.orient (types.get (assign c)) (key c)))
       HVec.lt := by
-  sorry
+  intro s t
+  simp only [shuffleRound_order, HVec.lt]
+  constructor
+  · rintro (h | ⟨heq, hcase⟩)
+    · exact Or.inl h
+    · refine Or.inr ⟨heq, ?_⟩
+      rw [← heq, HVec.orient_lt_iff]
+      rcases hcase with ⟨hQ, hlt⟩ | ⟨hS, hlt⟩
+      · exact Or.inl ⟨hQ, (hd s t).mp hlt⟩
+      · exact Or.inr ⟨hS, (hd t s).mp hlt⟩
+  · rintro (h | ⟨heq, hlt⟩)
+    · exact Or.inl h
+    · refine Or.inr ⟨heq, ?_⟩
+      rw [← heq] at hlt
+      rw [HVec.orient_lt_iff] at hlt
+      rcases hlt with ⟨hQ, hlt⟩ | ⟨hS, hlt⟩
+      · exact Or.inl ⟨hQ, (hd s t).mpr hlt⟩
+      · exact Or.inr ⟨hS, (hd t s).mpr hlt⟩
 
 /-- If a deck respects lex order on a two-component key (f1, f2), then after
     one shuffle round it respects the lex key obtained by prepending the pile
