@@ -116,6 +116,13 @@ theorem RespectsOrder.of_sameOrder {n : Nat} {α β : Type}
   intro s t
   exact (hrespects s t).trans (hsame s t)
 
+/-- Two decks that each respect the same key/order pair are equal. -/
+theorem deck_eq_of_sameOrder {n : Nat} {α : Type}
+    (d1 d2 : Deck n) (key : Fin n → α) (r : α → α → Prop)
+    (h1 : RespectsOrder d1 key r) (h2 : RespectsOrder d2 key r) :
+    d1 = d2 :=
+  deck_eq_of_order_iff d1 d2 (fun s t => (h1 s t).trans (h2 s t).symm)
+
 /-- Binary spec composition should reassociate in the same order as sequential
     shuffle rounds. -/
 theorem combinedSpec_assoc {n : Nat}
