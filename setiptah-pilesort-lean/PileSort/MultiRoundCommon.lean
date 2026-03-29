@@ -38,6 +38,16 @@ private theorem orient_S_lt_iff {n : Nat}
   simp [Fin.lt_def, Fin.val_rev]
   omega
 
+/-- Pile-type composition: Q is the identity, S flips. -/
+def xorType : PileType → PileType → PileType
+  | .Q, p => p
+  | .S, p => invertType p
+
+/-- Composing two orientations gives a single orientation at their xorType. -/
+theorem orient_comp {n m : Nat} (pt1 pt2 : PileType) (f : Fin n → Fin m) (c : Fin n) :
+    orient pt1 (orient pt2 f) c = orient (xorType pt1 pt2) f c := by
+  cases pt1 <;> cases pt2 <;> simp [orient, xorType, invertType, Fin.rev_rev]
+
 /-- The combined pile assignment for two rounds.
     Card c goes to virtual pile (assign2 c) * pt1.length + j, where j is:
     - assign1 c            if pt2[assign2 c] = Q  (Q preserves round-1 order)
