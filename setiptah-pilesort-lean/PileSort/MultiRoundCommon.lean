@@ -141,6 +141,21 @@ theorem combinedSpec_assoc {n : Nat}
     combinedSpec spec1 (combinedSpec spec2 spec3) := by
   sorry -- But it seems like we don't need it...
 
+/-- If a deck respects lex order on a two-component key (f1, f2), then after
+    one shuffle round it respects the lex key obtained by prepending the pile
+    assignment and orienting both components by the assigned pile type. -/
+private theorem shuffleRound_respects_oriented_key {n a b : Nat} (d : Deck n)
+    (f1 : Fin n → Fin a) (f2 : Fin n → Fin b)
+    (hd : RespectsOrder d (fun c => (f1 c, f2 c))
+            (fun x y => x.1 < y.1 ∨ (x.1 = y.1 ∧ x.2 < y.2)))
+    (types : List PileType) (assign : Fin n → Fin types.length) :
+    RespectsOrder
+      (shuffleRound d types assign)
+      (fun c => (assign c, orient (types.get (assign c)) f1 c, orient (types.get (assign c)) f2 c))
+      (fun x y => x.1 < y.1 ∨ (x.1 = y.1 ∧
+        (x.2.1 < y.2.1 ∨ (x.2.1 = y.2.1 ∧ x.2.2 < y.2.2)))) := by
+  sorry
+
 /-- Two rounds of pile shuffle equal one round on virtual pile types with the
     combined assignment. -/
 theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
