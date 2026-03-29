@@ -231,7 +231,20 @@ private theorem Radix.sameOrder_combine_leading {n pa pb : Nat} {ms : List Nat}
     SameOrder
       (fun c => a c ::r b c ::r rest c) Radix.lt
       (fun c => (⟨a c * pb + b c, block_index_bound (a c).isLt (b c).isLt⟩ : Fin (pa * pb)) ::r rest c) Radix.lt := by
-  sorry
+  intro s t
+  simp only [Radix.lt, Fin.lt_def, Fin.ext_iff]
+  rw [block_lt_iff (a s).val (a t).val (b s) (b t),
+      block_eq_iff (a s).val (a t).val (b s) (b t)]
+  simp only [Fin.lt_def, Fin.ext_iff]
+  constructor
+  · rintro (h | ⟨heq, h | ⟨heq2, hrest⟩⟩)
+    · exact Or.inl (Or.inl h)
+    · exact Or.inl (Or.inr ⟨heq, h⟩)
+    · exact Or.inr ⟨⟨heq, heq2⟩, hrest⟩
+  · rintro ((h | ⟨heq, h⟩) | ⟨⟨heq, heq2⟩, hrest⟩)
+    · exact Or.inl h
+    · exact Or.inr ⟨heq, Or.inl h⟩
+    · exact Or.inr ⟨heq, Or.inr ⟨heq2, hrest⟩⟩
 
 /-- If a deck respects a Radix key, then after one shuffle round the result
     respects the key with the pile assignment prepended and all digits
