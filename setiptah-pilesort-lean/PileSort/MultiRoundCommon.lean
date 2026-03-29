@@ -187,6 +187,46 @@ theorem deck_eq_of_sameOrder {n : Nat} {α : Type}
     d1 = d2 :=
   deck_eq_of_order_iff d1 d2 (fun s t => (h1 s t).trans (h2 s t).symm)
 
+/-- Shared arithmetic step: one block advance covers all offsets. -/
+private theorem block_step {b : Nat} (k k' : Nat) (h : k < k') : k * b + b ≤ k' * b :=
+  calc k * b + b = k.succ * b := (Nat.succ_mul k b).symm
+    _ ≤ k' * b := Nat.mul_le_mul_right b h
+
+/-- Mixed-radix block encoding: `k * b + j < k' * b + j'` iff the block index
+    is smaller, or the blocks are equal and the offset is smaller. -/
+private theorem block_lt_iff {b : Nat} (k k' : Nat) (j j' : Fin b) :
+    k * b + j.val < k' * b + j'.val ↔ k < k' ∨ (k = k' ∧ j < j') := by
+  constructor
+  · intro h
+    rcases Nat.lt_or_ge k k' with hlt | hge
+    · exact Or.inl hlt
+    · rcases Nat.eq_or_lt_of_le hge with rfl | hgt
+      · exact Or.inr ⟨rfl, by simpa [Fin.lt_def] using h⟩
+      · exact absurd h (by
+          have hs : k' * b + b ≤ k * b := block_step k' k hgt
+          have := j'.isLt; omega)
+  · rintro (hlt | ⟨rfl, hlt⟩)
+    · have hs : k * b + b ≤ k' * b := block_step k k' hlt
+      have := j'.isLt; omega
+    · simpa [Fin.lt_def] using hlt
+
+/-- Mixed-radix block encoding: equal encoded values imply equal block and offset. -/
+private theorem block_eq_iff {b : Nat} (k k' : Nat) (j j' : Fin b) :
+    k * b + j.val = k' * b + j'.val ↔ k = k' ∧ j = j' := by
+  constructor
+  · intro h
+    rcases Nat.lt_or_ge k k' with hlt | hge
+    · exact absurd h (by
+        have hs : k * b + b ≤ k' * b := block_step k k' hlt
+        have := j.isLt; omega)
+    · rcases Nat.eq_or_lt_of_le hge with rfl | hgt
+      · exact ⟨rfl, Fin.ext (by omega)⟩
+      · exact absurd h (by
+          have hs : k' * b + b ≤ k * b := block_step k' k hgt
+          have := j'.isLt; omega)
+  · rintro ⟨rfl, rfl⟩
+    rfl
+
 /-- Binary spec composition should reassociate in the same order as sequential
     shuffle rounds. -/
 theorem combinedSpec_assoc {n : Nat}
