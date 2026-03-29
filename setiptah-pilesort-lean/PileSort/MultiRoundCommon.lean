@@ -322,6 +322,14 @@ theorem twoShuffleRound_respects_combined_key {n : Nat} (d : Deck n)
       (fun c => orient (pt2.get (assign2 c)) assign1 c)
       (fun c => orient (xorType (pt2.get (assign2 c)) (pt1.get (assign1 c))) d.posOf c ::r .nil))
 
+/-- The virtual pile type at the combined index equals the xor of the two component
+    pile types.  This is the core identity of the virtual pile type theory. -/
+theorem virtualPileTypes_get_combinedAssign {n : Nat} (pt1 pt2 : List PileType)
+    (assign1 : Fin n → Fin pt1.length) (assign2 : Fin n → Fin pt2.length) (c : Fin n) :
+    (virtualPileTypes pt1 pt2).get (combinedAssign pt1 pt2 assign1 assign2 c) =
+    xorType (pt2.get (assign2 c)) (pt1.get (assign1 c)) := by
+  sorry -- virtualPileTypes_getElem + applyPile_orient_getElem
+
 /-- Two shuffle rounds respect the same key as one virtual round:
     `combinedAssign` followed by the virtual pile type orientation. -/
 theorem twoShuffleRound_respects_virtualKey {n : Nat} (d : Deck n)
@@ -338,8 +346,8 @@ theorem twoShuffleRound_respects_virtualKey {n : Nat} (d : Deck n)
       Radix.lt :=
   (twoShuffleRound_respects_combined_key d pt1 pt2 assign1 assign2).of_sameOrder
     (fun s t => by
-      simp only [Radix.lt, combinedAssign, orientFin_eq_orient]
-      sorry) -- virtualPileTypes_getElem + applyPile_orient_getElem align the orientation
+      rw [virtualPileTypes_get_combinedAssign, virtualPileTypes_get_combinedAssign]
+      simp [Radix.lt, Fin.lt_def, Fin.ext_iff, combinedAssign, orientFin_eq_orient])
 
 /-- Two rounds of pile shuffle equal one round on virtual pile types with the
     combined assignment. -/
