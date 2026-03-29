@@ -195,6 +195,16 @@ theorem combinedSpec_assoc {n : Nat}
     combinedSpec spec1 (combinedSpec spec2 spec3) := by
   sorry -- But it seems like we don't need it...
 
+/-- Two leading Radix digits can be combined into one via block encoding.
+    The lex order on `a ::r b ::r rest` equals the lex order on
+    `⟨a * pb + b, _⟩ ::r rest`, where the combined digit has bound `pa * pb`. -/
+private theorem Radix.lt_combine_leading {pa pb : Nat} {ms : List Nat}
+    (a a' : Fin pa) (b b' : Fin pb) (rest rest' : Radix ms) :
+    Radix.lt (a ::r b ::r rest) (a' ::r b' ::r rest') ↔
+    Radix.lt (⟨a.val * pb + b.val, block_index_bound a.isLt b.isLt⟩ ::r rest)
+             (⟨a'.val * pb + b'.val, block_index_bound a'.isLt b'.isLt⟩ ::r rest') := by
+  sorry
+
 /-- If a deck respects a Radix key, then after one shuffle round the result
     respects the key with the pile assignment prepended and all digits
     oriented by the assigned pile type. -/
