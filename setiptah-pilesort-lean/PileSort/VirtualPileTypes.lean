@@ -132,7 +132,14 @@ theorem applyPile_orient_getElem (pt : PileType) (pileTypes : List PileType)
     (applyPile pt pileTypes)[(orientFin pt j).val]'
       (by rw [applyPile_length]; exact (orientFin pt j).isLt) =
     xorType pt (pileTypes.get j) := by
-  sorry
+  cases pt with
+  | Q => simp [applyPile, orientFin, xorType, List.get_eq_getElem]
+  | S =>
+    simp only [applyPile, applyStack, orientFin, xorType, List.getElem_map, List.get_eq_getElem]
+    congr 1
+    rw [List.getElem_reverse (by simp [Fin.val_rev]; omega)]
+    congr 1
+    simp [Fin.val_rev]; omega
 
 theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
     List.replicate (m + 1) x = List.replicate m x ++ [x] := by
