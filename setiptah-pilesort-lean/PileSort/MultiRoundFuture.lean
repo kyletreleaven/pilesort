@@ -153,7 +153,7 @@ theorem foldedSpec_unfoldedSpec_nil {n : Nat}
       have hassign : assign = fun _ => (⟨0, by decide⟩ : Fin [PileType.Q].length) := by
         funext c
         apply Fin.ext
-        exact by simpa using (assign c).isLt
+        simp
       cases hassign
       rfl
 
@@ -224,7 +224,7 @@ theorem multiSortable_iff_sortable {n : Nat} (d : Deck n)
       calc
         (foldedSpec specs).types = foldVirtualPileTypesFuture (specs.map (·.types)) :=
           foldedSpec_types specs
-        _ = foldVirtualPileTypesFuture rounds := by simpa [htypes]
+        _ = foldVirtualPileTypesFuture rounds := by simp [htypes]
     have hforward :
         multiShuffleRound d specs =
         shuffleRound d (foldedSpec specs).types (foldedSpec specs).assign := by
