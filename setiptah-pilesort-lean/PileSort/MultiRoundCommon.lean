@@ -341,7 +341,13 @@ theorem virtualPileTypes_get_combinedAssign {n : Nat} (pt1 pt2 : List PileType)
     (assign1 : Fin n → Fin pt1.length) (assign2 : Fin n → Fin pt2.length) (c : Fin n) :
     (virtualPileTypes pt1 pt2).get (combinedAssign pt1 pt2 assign1 assign2 c) =
     xorType (pt2.get (assign2 c)) (pt1.get (assign1 c)) := by
-  sorry -- virtualPileTypes_getElem + applyPile_orient_getElem
+  simp only [List.get_eq_getElem, combinedAssign, ← orientFin_eq_orient]
+  have hk := (assign2 c).isLt
+  have hj := (orientFin (pt2.get (assign2 c)) (assign1 c)).isLt
+  exact (virtualPileTypes_getElem pt1 pt2 (assign2 c).val
+      (orientFin (pt2.get (assign2 c)) (assign1 c)).val hk hj
+      (by rw [virtualPileTypes_length]; exact block_index_bound hk hj)).trans
+    (applyPile_orient_getElem (pt2.get (assign2 c)) pt1 (assign1 c))
 
 /-- Two shuffle rounds respect the same key as one virtual round:
     `combinedAssign` followed by the virtual pile type orientation. -/
