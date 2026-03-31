@@ -216,14 +216,6 @@ private theorem block_eq_iff {b : Nat} (k k' : Nat) (j j' : Fin b) :
   · rintro ⟨rfl, rfl⟩
     rfl
 
-/-- Binary spec composition should reassociate in the same order as sequential
-    shuffle rounds. -/
-theorem combinedSpec_assoc {n : Nat}
-    (spec1 spec2 spec3 : ShuffleSpec n) :
-    combinedSpec (combinedSpec spec1 spec2) spec3 =
-    combinedSpec spec1 (combinedSpec spec2 spec3) := by
-  sorry -- But it seems like we don't need it...
-
 /-- Block-encoding the two leading Radix digits preserves lex order (as a SameOrder).
     Used to collapse the first two digits of the two-round key into `combinedAssign`. -/
 private theorem Radix.sameOrder_combine_leading {n pa pb : Nat} {ms : List Nat}
@@ -423,14 +415,6 @@ def splitSpec {n : Nat} (spec : ShuffleSpec n) (pt1 pt2 : List PileType)
   , { types := pt2
       assign := fun c => (split c).2 } )
 
-/-- Splitting a combined spec and recombining the two recovered component specs
-    gives back the original combined spec. -/
-theorem combinedSpec_splitSpec {n : Nat}
-    (spec : ShuffleSpec n) (pt1 pt2 : List PileType)
-    (h : spec.types = virtualPileTypes pt1 pt2) :
-    combinedSpec (splitSpec spec pt1 pt2 h).1 (splitSpec spec pt1 pt2 h).2 = spec := by
-  sorry
-
 -- n / k * k + n % k = n  (Nat.div_add_mod uses the other multiplication order)
 private theorem div_mul_add_mod (n k : Nat) : n / k * k + n % k = n := by
   rw [Nat.mul_comm]; exact Nat.div_add_mod n k
@@ -480,6 +464,31 @@ private theorem combinedAssign_congr {n : Nat} (pt1 pt2 : List PileType)
   · have h' : pt2.get (assign2' c) = .S := by simpa [h2] using h
     simp only [combinedAssign, orient, h, h', h2v, Fin.val_rev]
     exact congrArg (fun x => (assign2' c).val * pt1.length + (pt1.length - (x + 1))) h1v
+
+/-- Splitting a combined spec and recombining the two recovered component specs
+    gives back the original combined spec. -/
+theorem combinedSpec_splitSpec {n : Nat}
+    (spec : ShuffleSpec n) (pt1 pt2 : List PileType)
+    (h : spec.types = virtualPileTypes pt1 pt2) :
+    combinedSpec (splitSpec spec pt1 pt2 h).1 (splitSpec spec pt1 pt2 h).2 = spec := by
+  cases spec with
+  | mk spec_types spec_assign =>
+    simp only at h
+    subst h
+    show combinedSpec
+        { types := pt1, assign := fun c => (splitAssign pt1 pt2 (spec_assign c)).1 }
+        { types := pt2, assign := fun c => (splitAssign pt1 pt2 (spec_assign c)).2 } =
+        { types := virtualPileTypes pt1 pt2, assign := spec_assign }
+    simp only [combinedSpec]
+    congr 1
+    funext c
+    exact (combinedAssign_congr pt1 pt2
+        (fun c' => (splitAssign pt1 pt2 (spec_assign c')).1)
+        (fun _ => (splitAssign pt1 pt2 (spec_assign c)).1)
+        (fun c' => (splitAssign pt1 pt2 (spec_assign c')).2)
+        (fun _ => (splitAssign pt1 pt2 (spec_assign c)).2)
+        c rfl rfl).trans
+      (combinedAssign_split pt1 pt2 (spec_assign c) c)
 
 /-- Output val depends only on the two input assignment values for the given
     card. -/
