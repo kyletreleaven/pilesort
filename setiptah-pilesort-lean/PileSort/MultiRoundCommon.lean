@@ -379,7 +379,12 @@ theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
 theorem virtualPileTypes_assoc (pt1 pt2 pt3 : List PileType) :
     virtualPileTypes (virtualPileTypes pt1 pt2) pt3 =
     virtualPileTypes pt1 (virtualPileTypes pt2 pt3) := by
-  sorry
+  induction pt3 with
+  | nil => simp [virtualPileTypes]
+  | cons t rest ih =>
+    show applyPile t (virtualPileTypes pt1 pt2) ++ virtualPileTypes (virtualPileTypes pt1 pt2) rest =
+         virtualPileTypes pt1 (applyPile t pt2 ++ virtualPileTypes pt2 rest)
+    rw [applyPile_virtualPileTypes, ih, ← virtualPileTypes_append]
 
 /-! ## Inverse of `combinedAssign` -/
 

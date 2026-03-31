@@ -141,6 +141,46 @@ theorem applyPile_orient_getElem (pt : PileType) (pileTypes : List PileType)
     congr 1
     simp [Fin.val_rev]; omega
 
+private theorem invertType_invol (x : PileType) : invertType (invertType x) = x := by
+  cases x <;> rfl
+
+private theorem applyPile_S_append (A B : List PileType) :
+    applyPile .S (A ++ B) = applyPile .S B ++ applyPile .S A := by
+  simp [applyPile, applyStack, List.reverse_append, List.map_append]
+
+private theorem applyPile_comp_S (t : PileType) (pt : List PileType) :
+    applyPile .S (applyPile t pt) = applyPile (invertType t) pt := by
+  cases t with
+  | Q => simp [applyPile, invertType]
+  | S =>
+    show applyStack (applyStack pt) = pt
+    unfold applyStack
+    rw [List.map_reverse, List.map_map,
+        show (invertType ∘ invertType) = id from funext invertType_invol,
+        List.map_id, List.reverse_reverse]
+
+/-- Applying a pile type distributes over `virtualPileTypes` in the second argument. -/
+theorem applyPile_virtualPileTypes (t : PileType) (pt1 pt2 : List PileType) :
+    applyPile t (virtualPileTypes pt1 pt2) = virtualPileTypes pt1 (applyPile t pt2) := by
+  cases t with
+  | Q => simp [applyPile]
+  | S =>
+    induction pt2 with
+    | nil => simp [virtualPileTypes, applyPile, applyStack]
+    | cons x rest ih =>
+      have step1 : applyPile .S (virtualPileTypes pt1 (x :: rest)) =
+                   applyPile .S (virtualPileTypes pt1 rest) ++ applyPile .S (applyPile x pt1) :=
+        show applyPile .S (applyPile x pt1 ++ virtualPileTypes pt1 rest) = _ from
+          applyPile_S_append _ _
+      have step2 : virtualPileTypes pt1 (applyPile .S (x :: rest)) =
+                   virtualPileTypes pt1 (applyPile .S rest) ++ applyPile (invertType x) pt1 := by
+        have hcons : applyPile .S (x :: rest) = applyPile .S rest ++ [invertType x] := by
+          simp [applyPile, applyStack, List.reverse_cons, List.map_append]
+        rw [hcons, virtualPileTypes_append]
+        simp [virtualPileTypes]
+      rw [step1, ih, applyPile_comp_S]
+      exact step2.symm
+
 theorem replicate_succ_append {α : Type} (m : Nat) (x : α) :
     List.replicate (m + 1) x = List.replicate m x ++ [x] := by
   induction m with
