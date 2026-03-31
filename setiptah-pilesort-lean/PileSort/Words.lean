@@ -1,69 +1,74 @@
 /-
   Gadget word constants and state position constants.
 
-  Mirrors words.py. Each word is a List Action.
-  In the paper, R maps to Action.a (advance) and L maps to Action.d (descend).
+  Mirrors words.py. Each word is a `List Action` used to drive one of the
+  reduction gadgets.
 -/
 import PileSort.Basic
 
 open PileType in
 def ALIGN : List PileType := [Q, Q, Q, Q, S, S]
 
--- Helper to convert a paper-notation string (R/L) to a list of actions.
--- Used for long words to avoid tedious manual transcription.
+-- Helper for writing long action words as strings over `a`/`d`.
 def toActions : List Char → List Action
   | [] => []
-  | 'R' :: rest => .a :: toActions rest
-  | _ :: rest => .d :: toActions rest    -- L (and anything else) → d
+  | 'a' :: rest => .a :: toActions rest
+  | _ :: rest => .d :: toActions rest
 
 open Action
 
--- START_CLAUSE = path_from_string('LRRRRLLR')
--- L→d R→a R→a R→a R→a L→d L→d R→a
+-- Moves to the non-activated state on the first-variable block of the current clause segment.
 def START_CLAUSE : List Action := [d, a, a, a, a, d, d, a]
 
--- POS = path_from_string('RRLLLLRLRRRLRL')
--- R→a R→a L→d L→d L→d L→d R→a L→d R→a R→a R→a L→d R→a L→d
+-- Administers a positive-literal test for the variable represented by the current block.
 def POS : List Action := [a, a, d, d, d, d, a, d, a, a, a, d, a, d]
 
--- NEG = path_from_string('LRLLLLRLRRRLRL')
--- L→d R→a L→d L→d L→d L→d R→a L→d R→a R→a R→a L→d R→a L→d
+-- Administers a negative-literal test for the variable represented by the current block.
 def NEG : List Action := [d, a, d, d, d, d, a, d, a, a, a, d, a, d]
 
--- DK = path_from_string('RLRLLLRLRRRLRL')
--- R→a L→d R→a L→d L→d L→d R→a L→d R→a R→a R→a L→d R→a L→d
+-- Administers a don't-care test for the variable represented by the current block.
 def DK : List Action := [a, d, a, d, d, d, a, d, a, a, a, d, a, d]
 
--- ENDPOS = path_from_string('RRLLLLRLLLLRRRRLLRRRRLLLLR')
-def ENDPOS : List Action := toActions "RRLLLLRLLLLRRRRLLRRRRLLLLR".toList
+-- Administers the final positive-literal test in the current clause segment.
+def ENDPOS : List Action := toActions "aaddddaddddaaaaddaaaadddda".toList
 
--- ENDNEG = path_from_string('LRLLLLRLLLLRLRRRLRRRRLRRRRLLLLR')
-def ENDNEG : List Action := toActions "LRLLLLRLLLLRLRRRLRRRRLRRRRLLLLR".toList
+-- Administers the final negative-literal test in the current clause segment.
+def ENDNEG : List Action := toActions "daddddaddddadaaadaaaadaaaadddda".toList
 
--- ENDDK = path_from_string('LRRLLLLRLLLLRRRRLLRRRRLLLLR')
-def ENDDK : List Action := toActions "LRRLLLLRLLLLRRRRLLRRRRLLLLR".toList
+-- Administers the final don't-care test in the current clause segment.
+def ENDDK : List Action := toActions "daaddddaddddaaaaddaaaadddda".toList
 
--- NEXT = path_from_string("R")
+-- Single-step transition to the next gadget position.
+-- Moves from the end of one clause segment to the beginning of the next.
 def NEXT : List Action := [Action.a]
 
--- FORCEQ = path_from_string("LRLRRRRLRRRRLLLLRRRR")
-def FORCEQ : List Action := toActions "LRLRRRRLRRRRLLLLRRRR".toList
+-- Control word that penalizes a block not produced by a Q.
+def FORCEQ : List Action := toActions "dadaaaadaaaaddddaaaa".toList
 
--- PASS_CODE = path_from_string("LRRRRLRLRLRLLLLR")
-def PASS_CODE : List Action := toActions "LRRRRLRLRLRLLLLR".toList
+-- Code word used to pass state unaltered from block to block.
+def PASS_CODE : List Action := toActions "daaaadadadadddda".toList
 
--- ALIGNMENT_CODE = path_from_string('RRRR...RRRR') (162 actions)
+-- Long control word used by the alignment gadget.
 def ALIGNMENT_CODE : List Action := toActions
-  ("RRRRRRRRRRRRRRRRRRRRRRRRLRRRRRRRRRRRRRRR" ++
-   "RRRLRRRRRRRRRRRRRRRRRRLRRRRRRRRRRRRRRRRR" ++
-   "RLLLLLLLLLLLLLLLLLLLLLRLLLLLRRRRRRRRRRRR" ++
-   "RRRRRLRRRRRLLLLLLLLLLLRLLLLLRLLLLRLLLLRR" ++
-   "RR").toList
+  ("aaaaaaaaaaaaaaaaaaaaaaaadaaaaaaaaaaaaaaaa" ++
+   "daaaaaaaaaaaaaaaaaadaaaaaaaaaaaaaaaaaadd" ++
+   "ddddddddddddddddddadddddaaaaaaaaaaaaaaaa" ++
+   "adaaaaadddddddddddadddddaddddaddddaaaa").toList
 
 -- State position constants
+
+-- The natural starting point (first position) on any block
 def START_POS : Nat := 0
+-- A disqualifying position for the whole chain gadget, corresponding to
+-- formula-level non-satisfiability.
 def CHAIN_DISQ : Nat := 1
+-- The activated clause-test state on a block.
 def ACTD : Nat := 2
+-- The non-activated clause-test state on a block.
 def NACTD : Nat := 3
+-- The natural end position on a block; on a terminal variable block this is the
+-- successful exit position.
 def END_POS : Nat := 5
+-- The same numeric position as `END_POS`, but interpreted on clause-sentinel
+-- blocks as the clause-disqualification position.
 def CLAUSE_DISQ : Nat := 5
