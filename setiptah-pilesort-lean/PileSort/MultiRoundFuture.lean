@@ -3,58 +3,38 @@ import PileSort.FormulaWord
 import PileSort.MultiRoundCommon
 
 /-!
-  Experimental redesign space for `PileSort.MultiRound`.
+  Multi-round pile shuffle with heterogeneous pile facings.
 
-  This file is intended to host a parallel development of the multi-round
-  folding/unfolding pipeline without destabilizing `PileSort/MultiRound.lean`.
+  Each round is a `ShuffleSpec`: a list of pile types (each independently Q or S)
+  together with a deal assignment.  This models a pile shuffle where all cards
+  within a single pile face the same direction, but different piles in the same
+  round may face differently.
 
-  ## Motivation
+  The central result is that sort feasibility in this model is equivalent to SAT,
+  establishing NP-hardness of the multi-round pile-sort problem.
 
-  The hard local proofs in `MultiRound.lean` do not appear false; the main issue
-  is that the current fold/orientation is awkward for the inverse theorems we
-  want.
+  ## Design
 
-  The current implementation tends to treat the accumulator as "what has already
-  been folded".  The alternative semantic picture under investigation here is:
+  Specs are folded in current/future orientation: the head of the list is the
+  current round and the recursive result represents all future rounds.  This
+  aligns the fold direction with the natural left-to-right execution order and
+  makes the inverse (`unfoldedSpec`) straightforward to state and prove.
 
-  · the current round is the left/current input;
-  · the accumulator represents the effect of all future rounds;
-  · recursion should therefore align with `current :: future`.
+  ## Key definitions
 
-  In that interpretation, the current transport/cast obligations around local
-  inversion lemmas are likely symptoms of an orientation mismatch rather than of
-  real mathematical difficulty.
+  - `foldVirtualPileTypesFuture`: fold a list of round-type lists into one
+    combined pile-type list.
+  - `foldedSpec`: fold a list of `ShuffleSpec` values into one combined spec.
+  - `unfoldedSpec`: split a combined spec back into per-round specs.
 
-  ## TODOs
+  ## Main theorems
 
-  Current status:
-
-  1. `foldVirtualPileTypesFuture` defined.
-  2. Future-oriented `foldedSpec` defined.
-  3. Future-oriented `unfoldedSpec` defined.
-  4. Spec-level inverse/decomposition lemmas proved.
-  5. Forward composition theorem `multiShuffleRound_eq_shuffleRound` proved.
-  6. `multiSortable_iff_sortable` reproved against the spec-level design.
-
-  Next steps in this file:
-
-  1. Decide whether the spec-level API should become the permanent interface, or
-     whether any thinner assignment-level wrappers are still worth keeping.
-  2. If the spec-level design sticks, switch over at the module/import boundary.
-  3. Discharge the remaining shared `sorry`s in `MultiRoundCommon.lean`
-     (`combinedSpec_assoc`, `shuffleRound_virtualPileTypes`,
-     `combinedSpec_splitSpec`, etc.).
-
-  The goal is to keep names natural in this file and switch over later at the
-  module/import boundary once the redesign is stable.  In particular, a major
-  success criterion for this file is a clean reproving of
-  `multiSortable_iff_sortable`, with the proof split as:
-
-  · forward: composition correctness via `multiShuffleRound_eq_shuffleRound`;
-  · backward: existence of an inverse decomposition via `unfoldedSpec`.
-
-  That reproving is now complete in this sandbox file. The remaining proof work
-  is in the shared binary/spec-level common layer. 
+  - `multiShuffleRound_eq_shuffleRound`: executing many rounds equals one round
+    on the folded spec.
+  - `multiSortable_iff_sortable`: multi-round sortability ↔ single-round
+    sortability on the folded virtual pile types.
+  - `formulaWord_correct_multiSortable`: the main NP-hardness reduction in
+    three-round form.
 -/
 
 /-- Fold round types in current/future orientation:
