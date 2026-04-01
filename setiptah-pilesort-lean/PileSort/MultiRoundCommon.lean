@@ -1,4 +1,4 @@
-import PileSort.ChangeProfiles
+import PileSort.Reduction.ShuffleMatchingChain.ChangeProfiles
 import PileSort.VirtualPileTypes
 
 /-- One round's worth of pile-shuffle parameters. -/
