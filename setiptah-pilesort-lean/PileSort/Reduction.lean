@@ -3,27 +3,9 @@
 -/
 import PileSort.Automata
 import PileSort.Basic
+import PileSort.SAT
 import PileSort.VirtualPileTypes
 import PileSort.Words
-
-inductive LitPresence where
-  | pos : LitPresence
-  | neg : LitPresence
-  | absent : LitPresence
-  deriving DecidableEq, Repr
-
-instance {p : LitPresence → Prop}
-    [Decidable (p .pos)] [Decidable (p .neg)] [Decidable (p .absent)] :
-    Decidable (∀ x : LitPresence, p x) :=
-  if hp : p .pos then
-    if hn : p .neg then
-      if ha : p .absent then
-        isTrue (fun x => by cases x <;> assumption)
-      else isFalse (fun h => ha (h .absent))
-    else isFalse (fun h => hn (h .neg))
-  else isFalse (fun h => hp (h .pos))
-
-abbrev Clause := List LitPresence
 
 /-- The test word for variable i in clause φ_j:
     POS if x_i ∈ φ_j, NEG if ¬x_i ∈ φ_j, DK otherwise. -/
@@ -72,18 +54,7 @@ theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (last : Cla
   rw [formulaWord_split, formulaWord_split]
   simp [List.flatMap_cons, List.append_assoc]
 
-/-- A clause is satisfied by a variable assignment if some in-range literal matches.
-    Out-of-range indices (≥ vars.length) are inert. -/
-def satisfiesClause (vars : List Bool) (clause : Clause) : Prop :=
-  ∃ i, i < vars.length ∧
-    ((clause.getD i .absent = .pos ∧ vars.getD i false = true) ∨
-     (clause.getD i .absent = .neg ∧ vars.getD i false = false))
-
 /-- A compiled machine accepts a word if starting from state 0
     it does not reach the sink state (types.length). -/
 def accepts (types : List PileType) (word : List Action) : Prop :=
   applyWord word (compile types) 0 < types.length
-
-/-- A formula (conjunction of clauses) is satisfied if every clause is satisfied. -/
-def satisfiesFormula (vars : List Bool) (clauses : List Clause) : Prop :=
-  ∀ clause ∈ clauses, satisfiesClause vars clause
