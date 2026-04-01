@@ -1,8 +1,8 @@
 /-
   SAT-to-pile-sort reduction: data types and embedding functions.
 -/
-import PileSort.Automata
 import PileSort.Basic
+import PileSort.MatchingChain
 import PileSort.SAT
 import PileSort.VirtualPileTypes
 import PileSort.Words
@@ -53,8 +53,3 @@ theorem formulaWord_cons (n : Nat) (c : Clause) (rest : List Clause) (last : Cla
     (clauseWord n c ++ NEXT) ++ formulaWord n (rest ++ [last]) := by
   rw [formulaWord_split, formulaWord_split]
   simp [List.flatMap_cons, List.append_assoc]
-
-/-- A compiled machine accepts a word if starting from state 0
-    it does not reach the sink state (types.length). -/
-def accepts (types : List PileType) (word : List Action) : Prop :=
-  applyWord word (compile types) 0 < types.length

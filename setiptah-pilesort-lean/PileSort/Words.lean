@@ -5,6 +5,7 @@
   reduction gadgets.
 -/
 import PileSort.Basic
+import PileSort.MatchingChain
 
 open PileType in
 def ALIGN : List PileType := [Q, Q, Q, Q, S, S]
