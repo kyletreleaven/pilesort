@@ -7,7 +7,7 @@
 -/
 import PileSort.Mono
 import PileSort.Reduction
-import PileSort.ClauseWord
+-- import PileSort.ClauseWord
 import PileSort.Gadgets.Next
 import PileSort.FormulaWordNew
 
