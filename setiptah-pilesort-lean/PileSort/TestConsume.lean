@@ -12,8 +12,8 @@
 -/
 import PileSort.Mono
 import PileSort.Reduction
-import PileSort.Gadgets.Activation
-import PileSort.Gadgets.StartClause
+import PileSort.Reduction.SATToMatchingChain.Gadgets.Activation
+import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 
 def litMatches (lp : LitPresence) (x : PileType) : Prop :=
   (lp = .pos ∧ x = .Q) ∨ (lp = .neg ∧ x = .S)

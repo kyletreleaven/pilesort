@@ -11,8 +11,8 @@
   `simp only [List.singleton_append]`.
 -/
 import PileSort.Mono
-import PileSort.VirtualPileTypes
-import PileSort.Words
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-- If a word applied to a small window machine sends state s to state r
     (both strictly within the window), then on any larger machine with

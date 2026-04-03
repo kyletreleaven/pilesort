@@ -3,8 +3,7 @@
 -/
 import PileSort.SAT.Defs
 import PileSort.MatchingChain.Defs
-import PileSort.Reduction.SATToMatchingChain.Defs
-import PileSort.Reduction.SATToMatchingChain.Words
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-- The test word for variable i in clause φ_j:
     POS if x_i ∈ φ_j, NEG if ¬x_i ∈ φ_j, DK otherwise. -/

@@ -5,9 +5,9 @@
   This works because position END_POS in any applyPile block of ALIGN is S,
   and action a on S advances.
 -/
-import PileSort.Automata
-import PileSort.VirtualPileTypes
-import PileSort.Words
+import PileSort.MatchingChain
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-- Position END_POS in any applyPile block of ALIGN is S. -/
 private theorem applyPile_align_endpos (x : PileType) :

@@ -14,9 +14,9 @@
   These are used by TestConsume.lean, bridged to LitPresence via testWord_mem/testWord_litMatches
   and endTestWord_mem/endTestWord_litMatches.
 -/
-import PileSort.Automata
-import PileSort.VirtualPileTypes
-import PileSort.Words
+import PileSort.MatchingChain
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-- From ACTD, any word in {POS, NEG, DK} lands at ACTD + n. -/
 theorem activation_correct_actd

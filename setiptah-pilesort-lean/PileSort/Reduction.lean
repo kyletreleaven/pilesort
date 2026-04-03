@@ -1,1 +1,1 @@
-import PileSort.Reduction.SATToMatchingChain.FormulaDefs
+import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs

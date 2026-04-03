@@ -1,7 +1,7 @@
 import PileSort.Mono
 import PileSort.Reduction
 import PileSort.ClauseWord
-import PileSort.Gadgets.Next
+import PileSort.Reduction.SATToMatchingChain.Gadgets.Next
 import PileSort.FormulaWordNew
 
 /-- ADAPTER: next_correct in replicated form. -/

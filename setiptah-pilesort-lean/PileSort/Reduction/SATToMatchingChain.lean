@@ -1,2 +1,2 @@
-import PileSort.Reduction.SATToMatchingChain.Defs
-import PileSort.Reduction.SATToMatchingChain.Words
+import PileSort.Reduction.SATToMatchingChain.VarEncoding
+import PileSort.Reduction.SATToMatchingChain.Defs.Words

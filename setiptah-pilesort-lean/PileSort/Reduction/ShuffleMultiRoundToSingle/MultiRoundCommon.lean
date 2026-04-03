@@ -1,6 +1,6 @@
 import PileSort.Shuffle
 import PileSort.Shuffle.MultiRound
-import PileSort.VirtualPileTypes
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
 
 /-!
   Reduction from two shuffle rounds to one virtual shuffle round.

@@ -1,15 +1,8 @@
 import PileSort.Basic
 import PileSort.Permutations
-import PileSort.Automata
-import PileSort.VirtualPileTypes
-import PileSort.Words
-import PileSort.Gadgets.StartClause
-import PileSort.Gadgets.Next
-import PileSort.Gadgets.ForceQ
+import PileSort.Reduction.SATToMatchingChain.Gadgets.ForceQ
 import PileSort.Mono
-import PileSort.Gadgets.Activation
-import PileSort.Gadgets.Alignment
-import PileSort.Gadgets.Lifting
+import PileSort.Reduction.SATToMatchingChain.Gadgets.Alignment
 import PileSort.Reduction
 import PileSort.ClauseWord
 import PileSort.TestConsume

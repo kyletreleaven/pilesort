@@ -100,7 +100,7 @@
 -/
 import PileSort.Mono
 import PileSort.Reduction
-import PileSort.Gadgets.StartClause
+import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 import PileSort.TestConsume
 
 open Classical

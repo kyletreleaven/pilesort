@@ -8,7 +8,7 @@
 import PileSort.Mono
 import PileSort.Reduction
 -- import PileSort.ClauseWord
-import PileSort.Gadgets.Next
+import PileSort.Reduction.SATToMatchingChain.Gadgets.Next
 import PileSort.FormulaWordNew
 
 /-- Sat form: formulaWord from START_POS reaches exact position when vars satisfies the formula.

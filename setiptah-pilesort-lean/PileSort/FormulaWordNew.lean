@@ -13,7 +13,7 @@
   sequences, used in the nonsat inductive case of `formulaWord_from_start_unsat'`.
 -/
 import PileSort.ClauseWordNew
-import PileSort.Gadgets.Next
+import PileSort.Reduction.SATToMatchingChain.Gadgets.Next
 
 /-- Consumption form: clauseWord ++ NEXT with satisfying assignment consumes one
     block and hands the suffix the remaining replicates at START_POS. -/
