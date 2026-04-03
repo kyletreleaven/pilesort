@@ -3,7 +3,7 @@ import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 import PileSort.Reduction.SATToMatchingChain.TestConsume
-import PileSort.TestChain
+import PileSort.Reduction.SATToMatchingChain.TestChain
 
 theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
     (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by

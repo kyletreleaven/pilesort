@@ -3,7 +3,7 @@ import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 import PileSort.Reduction.SATToMatchingChain.TestConsume
-import PileSort.TestChain
+import PileSort.Reduction.SATToMatchingChain.TestChain
 import PileSort.ClauseWord
 
 

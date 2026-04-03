@@ -12,7 +12,7 @@
   Also contains **`formulaWord_chain_pos'`**: the chain lemma lifted to full formulaWord
   sequences, used in the nonsat inductive case of `formulaWord_from_start_unsat'`.
 -/
-import PileSort.ClauseWordNew
+import PileSort.Reduction.SATToMatchingChain.ClauseWord
 import PileSort.Reduction.SATToMatchingChain.Gadgets.Next
 
 /-- Consumption form: clauseWord ++ NEXT with satisfying assignment consumes one

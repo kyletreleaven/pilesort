@@ -11,8 +11,8 @@ import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 import PileSort.Reduction.SATToMatchingChain.TestConsume
-import PileSort.TestChain
-import PileSort.ClauseWordNew
+import PileSort.Reduction.SATToMatchingChain.TestChain
+import PileSort.Reduction.SATToMatchingChain.ClauseWord
 
 
 /-- ACTD is a trap: from ACTD, testWords stay at exactly ACTD after shifting.
