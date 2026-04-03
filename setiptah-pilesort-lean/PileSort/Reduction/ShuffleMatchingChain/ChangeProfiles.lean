@@ -5,7 +5,7 @@
   `Deck.changeProfile` and the `deckOfWord` construction (its inverse) will
   migrate here in a later step.
 -/
-import PileSort.PileShuffle
+import PileSort.Shuffle
 import PileSort.Mono
 import PileSort.MatchingChain
 

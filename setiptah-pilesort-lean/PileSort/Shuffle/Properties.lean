@@ -160,3 +160,24 @@ theorem shuffleRound_order {n : Nat} (d : Deck n) (types : List PileType)
          (shuffleSeq d.toList types assign).indexOf t ↔ _
   rw [shuffleSeq_order d.toList d.toList_nodup d.toList_length]
   simp only [Deck.toList_indexOf, Fin.lt_def]
+
+theorem shuffleRound_consecutive {n : Nat} (d : Deck n) (types : List PileType)
+    (assign : Fin n → Fin types.length)
+    (s : Fin n) (hs : s.val + 1 < n) :
+    let s' : Fin n := ⟨s.val + 1, hs⟩
+    (shuffleRound d types assign).posOf s < (shuffleRound d types assign).posOf s' ↔
+    assign s < assign s' ∨
+    assign s = assign s' ∧
+      ((types.get (assign s) = .Q ∧ d.posOf s < d.posOf s') ∨
+       (types.get (assign s) = .S ∧ d.posOf s' < d.posOf s)) := by
+  let s' : Fin n := ⟨s.val + 1, hs⟩
+  constructor
+  · intro h
+    rcases (shuffleRound_order d types assign s s').mp h with h | ⟨heq, h⟩
+    · exact Or.inl h
+    · exact Or.inr ⟨heq, h⟩
+  · intro h
+    apply (shuffleRound_order d types assign s s').mpr
+    rcases h with h | ⟨heq, h⟩
+    · exact Or.inl h
+    · exact Or.inr ⟨heq, h⟩

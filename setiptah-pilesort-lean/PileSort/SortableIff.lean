@@ -13,7 +13,7 @@
      in bounds.
   4. The main iff follows from 2 and 3.
 -/
-import PileSort.PileShuffle
+import PileSort.Shuffle
 import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Reduction.ShuffleMatchingChain.SortableIff
