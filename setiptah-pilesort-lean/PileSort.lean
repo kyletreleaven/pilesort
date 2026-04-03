@@ -1,6 +1,5 @@
 import PileSort.Basic
 import PileSort.Permutations
-import PileSort.PileShuffle
 -- import PileSort.ChangeProfiles
 import PileSort.Automata
 import PileSort.VirtualPileTypes

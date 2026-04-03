@@ -1,5 +1,18 @@
 import PileSort.Shuffle.Defs
 
+/-!
+  Properties of single-round pile shuffle.
+
+  Main theme:
+  the order of cards after one shuffle round is determined first by assigned
+  pile, and then within each pile by the pile type:
+    · `Q` preserves the input deck order
+    · `S` reverses the input deck order
+
+  The key theorem is `shuffleRound_order`, with `shuffleRound_consecutive`
+  as a convenient consecutive-pair corollary.
+-/
+
 theorem mem_dealToPile {n m : Nat} (l : List (Fin n)) (assign : Fin n → Fin m)
     (p : Fin m) (c : Fin n) : c ∈ dealToPile l assign p ↔ c ∈ l ∧ assign c = p := by
   simp [dealToPile, List.mem_filter]

@@ -2,6 +2,29 @@ import PileSort.Shuffle
 import PileSort.Shuffle.MultiRound
 import PileSort.VirtualPileTypes
 
+/-!
+  Reduction from two shuffle rounds to one virtual shuffle round.
+
+  Central target:
+
+      shuffleRound (shuffleRound d pt1 assign1) pt2 assign2
+        = shuffleRound d (virtualPileTypes pt1 pt2)
+            (combinedAssign pt1 pt2 assign1 assign2)
+
+  Proof roadmap:
+
+  1. Use `shuffleRound_order` to describe the one-round output order.
+
+  2. Interpret `combinedAssign` as a block/mixed-radix encoding of the two
+     round assignments.
+
+  3. Show that the two-round lexicographic key and the compressed virtual-round
+     key induce the same order.
+
+  4. Use `virtualPileTypes_getElem` to identify the virtual pile type at the
+     compressed index with the composed Q/S behavior.
+-/
+
 /-! ## Two-round reduction to single round on virtual pile types -/
 
 /-- Orient an assignment according to a pile type: `Q` preserves the inner

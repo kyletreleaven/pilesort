@@ -3,6 +3,24 @@ import PileSort.Lists
 import PileSort.Permutations
 import PileSort.CatOrder
 
+/-!
+  Single-round pile shuffle definitions.
+
+  Structure:
+
+  1. List-level shuffle (`dealToPile`, `collectPile`, `shuffleSeq`)
+     gives the plain list mechanics of dealing into piles and collecting them.
+
+  2. `Deck n` packages a permutation of cards `0, ..., n-1` using both:
+       · `posOf  c`: the position of card `c`
+       · `cardAt k`: the card at position `k`
+
+  3. `shuffleRound` lifts `shuffleSeq` from lists to decks via `Deck.toList`
+     and `Deck.fromDeckSeq`.
+
+  4. `Sortable` is the single-round feasibility predicate.
+-/
+
 /-! ## List-level pile shuffle -/
 
 /-- Cards in list `l` assigned to pile `p`, in the order they appear in `l`. -/
