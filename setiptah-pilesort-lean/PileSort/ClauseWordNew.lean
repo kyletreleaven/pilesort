@@ -2,7 +2,7 @@ import PileSort.Reduction.SATToMatchingChain.VarEncoding
 import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
-import PileSort.TestConsume
+import PileSort.Reduction.SATToMatchingChain.TestConsume
 import PileSort.TestChain
 
 theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
