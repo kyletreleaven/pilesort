@@ -1,4 +1,4 @@
-import PileSort.SortableIff
+import PileSort.Reduction.ShuffleMatchingChain.SortableIff
 import PileSort.FormulaWord
 import PileSort.Reduction.ShuffleMultiRoundToSingle.MultiRoundCommon
 

@@ -7,7 +7,6 @@ import PileSort.Gadgets.StartClause
 import PileSort.Gadgets.Next
 import PileSort.Gadgets.ForceQ
 import PileSort.Mono
-import PileSort.SortableIff
 import PileSort.MultiRoundFuture
 import PileSort.Gadgets.Activation
 import PileSort.Gadgets.Alignment
