@@ -1,6 +1,6 @@
 import PileSort.SortableIff
 import PileSort.FormulaWord
-import PileSort.MultiRoundCommon
+import PileSort.Reduction.ShuffleMultiRoundToSingle.MultiRoundCommon
 
 /-!
   Multi-round pile shuffle with heterogeneous pile facings.
