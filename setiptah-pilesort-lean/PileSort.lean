@@ -1,11 +1,11 @@
-import PileSort.Reduction.SATToMatchingChain
-import PileSort.Permutations
-import PileSort.Reduction.SATToMatchingChain.Gadgets.ForceQ
-import PileSort.MatchingChain.Mono
-import PileSort.Reduction.SATToMatchingChain.Gadgets.Alignment
-import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
-import PileSort.ClauseWord
-import PileSort.Reduction.SATToMatchingChain.FormulaWord
+-- Main target: everything should eventually follow transitively from this
 import PileSort.Reduction.SATToShuffle
 
+-- Additional targets not yet reachable transitively
+import PileSort.SAT
+import PileSort.Reduction.SATToMatchingChain
+import PileSort.Reduction.ShuffleMultiRoundToSingle
+
+-- TODO: sunset these
+import PileSort.ClauseWord
 -- import PileSort.Legacy.All
