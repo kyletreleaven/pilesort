@@ -5,7 +5,7 @@ import PileSort.Mono
 import PileSort.Reduction.SATToMatchingChain.Gadgets.Alignment
 import PileSort.Reduction
 import PileSort.ClauseWord
-import PileSort.FormulaWord
+import PileSort.Reduction.SATToMatchingChain.FormulaWord
 import PileSort.Reduction.SATToShuffle
 
 -- import PileSort.Legacy.All
