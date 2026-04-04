@@ -6,6 +6,5 @@ import PileSort.SAT
 import PileSort.Reduction.SATToMatchingChain
 import PileSort.Reduction.ShuffleMultiRoundToSingle
 
--- TODO: sunset these
+-- TODO: sunset this
 import PileSort.ClauseWord
--- import PileSort.Legacy.All
