@@ -1,1 +1,3 @@
 import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualShuffles
+import PileSort.Reduction.ShuffleMultiRoundToSingle.MultiRound

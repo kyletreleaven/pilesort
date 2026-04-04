@@ -1,4 +1,4 @@
-import PileSort.Reduction.ShuffleMultiRoundToSingle.MultiRoundFuture
+import PileSort.Reduction.ShuffleMultiRoundToSingle.MultiRound
 
 /-- Main reduction theorem: the deck realizing a formula word is sortable by the
     pile-sort machine iff the formula is satisfiable. -/

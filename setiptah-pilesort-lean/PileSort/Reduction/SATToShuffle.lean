@@ -1,1 +1,1 @@
-import PileSort.Reduction.SATToShuffle.FormulaWord
+import PileSort.Reduction.SATToShuffle.SortableIff

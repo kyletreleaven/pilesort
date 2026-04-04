@@ -242,3 +242,25 @@ theorem virtualPileTypes_replicate_peel (pt1 pt2 : List PileType) (m : Nat) (hm 
   congr 1
   match m, hm with
   | m' + 1, _ => simp [List.replicate_succ, List.flatten_cons]
+
+/-- Orient an assignment according to a pile type: Q preserves order, S reverses it. -/
+def orient {n m : Nat} (pt : PileType) (assign : Fin n → Fin m) : Fin n → Fin m :=
+  match pt with
+  | .Q => assign
+  | .S => fun c => Fin.rev (assign c)
+
+/-- Composing two orientations gives a single orientation at their xorType. -/
+theorem orient_comp {n m : Nat} (pt1 pt2 : PileType) (f : Fin n → Fin m) (c : Fin n) :
+    orient pt1 (orient pt2 f) c = orient (xorType pt1 pt2) f c := by
+  cases pt1 <;> cases pt2 <;> simp [orient, xorType, invertType, Fin.rev_rev]
+
+/-- Virtual pile type composition is associative. -/
+theorem virtualPileTypes_assoc (pt1 pt2 pt3 : List PileType) :
+    virtualPileTypes (virtualPileTypes pt1 pt2) pt3 =
+    virtualPileTypes pt1 (virtualPileTypes pt2 pt3) := by
+  induction pt3 with
+  | nil => simp [virtualPileTypes]
+  | cons t rest ih =>
+    show applyPile t (virtualPileTypes pt1 pt2) ++ virtualPileTypes (virtualPileTypes pt1 pt2) rest =
+         virtualPileTypes pt1 (applyPile t pt2 ++ virtualPileTypes pt2 rest)
+    rw [applyPile_virtualPileTypes, ih, ← virtualPileTypes_append]

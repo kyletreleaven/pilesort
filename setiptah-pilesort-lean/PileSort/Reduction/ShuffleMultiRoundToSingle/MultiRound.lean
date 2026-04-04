@@ -1,6 +1,6 @@
 import PileSort.Reduction.ShuffleMatchingChain.SortableIff
 import PileSort.Reduction.SATToMatchingChain.FormulaWord
-import PileSort.Reduction.ShuffleMultiRoundToSingle.MultiRoundCommon
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualShuffles
 
 /-!
   Multi-round pile shuffle with heterogeneous pile facings.

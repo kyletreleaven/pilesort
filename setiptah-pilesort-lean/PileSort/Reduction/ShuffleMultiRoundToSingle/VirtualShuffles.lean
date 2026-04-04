@@ -25,32 +25,6 @@ import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
      compressed index with the composed Q/S behavior.
 -/
 
-/-! ## Two-round reduction to single round on virtual pile types -/
-
-/-- Orient an assignment according to a pile type: `Q` preserves the inner
-    order, while `S` reverses it. -/
-def orient {n m : Nat} (pt : PileType) (assign : Fin n → Fin m) : Fin n → Fin m :=
-  match pt with
-  | .Q => assign
-  | .S => fun c => Fin.rev (assign c)
-
-private theorem orient_Q_lt_iff {n : Nat}
-    (f : Fin n → Fin n) (s t : Fin n) :
-    orient .Q f s < orient .Q f t ↔ f s < f t := by
-  simp [orient]
-
-private theorem orient_S_lt_iff {n : Nat}
-    (f : Fin n → Fin n) (s t : Fin n) :
-    orient .S f s < orient .S f t ↔ f t < f s := by
-  change Fin.rev (f s) < Fin.rev (f t) ↔ f t < f s
-  simp [Fin.lt_def, Fin.val_rev]
-  omega
-
-/-- Composing two orientations gives a single orientation at their xorType. -/
-theorem orient_comp {n m : Nat} (pt1 pt2 : PileType) (f : Fin n → Fin m) (c : Fin n) :
-    orient pt1 (orient pt2 f) c = orient (xorType pt1 pt2) f c := by
-  cases pt1 <;> cases pt2 <;> simp [orient, xorType, invertType, Fin.rev_rev]
-
 /-! ## Mixed-radix keys -/
 
 /-- A mixed-radix number: values of types Fin ms[0], Fin ms[1], ...
@@ -380,19 +354,6 @@ theorem shuffleRound_virtualPileTypes {n : Nat} (d : Deck n)
     (twoShuffleRound_respects_virtualKey d pt1 pt2 assign1 assign2)
     (oneShuffleRound_respects_key d (virtualPileTypes pt1 pt2)
       (combinedAssign pt1 pt2 assign1 assign2))
-
-/-- Virtual pile type composition should reassociate in the same order as
-    sequential shuffle rounds.  This is recorded here as a potential algebraic
-    helper for future-oriented fold proofs. -/
-theorem virtualPileTypes_assoc (pt1 pt2 pt3 : List PileType) :
-    virtualPileTypes (virtualPileTypes pt1 pt2) pt3 =
-    virtualPileTypes pt1 (virtualPileTypes pt2 pt3) := by
-  induction pt3 with
-  | nil => simp [virtualPileTypes]
-  | cons t rest ih =>
-    show applyPile t (virtualPileTypes pt1 pt2) ++ virtualPileTypes (virtualPileTypes pt1 pt2) rest =
-         virtualPileTypes pt1 (applyPile t pt2 ++ virtualPileTypes pt2 rest)
-    rw [applyPile_virtualPileTypes, ih, ← virtualPileTypes_append]
 
 /-! ## Inverse of `combinedAssign` -/
 
