@@ -10,7 +10,7 @@
   form via `simp only [List.cons_append, List.nil_append]` or
   `simp only [List.singleton_append]`.
 -/
-import PileSort.Mono
+import PileSort.MatchingChain.Mono
 import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
 import PileSort.Reduction.SATToMatchingChain.Defs.Words
 

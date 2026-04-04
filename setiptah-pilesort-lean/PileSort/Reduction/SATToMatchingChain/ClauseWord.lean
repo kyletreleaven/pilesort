@@ -18,8 +18,8 @@
   by `FormulaWord.lean` to prove `formulaWord_correct`.
 -/
 import PileSort.Reduction.SATToMatchingChain.VarEncoding
-import PileSort.Mono
-import PileSort.Reduction
+import PileSort.MatchingChain.Mono
+import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
 import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 import PileSort.Reduction.SATToMatchingChain.TestConsume
 import PileSort.Reduction.SATToMatchingChain.TestChain

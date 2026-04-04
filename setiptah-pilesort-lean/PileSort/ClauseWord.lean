@@ -7,8 +7,8 @@
   and are candidates for deletion once the index-vs-destructured question
   (see plan.md) is resolved.
 -/
-import PileSort.Mono
-import PileSort.Reduction
+import PileSort.MatchingChain.Mono
+import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
 import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 import PileSort.Reduction.SATToMatchingChain.TestConsume
 import PileSort.Reduction.SATToMatchingChain.TestChain

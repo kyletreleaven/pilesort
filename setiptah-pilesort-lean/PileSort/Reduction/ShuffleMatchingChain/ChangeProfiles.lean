@@ -6,7 +6,7 @@
   migrate here in a later step.
 -/
 import PileSort.Shuffle
-import PileSort.Mono
+import PileSort.MatchingChain.Mono
 import PileSort.MatchingChain
 
 /-- The change profile of a sequence: label each consecutive pair as ascent (.a)

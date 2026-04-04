@@ -5,8 +5,8 @@
   there exists an assignment satisfying the formula.  This is the main result
   of the reduction.
 -/
-import PileSort.Mono
-import PileSort.Reduction
+import PileSort.MatchingChain.Mono
+import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
 import PileSort.Reduction.SATToMatchingChain.ClauseWord
 
 /-- Chain form: formulaWord from any s ≥ CHAIN_DISQ reaches the out-of-bounds zone,
