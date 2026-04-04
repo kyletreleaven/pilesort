@@ -1,9 +1,29 @@
+/-
+  Correctness theorems for clauseWord and its composition with NEXT.
+
+  ## Single-clause layer
+
+  `clauseWord_start_sat_cons`, `clauseWord_start_nonsat_cons`, and
+  `clauseWord_chain_consumption` prove that a single clauseWord either
+  reaches END_POS (satisfying assignment) or the penalty zone (≥ CHAIN_DISQ).
+
+  ## clauseNext layer
+
+  `clauseNext_good_consumption`, `clauseNext_bad_consumption`, and
+  `clauseNext_chain_consumption` lift the single-clause results to
+  `clauseWord ++ NEXT` on a replicated-types machine
+  `virtualPileTypes (virtualPileTypes ALIGN xs) (replicate m Q)`,
+  consuming exactly one replication of `xs` and handing the suffix
+  the remaining `m - 1` copies.  These are the inductive engine used
+  by `FormulaWord.lean` to prove `formulaWord_correct`.
+-/
 import PileSort.Reduction.SATToMatchingChain.VarEncoding
 import PileSort.Mono
 import PileSort.Reduction
 import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 import PileSort.Reduction.SATToMatchingChain.TestConsume
 import PileSort.Reduction.SATToMatchingChain.TestChain
+import PileSort.Reduction.SATToMatchingChain.Gadgets.Next
 
 theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
     (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by
@@ -274,3 +294,137 @@ theorem clauseWord_start_sat_cons (n : Nat) (clause : Clause) (suffix : List Act
     (A1.take (n - 1)) (A1[n - 1]'(by omega)) A2 hA2 hact'
   simp only [Nat.zero_add, htake_len, show n - 1 + 1 = n from by omega] at hend
   exact hend
+
+/-- Consumption form: clauseWord ++ NEXT with satisfying assignment consumes one
+    block and hands the suffix the remaining replicates at START_POS. -/
+theorem clauseNext_good_consumption (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (suffix : List Action)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (vars : List Bool) (hvars : vars.length = n)
+    (hxs : xs = embedVars vars ++ [PileType.Q])
+    (hsat : satisfiesClause vars c) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
+    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS =
+      xs.length * ALIGN.length +
+        applyWord suffix (compile types') START_POS := by
+  simp only []
+  rw [applyWord_append, applyWord_append]
+  have h_eq : virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q) =
+      virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten) :=
+    virtualPileTypes_replicate_peel ALIGN xs m (by omega)
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have hxs_ne : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, hxs_ne]
+  rw [h_eq]
+  have hcw : applyWord (clauseWord n c)
+      (compile (virtualPileTypes ALIGN (xs ++ (List.replicate (m - 1) xs).flatten))) START_POS =
+      END_POS + n * ALIGN.length := by
+    have h := clauseWord_start_sat_cons n c [] xs _ hn hxs_len hA2 ⟨vars, hvars, hxs, hsat⟩
+    have hnil : ∀ (f : Action → Nat → Nat) s, applyWord [] f s = s := fun _ _ => rfl
+    simp only [List.append_nil, hnil] at h; omega
+  rw [hcw]
+  have hk : n < (xs ++ (List.replicate (m - 1) xs).flatten).length := by simp; omega
+  rw [next_correct (xs ++ (List.replicate (m - 1) xs).flatten) n hk, hxs_len]
+  rw [show START_POS + (n + 1) * ALIGN.length =
+      (virtualPileTypes ALIGN xs).length + START_POS from by
+        rw [virtualPileTypes_length, hxs_len]; omega,
+      virtualPileTypes_append,
+      applyWord_compile_append_shift suffix (virtualPileTypes ALIGN xs) _ START_POS,
+      virtualPileTypes_length, hxs_len, ← virtualPileTypes_replicate_Q_comp]
+
+/-- Consumption form: clauseWord ++ NEXT without satisfying assignment reaches
+    penalty zone. Suffix sees remaining replicates from CHAIN_DISQ. -/
+theorem clauseNext_bad_consumption (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (suffix : List Action)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (hno : ¬ HasMatchingAssignment n xs (satisfiesClause · c)) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
+    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) START_POS ≥
+      xs.length * ALIGN.length +
+        applyWord suffix (compile types') CHAIN_DISQ := by
+  simp only []
+  rw [applyWord_append, applyWord_append]
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have hxs_ne : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, hxs_ne]
+  have h_cw : applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      START_POS ≥ CHAIN_DISQ + xs.length * ALIGN.length := by
+    rw [virtualPileTypes_replicate_peel ALIGN xs m (by omega)]
+    have h := clauseWord_start_nonsat_cons n c [] xs _ hn hxs_len hA2 hno
+    have hnil : ∀ (f : Action → Nat → Nat) s, applyWord [] f s = s := fun _ _ => rfl
+    simp only [List.append_nil, hnil] at h; rw [hxs_len]; omega
+  have h_mono := applyWord_mono suffix
+    (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
+    (Nat.le_trans h_cw
+      (applyWord_ge NEXT (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)) _))
+  have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
+    virtualPileTypes_length ALIGN xs
+  have h_shift : applyWord suffix
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      (CHAIN_DISQ + xs.length * ALIGN.length) =
+      xs.length * ALIGN.length +
+        applyWord suffix
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)))
+          CHAIN_DISQ := by
+    rw [virtualPileTypes_replicate_Q_cons _ _ (by omega : m ≥ 1),
+        show CHAIN_DISQ + xs.length * ALIGN.length =
+          (virtualPileTypes ALIGN xs).length + CHAIN_DISQ from by rw [h_len]; omega,
+        applyWord_compile_append_shift, h_len]
+  rw [h_shift] at h_mono
+  exact h_mono
+
+/-- Consumption form: clauseWord ++ NEXT from any s ≥ CHAIN_DISQ (no clause condition).
+    Suffix sees remaining replicates from CHAIN_DISQ. -/
+theorem clauseNext_chain_consumption (n : Nat) (c : Clause) (xs : List PileType)
+    (m : Nat) (suffix : List Action) (s : Nat)
+    (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hm : m ≥ 2)
+    (hs : CHAIN_DISQ ≤ s) :
+    let types := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)
+    let types' := virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)
+    applyWord (clauseWord n c ++ NEXT ++ suffix) (compile types) s ≥
+      xs.length * ALIGN.length +
+        applyWord suffix (compile types') CHAIN_DISQ := by
+  simp only []
+  rw [applyWord_append, applyWord_append]
+  have hA2 : (List.replicate (m - 1) xs).flatten ≠ [] := by
+    have hxs_ne : xs ≠ [] := by intro hx; simp [hx] at hxs_len
+    match m, hm with
+    | m' + 2, _ => simp [List.replicate_succ, List.flatten_cons, hxs_ne]
+  have h_cw : applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      CHAIN_DISQ ≥ CHAIN_DISQ + xs.length * ALIGN.length := by
+    rw [virtualPileTypes_replicate_peel ALIGN xs m (by omega)]
+    have h := clauseWord_chain_consumption n c [] xs _ hn hxs_len hA2
+    simp only [List.append_nil] at h
+    have hnil : applyWord ([] : List Action) (compile (virtualPileTypes ALIGN (List.replicate (m - 1) xs).flatten)) CHAIN_DISQ = CHAIN_DISQ := rfl
+    rw [hnil] at h
+    rw [hxs_len]
+    omega
+  have h_cw_s : applyWord (clauseWord n c)
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      s ≥ CHAIN_DISQ + xs.length * ALIGN.length :=
+    Nat.le_trans h_cw (applyWord_mono (clauseWord n c) _ hs)
+  have h_mono := applyWord_mono suffix
+    (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q))
+    (Nat.le_trans h_cw_s
+      (applyWord_ge NEXT (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)) _))
+  have h_len : (virtualPileTypes ALIGN xs).length = xs.length * ALIGN.length :=
+    virtualPileTypes_length ALIGN xs
+  have h_shift : applyWord suffix
+      (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate m .Q)))
+      (CHAIN_DISQ + xs.length * ALIGN.length) =
+      xs.length * ALIGN.length +
+        applyWord suffix
+          (compile (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate (m - 1) .Q)))
+          CHAIN_DISQ := by
+    rw [virtualPileTypes_replicate_Q_cons _ _ (by omega : m ≥ 1),
+        show CHAIN_DISQ + xs.length * ALIGN.length =
+          (virtualPileTypes ALIGN xs).length + CHAIN_DISQ from by rw [h_len]; omega,
+        applyWord_compile_append_shift, h_len]
+  rw [h_shift] at h_mono
+  exact h_mono
