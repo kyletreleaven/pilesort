@@ -1,73 +1,40 @@
 # Plan
 
-## Completed
-
-- `sortable_iff_accepts` ✅ — `Sortable d types ↔ accepts types (Deck.changeProfile d)`
-- `formulaWord_correct` ✅ — consumption-form proof stack complete
-  (TestChain → ClauseWordNew → FormulaWordNew → FormulaWord)
-- `deckOfWord_changeProfile` ✅ — `Deck.changeProfile (deckOfWord word) = word`
-  (used by the formula-word correctness stack)
-- `formulaWord_correct_sortable` ✅
-- `PileSort/MultiRoundFuture.lean` theorem stack ✅
-  - spec-centered refactor complete
-  - `multiShuffleRound_eq_shuffleRound` proved
-  - `multiSortable_iff_sortable` proved
-  - formula-word lemmas ported to the future-oriented file
-- Heterogeneous pile facings formalized ✅ — `ShuffleSpec.types : List PileType`
-  assigns an independent Q/S facing per pile; `formulaWord_correct_multiSortable`
-  relates sort feasibility in this model to SAT satisfiability.
-- `PileSort/MultiRoundCommon.lean` fully sorry-free ✅
-  - `shuffleRound_virtualPileTypes` proved
-  - `virtualPileTypes_assoc` proved (via `applyPile_virtualPileTypes` in `VirtualPileTypes.lean`)
-  - `combinedSpec_splitSpec` proved
-
----
-
 ## Current state
 
-The core proof is complete end-to-end.  `MultiRoundFuture.lean` is the canonical
-multi-round module (`PileSort.lean` imports it directly); `MultiRound.lean` has
-been deleted.
+The core proof is complete end-to-end.  The top-level theorem is
+`formulaWord_correct_multiSortable` in `Reduction/SATToShuffle/SortableIff.lean`.
 
 ### Remaining cleanup
 
-`ClauseWord.lean` still contains two dead-code theorems:
-`testChain_actd` and `testChain_nactd_old`. Once deleted the file body is empty
-and the file itself can be removed (update imports in `FormulaWord.lean` and
-`PileSort.lean` accordingly).
+`ClauseWord.lean` holds the index-form counterparts of the destructured TestChain
+lemmas (`testChain_actd`, `testChain_nactd_old`) and is retained while the
+index-vs-destructured question below is open.  Once that question is resolved,
+the file and its import in `PileSort.lean` can be removed.
 
-## Representation mismatch (open)
+---
+
+## Open questions
+
+### Representation mismatch
 
 The `HasMatchingAssignment` / `embedVars` / `satisfiesClause` layer and the
 `matchesLiteral` layer on raw pile types speak different languages.  Bridging
-is currently done ad hoc:
+is currently done via adapter lemmas above the TestChain layer.  The open
+question is whether to push the `satisfiesClause`/`HasMatchingAssignment`
+vocabulary *down* into the TestChain lemmas, or keep the bridge as a thin
+adapter.  The current approach keeps TestChain free of SAT vocabulary; the
+alternative would shorten the clauseWord proofs at the cost of coupling.
 
-- **Positive direction**: `hasMatchingAssignment_some_matchesLiteral` +
-  `hasMatchingAssignment_activation` (adapter) in `ClauseWordNew.lean`.
-- **Negative direction**: `not_hasMatchingAssignment_no_matchesLiteral` in
-  `FormulaWordNew.lean`.
+### Index-based vs. destructured forms
 
-The open question is whether to push the `satisfiesClause`/`HasMatchingAssignment`
-vocabulary *down* into the TestChain lemmas (so `testChain_nactd_end_endpos` and
-friends accept `HasMatchingAssignment` hypotheses directly), or to keep the bridge
-lemmas as a thin adapter layer above TestChain.  The current adapter approach works
-and keeps TestChain free of SAT vocabulary; the alternative would shorten the
-clauseWord proofs at the cost of coupling TestChain to the reduction layer.
-
-## Index-based vs. destructured forms (open)
-
-The TestChain.lean docstring discusses the two parameterization styles.  The
-current lemmas all use the destructured (`A1 ++ A2`) form.  It is worth
-investigating empirically whether any call sites would be materially simpler with
-the index form, or whether the destructured form is uniformly preferable.  The
-conversion between forms is cheap (a length lemma plus `List.take_append_drop`),
+The TestChain lemmas all use the destructured (`A1 ++ A2`) form.  It is worth
+checking empirically whether any call sites would be simpler with the index
+form.  The conversion is cheap (a length lemma plus `List.take_append_drop`),
 so the choice can be revisited per-lemma without cascading changes.
 
-## Naming conventions (open)
+### Naming conventions
 
-Theorem and definition names across the project are inconsistent and do not
-always make the content of a lemma obvious from its name.  A naming-convention
-pass is planned to make the proof stack easier to navigate.  This is best done
-after the representation-mismatch question is settled (since that may rename or
-reorganize some of the bridge lemmas).
-
+Theorem and definition names across the project are inconsistent.  A
+naming-convention pass is planned, best done after the representation-mismatch
+question is settled.
