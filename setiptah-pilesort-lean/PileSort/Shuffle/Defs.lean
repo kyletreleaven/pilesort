@@ -76,6 +76,13 @@ theorem shuffleSeq_nodup {n : Nat} (l : List (Fin n)) (hl : l.Nodup) (types : Li
 
 /-! ## Deck and single-round sortability -/
 
+/-- A deck of `n` cards, represented as a pair of mutually inverse bijections.
+
+    Cards are identified by sorted rank: card `c : Fin n` is the card that belongs
+    at position `c` in sorted order.  A deck state is an arrangement of those cards:
+    - `posOf c` — the current position of card `c`
+    - `cardAt k` — the card currently at position `k`
+-/
 @[ext]
 structure Deck (n : Nat) where
   posOf  : Fin n → Fin n
