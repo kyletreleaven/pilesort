@@ -1,9 +1,10 @@
-/-
-  Structural properties of compile and applyWord.
+import PileSort.MatchingChain
+
+/-!
+  Structural properties of `compile` and `applyWord`.
 
   Monotonicity, sink behavior, append decomposition, and truncation.
 -/
-import PileSort.MatchingChain
 
 /-- Compiled step never goes backward. -/
 theorem compile_step_ge (types : List PileType) (act : Action) (s : Nat) :

@@ -1,17 +1,19 @@
 import PileSort.Lists
 
-/-
-  Technical lemmas about bijections of Fin n.
+/-!
+  Technical lemmas about bijections of `Fin n`.
 
-  These underpin Deck.fromDeckSeq in PileShuffle.lean.
-  All results concern Nodup lists, which represent the "position → card"
-  direction of a deck permutation.
+  These underpin `Deck.fromDeckSeq` and `Deck.fromCardPositions`.
+  The core tool is a `Nodup` list of `Fin n` with length `n`, which
+  represents a bijection (either direction).
 
-  Provided:
-    · indexOf_lt_length       — a ∈ l → l.indexOf a < l.length
-    · getElem_indexOf         — l.Nodup → a ∈ l → l[l.indexOf a] = a
-    · indexOf_getElem         — l.Nodup → l.indexOf l[k] = k
-    · Fin.mem_of_nodup_length — Nodup list of Fin n with length n contains every element
+  Key results:
+  - `indexOf_lt_length` — `a ∈ l → l.indexOf a < l.length`
+  - `getElem_indexOf` — `a ∈ l → l[l.indexOf a] = a` (no Nodup required)
+  - `indexOf_getElem` — `l.Nodup → l.indexOf l[k] = k`
+  - `Fin.mem_of_nodup_length` — a Nodup list of `Fin n` with length `n` contains every element
+  - `Fin.invOf` — computable inverse of an injective `Fin n → Fin n`
+  - `strictMono_consec_is_id` — a consecutively strictly-increasing function on `Fin n` is the identity
 -/
 
 def Injective {α β : Type} (f : α → β) : Prop :=

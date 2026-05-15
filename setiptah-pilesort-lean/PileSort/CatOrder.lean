@@ -1,11 +1,14 @@
-/-
-  Ordering lemmas for elements in a nodup concatenation of lists.
-
-  Given a list of lists whose flatten is Nodup:
-  1. If a ∈ lists[i] and b ∈ lists[j] with i < j, then a precedes b in the flatten.
-  2. If a, b ∈ lists[i], their order in the flatten equals their order within lists[i].
--/
 import PileSort.Permutations
+
+/-!
+  Ordering lemmas for elements in a Nodup concatenation of lists.
+
+  Given a list of lists whose `flatten` is `Nodup`:
+  1. If `a ∈ lists[i]` and `b ∈ lists[j]` with `i < j`, then `a` precedes `b` in the flatten.
+  2. If `a, b ∈ lists[i]`, their order in the flatten equals their order within `lists[i]`.
+
+  Main theorems: `indexOf_flatten_of_lt` and `indexOf_flatten_same`.
+-/
 
 private theorem nodup_append_not_mem {α : Type} {l₁ l₂ : List α}
     (h : (l₁ ++ l₂).Nodup) {a : α} (h₁ : a ∈ l₁) : a ∉ l₂ := by

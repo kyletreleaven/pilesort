@@ -1,3 +1,11 @@
+/-!
+  SAT definitions.
+
+  A formula in CNF is represented as a `List Clause`.  Each `Clause` records,
+  for each variable index, whether the positive literal, negative literal, or
+  neither appears in that clause.
+-/
+
 inductive LitPresence where
   | pos : LitPresence
   | neg : LitPresence

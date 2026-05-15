@@ -1,5 +1,7 @@
-/-
-  Finite state automaton for pile shuffle sort.
+import PileSort.PileTypes
+
+/-!
+  Finite state automaton for the matching-chain problem.
 
   Mirrors automata.py:
     compile(pile_types) -> step function (Action → Nat → Nat)
@@ -12,7 +14,6 @@
   action `d` stays at position k if pile k is S (stack);
   otherwise advance to k+1.
 -/
-import PileSort.PileTypes
 
 inductive Action where
   | a : Action

@@ -1,4 +1,6 @@
-/-
+import PileSort.PileTypes
+
+/-!
   Virtual pile type composition for multi-round pile shuffle.
 
   Mirrors multiround.py:
@@ -8,7 +10,6 @@
   Q acts as identity on the pile type sequence.
   S reverses and inverts all types (Q↔S).
 -/
-import PileSort.PileTypes
 
 def invertType : PileType → PileType
   | .Q => .S
