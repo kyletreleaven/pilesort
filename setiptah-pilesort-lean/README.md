@@ -18,24 +18,21 @@ is NP-hard in certain scenarios when pile types can be heterogeneous (mixed Q an
 The main theorem of this project reduces SAT to an abstraction of pile-sort feasibility via a word construction:
 given a CNF formula with `n` variables and `m` clauses, `formulaWord n clauses`
 is a sequence of "actions" such that a specific automaton accepts it if and
-only if the formula is satisfiable. 
+only if the formula is satisfiable.
 The word itself is an abstract representation of the input permutation,
 while the candidate automata correspond to the allowable pile-type assignments for a shuffle.
 
 The top-level Lean theorem is:
 
 ```lean
-theorem formulaWord_correct (n : Nat) (clauses : List Clause)
+theorem formulaWord_correct_multiSortable (n : Nat) (clauses : List Clause)
     (xs : List PileType) (hn : n ≥ 1) (hxs_len : xs.length = n + 1) (hne : clauses ≠ []) :
-    accepts
-      (virtualPileTypes (virtualPileTypes ALIGN xs) (List.replicate clauses.length PileType.Q))
-      (formulaWord n clauses)
-    ↔ HasMatchingAssignment n xs (satisfiesFormula · clauses)
+    MultiSortable (deckOfWord (formulaWord n clauses))
+      [ALIGN, xs, List.replicate clauses.length PileType.Q] ↔
+      HasMatchingAssignment n xs (satisfiesFormula · clauses)
 ```
 
-where `accepts types word` holds when the compiled automaton for `types` does not
-reach its sink state after processing `word` from state 0.
-
+in `PileSort/Reduction/SATToShuffle/SortableIff.lean`.
 
 ## Building up from the Python code
 The Python code in `setiptah-pilesort-hard` defines finite state automata
@@ -46,7 +43,7 @@ Each test checks a finite set of cases exhaustively.
 This project bridges the gap from those brute-force gadget checks to the
 correctness of the full reduction:
 Each gadget lemma becomes a machine-verified Lean 4 theorem proved by `decide` / `native_decide`.
-Then they are composed by hand into `formulaWord_correct`.
+Then they are composed by hand into `formulaWord_correct_multiSortable`.
 
 ## Prerequisites
 
@@ -70,96 +67,38 @@ A successful build verifies all proofs (any remaining `sorry` will produce warni
 ## Project Structure
 
 ```
-setiptah-pilesort-lean/
-  lakefile.lean
-  lean-toolchain
-  PileSort.lean              -- root import
-  PileSort/
-    Basic.lean               -- PileType, Action inductive types + Decidable instances
-    Automata.lean            -- compile (direct step function), applyWord
-    VirtualPileTypes.lean    -- virtualPileTypes and helpers
-    Words.lean               -- gadget word constants + state position constants
-    Mono.lean                -- monotonicity of applyWord for compiled machines
-    Gadgets/
-      StartClause.lean       -- theorem start_clause_correct
-      Next.lean              -- theorem next_correct
-      ForceQ.lean            -- theorem forceq_correct
-      Activation.lean        -- theorem activation_correct
-      Alignment.lean         -- theorems align_aligned_correct + align_unaligned_correct
-      Lifting.lean           -- gadget_lift_eq, gadget_lift_ge
-    Reduction.lean           -- Literal, Clause, testWord, clauseWord, formulaWord, accepts
-    TestConsume.lean         -- testWord and endTestWord consumption lemmas
-    TestChain.lean           -- consumption-form lemmas for sequences of testWords
-    ClauseWord.lean          -- legacy index-form testChain lemmas (not on main proof path)
-    ClauseWordNew.lean       -- clauseWord_chain_consumption + HasMatchingAssignment theorems
-    FormulaWordNew.lean      -- clauseNext_*_consumption + formulaWord_chain_pos'
-    FormulaWord.lean         -- formulaWord_correct (composing clauseWord theorems)
+PileSort.lean                        -- root import
+PileSort/
+  PileTypes.lean                     -- PileType inductive + Decidable instances
+  Lists.lean                         -- general-purpose list lemmas
+  Permutations.lean                  -- bijections of Fin n, Fin.invOf
+  CatOrder.lean                      -- indexOf ordering in Nodup concatenations
+  SAT/Defs.lean                      -- LitPresence, Clause, satisfiesFormula
+  MatchingChain/
+    Defs.lean                        -- Action, compile, applyWord, accepts
+    Mono.lean                        -- monotonicity, sink, append decomposition
+  Shuffle/
+    Defs.lean                        -- Deck, dealToPile, shuffleRound, Sortable
+    Properties.lean                  -- shuffleRound_order, shuffleRound_consecutive
+    MultiRound/Defs.lean             -- ShuffleSpec, multiShuffleRound, MultiSortable
+  Reduction/
+    SATToShuffle/SortableIff.lean    -- top-level theorems (formulaWord_correct_*)
+    SATToMatchingChain/
+      Defs/Words.lean                -- gadget word constants, state positions
+      Defs/FormulaDefs.lean          -- testWord, clauseWord, formulaWord
+      Gadgets/                       -- per-gadget correctness theorems
+      TestConsume.lean               -- testWord consumption lemmas
+      TestChain.lean                 -- consumption lemmas for testWord sequences
+      ClauseWord.lean                -- clauseWord consumption
+      FormulaWord.lean               -- formulaWord_correct
+    ShuffleMultiRoundToSingle/
+      VirtualPileTypes.lean          -- virtualPileTypes, applyPile, orient
+      VirtualShuffles.lean           -- combinedSpec, shuffleRound_virtualPileTypes
+      MultiRound.lean                -- multiSortable_iff_sortable
+    ShuffleMatchingChain/
+      SortableIff.lean               -- sortable_iff_accepts
+      ChangeProfiles.lean            -- deckOfWord, changeProfile
 ```
-
-## Type Representations
-
-### PileType and Action (Basic.lean)
-
-```lean
-inductive PileType where | Q | S
-  deriving DecidableEq, Repr, Inhabited
-
-inductive Action where | a | d
-  deriving DecidableEq, Repr, Inhabited
-```
-
-Both have custom `Decidable` instances for `∀`/`∃` quantifiers so that
-`decide` can enumerate all values. (Avoids Mathlib's `Fintype` to keep
-the project dependency-free.)
-
-### compile (Automata.lean)
-
-```lean
-def compile (types : List PileType) (act : Action) (s : Nat) : Nat :=
-  if h : s < types.length then
-    match types[s], act with
-    | .Q, .a => s
-    | .Q, .d => s + 1
-    | .S, .a => s + 1
-    | .S, .d => s
-  else s
-```
-
-Direct step function (replacing an earlier list-based `Machine`). Structural
-proofs reduce to `unfold compile; split <;> omega`.
-
-### applyWord
-
-```lean
-def applyWord (word : List Action) (step : Action → Nat → Nat) (s : Nat) : Nat :=
-  word.foldl (fun s act => step act s) s
-```
-
-Generic over any step function. Gadget proofs use `applyWord word (compile types) s`.
-
-### Key functions
-
-| Python | Lean | Notes |
-|--------|------|-------|
-| `compile(pile_types)` | `compile : List PileType → Action → Nat → Nat` | Direct step function |
-| `apply_word(machine, state, word)` | `applyWord : List Action → (Action → Nat → Nat) → Nat → Nat` | `List.foldl` over word |
-| `virtual_pile_types(pt1, pt2)` | `virtualPileTypes : List PileType → List PileType → List PileType` | `pt2.flatMap (applyPile · pt1)` |
-
-## Word Constants (Words.lean)
-
-Short words (≤20 actions): explicit list literals like `[d, a, a, a, a, d, d, a]`.
-
-Long words (ALIGNMENT_CODE, 162 actions): use a compile-time helper:
-
-```lean
-def toActions : List Char → List Action
-  | [] => []
-  | 'R' :: rest => .a :: toActions rest
-  | _ :: rest => .d :: toActions rest
-```
-
-State position constants: `START_POS := 0`, `CHAIN_DISQ := 1`,
-`ACTD := 2`, `NACTD := 3`, `END_POS := CLAUSE_DISQ := 5`.
 
 ## Proof Strategy
 
@@ -170,51 +109,9 @@ compiler dependency.
 Faster but trusts the compiler. Used for the unaligned alignment check
 (512 × 6 cases with 162-step evaluations — too slow for kernel reduction).
 
-### Monotonicity (Mono.lean)
+### Layered proof
 
-`applyWord_mono`: `compile` preserves ≤, proved by induction on the word
-using two helpers proved by `unfold compile; split <;> omega`:
-- `compile_step_ge`: `s ≤ compile types act s`
-- `compile_step_le`: `compile types act s ≤ s + 1`
+`formulaWord_correct` is proved via a stack of *consumption-form* lemmas
+(`TestChain.lean` → `ClauseWord.lean` → `FormulaWord.lean`).
 
-### Formula-level proof
-
-`formulaWord_correct` is proved via a stack of *consumption-form* lemmas.
-The consumption form factors the behavior of a word sequence into a fixed
-offset plus the behavior of a suffix on a residual machine:
-
-```
-applyWord (word ++ suffix) machine state = offset + applyWord suffix machine' state'
-```
-
-This makes lemmas composable: each layer hands the suffix down to the next.
-The stack, bottom to top:
-
-- **TestChain.lean** — consumption lemmas for sequences of `testWord`s in the
-  plain-chain and end-capped cases.
-- **ClauseWordNew.lean** — `clauseWord_chain_consumption` and the sat/nonsat
-  consumption lemmas, plus bridge lemmas between the `HasMatchingAssignment`
-  vocabulary and the raw `matchesLiteral` pile-type layer.
-- **FormulaWordNew.lean** — `clauseNext_good_consumption`,
-  `clauseNext_bad_consumption`, and `clauseNext_chain_consumption`, which lift
-  one `clauseWord ++ NEXT` step to the replicated-types machine.
-- **FormulaWord.lean** — `formulaWord_correct` by induction on clauses, using
-  the three `clauseNext_*_consumption` lemmas as the inductive engine.
-
-## Status
-
-| Phase | Content | Status |
-|-------|---------|--------|
-| 1 | Core infrastructure + StartClause, Next, ForceQ | Done |
-| 2 | Activation | Done |
-| 3 | Alignment, Monotonicity, compile refactor | Done |
-| 4 | SAT reduction: clauseWord_correct, formulaWord_correct | Done |
-
-## Reference Files
-
-| File | Role |
-|------|------|
-| `setiptah-pilesort-hard/src/setiptah/pilesort/hard/automata.py` | `compile`, `apply_word` |
-| `setiptah-pilesort-hard/src/setiptah/pilesort/hard/words.py` | Word constants, state positions |
-| `setiptah-pilesort-hard/test/test_words.py` | 7 tests → 7 theorems |
-| `setiptah-pilesort/src/setiptah/pilesort/multiround.py` | `virtual_pile_types`, `apply_pile` |
+<!-- TODO: explain consumption-form proof strategy more clearly -->
