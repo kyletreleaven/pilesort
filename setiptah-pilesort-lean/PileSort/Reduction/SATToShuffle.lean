@@ -1,1 +1,3 @@
+import PileSort.Reduction.SATToShuffle.VarEncoding
+import PileSort.Reduction.SATToShuffle.VarEncodingLemmas
 import PileSort.Reduction.SATToShuffle.SortableIff

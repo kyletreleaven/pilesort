@@ -1,4 +1,4 @@
-import PileSort.Reduction.SATToMatchingChain.VarEncoding
+import PileSort.Reduction.SATToShuffle.VarEncoding
 import PileSort.MatchingChain.Mono
 import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
 import PileSort.Reduction.SATToMatchingChain.Gadgets.Activation

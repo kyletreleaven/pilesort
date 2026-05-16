@@ -82,7 +82,10 @@ PileSort/
     Properties.lean                  -- shuffleRound_order, shuffleRound_consecutive
     MultiRound/Defs.lean             -- ShuffleSpec, multiShuffleRound, MultiSortable
   Reduction/
-    SATToShuffle/SortableIff.lean    -- top-level theorems (formulaWord_correct_*)
+    SATToShuffle/
+      VarEncoding.lean               -- embedVar, embedVars, litMatches, HasMatchingAssignment
+      VarEncodingLemmas.lean         -- encoding/satisfaction bridge lemmas
+      SortableIff.lean               -- top-level theorems (formulaWord_correct_*)
     SATToMatchingChain/
       Defs/Words.lean                -- gadget word constants, state positions
       Defs/FormulaDefs.lean          -- testWord, clauseWord, formulaWord

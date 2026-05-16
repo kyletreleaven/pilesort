@@ -48,3 +48,8 @@ theorem embedVars_surjective : ∀ (xs : List PileType),
     simp only [List.map]
     unfold embedVar
     cases x <;> simp [embedVars] at heq ⊢ <;> exact heq
+
+/-- There exists a Boolean assignment of length n whose embedding matches xs
+    and that satisfies predicate P (typically satisfiesClause or satisfiesFormula). -/
+def HasMatchingAssignment (n : Nat) (xs : List PileType) (P : List Bool → Prop) : Prop :=
+  ∃ vars : List Bool, vars.length = n ∧ xs = embedVars vars ++ [PileType.Q] ∧ P vars

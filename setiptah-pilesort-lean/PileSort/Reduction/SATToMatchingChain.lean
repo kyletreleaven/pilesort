@@ -1,3 +1,3 @@
-import PileSort.Reduction.SATToMatchingChain.VarEncoding
+import PileSort.Reduction.SATToShuffle.VarEncoding
 import PileSort.Reduction.SATToMatchingChain.Defs.Words
 import PileSort.Reduction.SATToMatchingChain.Gadgets

@@ -346,6 +346,14 @@ theorem List.flatMap_perm_congr {α β : Type} {f g : α → List β} {l : List 
     exact ((h a (List.mem_cons_self a t)).append_right _).trans
       (((ih (fun b hb => h b (List.mem_cons_of_mem a hb)))).append_left _)
 
+/-- Decompose a non-empty list as `init ++ [last]`. -/
+theorem list_split_last {α : Type} : ∀ (l : List α), l ≠ [] →
+    ∃ init last, l = init ++ [last] ∧ init.length + 1 = l.length
+  | [x], _ => ⟨[], x, rfl, rfl⟩
+  | x :: y :: rest, _ => by
+    have ⟨init, last, h, hlen⟩ := list_split_last (y :: rest) (by simp)
+    exact ⟨x :: init, last, by rw [h]; simp, by simp_all [List.length_cons]⟩
+
 /-- Partitioning a list into piles by a function and flatMapping is a permutation of the
     original list. -/
 theorem flatMap_filter_perm {α : Type} {m : Nat} (l : List α) (f : α → Fin m) :
