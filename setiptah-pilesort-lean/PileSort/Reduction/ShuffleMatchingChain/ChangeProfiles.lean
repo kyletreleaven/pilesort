@@ -1,13 +1,14 @@
-/-
-  Change profiles: labelling a sequence by ascent/descent at consecutive pairs.
-
-  This file currently holds the list-level definition.  The deck-level
-  `Deck.changeProfile` and the `deckOfWord` construction (its inverse) will
-  migrate here in a later step.
--/
 import PileSort.Shuffle
 import PileSort.MatchingChain.Mono
 import PileSort.MatchingChain
+
+/-!
+  Change profiles: labelling a sequence by ascent/descent at consecutive pairs.
+
+  Defines `Deck.changeProfile` (the ascent/descent labelling of a deck) and
+  `deckOfWord`, one example of a deck whose change profile equals a given word.
+  `changeProfile` has no unique inverse — many decks share the same profile.
+-/
 
 /-- The change profile of a sequence: label each consecutive pair as ascent (.a)
     or descent (.d).  Requires Nodup to guarantee no ties; the equal branch is

@@ -133,6 +133,8 @@ def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)
     (shuffleSeq_nodup d.toList d.toList_nodup types assign)
     ((shuffleSeq_length d.toList types assign).trans d.toList_length)
 
+/-- A deck is sortable by a pile configuration if there exists a deal assignment
+    that produces the sorted deck after one shuffle round. -/
 def Sortable {n : Nat} (d : Deck n) (types : List PileType) : Prop :=
   ∃ assign : Fin n → Fin types.length,
     shuffleRound d types assign = Deck.sorted n

@@ -1,9 +1,15 @@
-/-
-  SAT-to-pile-sort reduction: data types and embedding functions.
--/
 import PileSort.SAT.Defs
 import PileSort.MatchingChain.Defs
 import PileSort.Reduction.SATToMatchingChain.Defs.Words
+
+/-!
+  SAT-to-pile-sort reduction: word construction.
+
+  Defines the three-level word hierarchy:
+  - `testWord` / `endTestWord` — one gadget per variable per clause
+  - `clauseWord` — one gadget per clause: START_CLAUSE + tests + endtest
+  - `formulaWord` — the full reduction word: clause gadgets interleaved with NEXT
+-/
 
 /-- The test word for variable i in clause φ_j:
     POS if x_i ∈ φ_j, NEG if ¬x_i ∈ φ_j, DK otherwise. -/
