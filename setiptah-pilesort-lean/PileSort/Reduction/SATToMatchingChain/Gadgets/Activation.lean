@@ -3,19 +3,27 @@ import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
 import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-!
-  Activation gadget correctness: three lemmas per gadget type, one per starting position.
+  Activation gadget: tests whether the current variable's literal satisfies the
+  clause, transitioning from "not yet satisfied" (NACTD) to "satisfied" (ACTD)
+  if it does.  Once activated, the machine stays at ACTD regardless of subsequent
+  literals.  A clause penalty state (CLAUSE_DISQ) propagates unconditionally.
 
-  For any word w ∈ {POS, NEG, DK} and pile types st, nt:
-    - activation_correct_actd:  from ACTD  → always ACTD + n
-    - activation_correct_nactd: from NACTD → ACTD + n iff (w=POS∧st=Q) or (w=NEG∧st=S), else NACTD + n
-    - activation_correct_disq:  from CLAUSE_DISQ → ≥ CLAUSE_DISQ + n  (penalty)
+  POS tests a positive literal (activates if st=Q), NEG tests a negative literal
+  (activates if st=S), DK is a "don't care" (never activates).
 
-  For any word w ∈ {ENDPOS, ENDNEG, ENDDK} and pile types st, et, e2:
-    - end_activation_correct_actd:  from ACTD → END_POS + n if et=Q, else ≥ CHAIN_DISQ + 2n
-    - end_activation_correct_nactd: from NACTD → END_POS + n if et=Q and activation matches, else ≥ CHAIN_DISQ + 2n
-    - end_activation_correct_disq:  from CLAUSE_DISQ → ≥ CHAIN_DISQ + 2n  (penalty)
+  The end-activation variants (ENDPOS/ENDNEG/ENDDK) handle the final variable in
+  a clause: if the clause is satisfied (ACTD, or matching NACTD), the machine
+  reaches END_POS; otherwise it enters the chain penalty zone (≥ CHAIN_DISQ).
 
-  These are used by TestConsume.lean, bridged to LitPresence via testWord_mem/testWord_litMatches
+  Lemmas (three per gadget, one per starting state):
+    - activation_correct_actd:      ACTD  → always ACTD + n
+    - activation_correct_nactd:     NACTD → ACTD + n iff literal matches, else NACTD + n
+    - activation_correct_disq:      CLAUSE_DISQ → ≥ CLAUSE_DISQ + n
+    - end_activation_correct_actd:  ACTD  → END_POS + n if et=Q, else ≥ CHAIN_DISQ + 2n
+    - end_activation_correct_nactd: NACTD → END_POS + n if et=Q and matches, else ≥ CHAIN_DISQ + 2n
+    - end_activation_correct_disq:  CLAUSE_DISQ → ≥ CHAIN_DISQ + 2n
+
+  Used by TestConsume.lean, bridged to LitPresence via testWord_mem/testWord_litMatches
   and endTestWord_mem/endTestWord_litMatches.
 -/
 

@@ -9,9 +9,10 @@ import PileSort.MatchingChain
 -/
 
 open PileType in
-/-- The base block for the variable encoding.  Each variable's block in the
-    combined machine is either `ALIGN` (variable assigned Q/true) or its
-    S-dual `applyPile .S ALIGN` (variable assigned S/false). -/
+/-- The base block for the reduction machine: [Q, Q, Q, Q, S, S].
+    Its width (6) provides enough space to encode meaningful state as relative positions.
+    The Q/S pattern gives gadgets enough "grip" to steer trajectories: at each position,
+    the pile type determines whether an action advances the machine or holds it. -/
 def ALIGN : List PileType := [Q, Q, Q, Q, S, S]
 
 -- Helper for writing long action words as strings over `a`/`d`.

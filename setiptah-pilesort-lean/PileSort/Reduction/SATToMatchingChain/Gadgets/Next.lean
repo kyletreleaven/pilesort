@@ -3,11 +3,14 @@ import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
 import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-!
-  Proof of NEXT gadget correctness.
+  NEXT gadget: advances the machine from the end of one clause test to the start
+  of the next.
 
-  NEXT = [a] advances from END_POS to the start of the next ALIGN block.
-  This works because position END_POS in any applyPile block of ALIGN is S,
-  and action a on S advances.
+  After a clause is satisfied (reaching END_POS), NEXT steps forward to START_POS
+  of the following ALIGN block, ready for the next clause test.  This works because
+  END_POS in any applyPile block of ALIGN is S, and action `a` on S advances.
+
+  NEXT = [a] — a single ascent action.
 -/
 
 /-- Position END_POS in any applyPile block of ALIGN is S. -/

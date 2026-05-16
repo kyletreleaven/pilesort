@@ -3,7 +3,16 @@ import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
 import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-!
-  Proof of alignment gadget correctness.
+  Alignment gadget: helps eliminate first-round pile choices that cannot be resolved
+  to a valid variable block — either ALIGN or its S-dual.
+
+  In a more permissive formulation of the reduction — where the shuffler has
+  freedom to choose pile types in the first round rather than being constrained
+  to exactly ALIGN — a derived gadget built on this one can be prefixed to each
+  clause test to penalize any first-round configuration that does not correspond
+  to a valid variable encoding.
+  It is proved here but not used in the current reduction, which fixes the first
+  round externally as ALIGN.
 
   Mirrors test_align_aligned and test_align_unaligned from test_words.py.
 -/

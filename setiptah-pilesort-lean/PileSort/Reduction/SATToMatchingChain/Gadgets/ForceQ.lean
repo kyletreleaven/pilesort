@@ -3,15 +3,21 @@ import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
 import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-!
-  Proof of FORCEQ gadget correctness.
+  FORCEQ gadget: enforces that the current variable block was encoded as Q (true),
+  penalizing any block that was not.
+
+  In a more permissive formulation of the reduction — where the shuffler has freedom
+  to choose pile types in the third round rather than being constrained to all-Q —
+  FORCEQ enforces this constraint dynamically.  It is proved here but not used in
+  the current reduction, which fixes the third round externally as
+  `List.replicate clauses.length PileType.Q`.
 
   Mirrors test_forceq from test_words.py:
-    For each start_type ∈ {Q, S}, start_pos ∈ {START_POS, CHAIN_DISQ}, next_type ∈ {Q, S}:
-      - If start_pos = START_POS and start_type = Q: end_pos = START_POS + ALIGN.length
-      - Otherwise: end_pos ≥ CHAIN_DISQ + ALIGN.length
+    - (Q, START_POS): end_pos = START_POS + ALIGN.length  (passes through)
+    - otherwise: end_pos ≥ CHAIN_DISQ + ALIGN.length  (penalized)
 
-  Note: The Python test has the assertion outside the next_type loop,
-  so it only checks next_type = S. We prove the stronger claim for all next_types.
+  Note: The Python test only checks next_type = S; we prove the stronger claim
+  for all next_types.
 -/
 
 /-- The FORCEQ property: only (Q, START_POS) gives the exact target position;

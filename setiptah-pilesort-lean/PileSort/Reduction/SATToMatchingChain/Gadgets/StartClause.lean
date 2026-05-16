@@ -4,12 +4,20 @@ import PileSort.Reduction.SATToMatchingChain.Defs.Words
 import PileSort.Reduction.SATToMatchingChain.Lifting
 
 /-!
-  Proof of START_CLAUSE gadget correctness.
+  START_CLAUSE gadget: initializes the "not yet satisfied" state at the beginning
+  of each clause test.
 
-  Mirrors test_start_clause from test_words.py:
-    For each pile_type ∈ {Q, S} and start_pos ∈ {START_POS, CHAIN_DISQ}:
-      - From START_POS: applying START_CLAUSE reaches NACTD
-      - From CHAIN_DISQ: applying START_CLAUSE reaches a position ≥ CLAUSE_DISQ
+  Entering a clause from START_POS, START_CLAUSE moves the machine to NACTD —
+  the non-activated state, meaning no literal has yet satisfied this clause.
+  From there, the activation gadgets test each variable in turn.
+
+  If the machine is already in a penalty state (CHAIN_DISQ), START_CLAUSE
+  moves to ≥ CLAUSE_DISQ, marking the clause as impossible to satisfy — the
+  subsequent activation gadgets will propagate this penalty to the end of the clause.
+
+  Mirrors `test_start_clause` from test_words.py:
+    - From START_POS: reaches NACTD (for any pile type)
+    - From CHAIN_DISQ: reaches ≥ CLAUSE_DISQ (for any pile type)
 -/
 
 /-- From START_POS, START_CLAUSE reaches NACTD for any pile type. -/

@@ -7,23 +7,22 @@ import PileSort.Reduction.SATToMatchingChain.TestChain
 import PileSort.Reduction.SATToMatchingChain.Gadgets.Next
 
 /-!
-  Correctness theorems for clauseWord and its composition with NEXT.
+  Correctness of `clauseWord`: the gadget that tests whether a clause is satisfied.
 
-  ## Single-clause layer
+  A clause is satisfied if at least one of its literals matches the variable
+  assignment.  `clauseWord` implements this as a sequence: START_CLAUSE
+  initializes the non-activated state (NACTD), activation gadgets test each
+  variable in turn (flipping NACTD → ACTD on the first match), and the final
+  end-activation gadget resolves the outcome — END_POS if satisfied, chain
+  penalty (≥ CHAIN_DISQ) if not.  NEXT then advances to the next clause block.
 
-  `clauseWord_start_sat_cons`, `clauseWord_start_nonsat_cons`, and
-  `clauseWord_chain_consumption` prove that a single clauseWord either
-  reaches END_POS (satisfying assignment) or the penalty zone (≥ CHAIN_DISQ).
+  ## Theorems
 
-  ## clauseNext layer
-
-  `clauseNext_good_consumption`, `clauseNext_bad_consumption`, and
-  `clauseNext_chain_consumption` lift the single-clause results to
-  `clauseWord ++ NEXT` on a replicated-types machine
-  `virtualPileTypes (virtualPileTypes ALIGN xs) (replicate m Q)`,
-  consuming exactly one replication of `xs` and handing the suffix
-  the remaining `m - 1` copies.  These are the inductive engine used
-  by `FormulaWord.lean` to prove `formulaWord_correct`.
+  `clauseWord_start_sat_cons` / `clauseWord_start_nonsat_cons` prove the
+  single-clause outcome.  `clauseNext_good_consumption`,
+  `clauseNext_bad_consumption`, and `clauseNext_chain_consumption` lift this
+  to `clauseWord ++ NEXT` on a replicated-types machine, consuming one copy
+  of `xs` per clause — the inductive engine for `FormulaWord.lean`.
 -/
 
 theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
