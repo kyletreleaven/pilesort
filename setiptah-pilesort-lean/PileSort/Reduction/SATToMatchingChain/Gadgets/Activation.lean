@@ -1,4 +1,8 @@
-/-
+import PileSort.MatchingChain
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
+
+/-!
   Activation gadget correctness: three lemmas per gadget type, one per starting position.
 
   For any word w ∈ {POS, NEG, DK} and pile types st, nt:
@@ -14,9 +18,6 @@
   These are used by TestConsume.lean, bridged to LitPresence via testWord_mem/testWord_litMatches
   and endTestWord_mem/endTestWord_litMatches.
 -/
-import PileSort.MatchingChain
-import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
-import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-- From ACTD, any word in {POS, NEG, DK} lands at ACTD + n. -/
 theorem activation_correct_actd

@@ -1,4 +1,9 @@
-/-
+import PileSort.MatchingChain
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
+import PileSort.Reduction.SATToMatchingChain.Lifting
+
+/-!
   Proof of START_CLAUSE gadget correctness.
 
   Mirrors test_start_clause from test_words.py:
@@ -6,10 +11,6 @@
       - From START_POS: applying START_CLAUSE reaches NACTD
       - From CHAIN_DISQ: applying START_CLAUSE reaches a position ≥ CLAUSE_DISQ
 -/
-import PileSort.MatchingChain
-import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
-import PileSort.Reduction.SATToMatchingChain.Defs.Words
-import PileSort.Reduction.SATToMatchingChain.Lifting
 
 /-- From START_POS, START_CLAUSE reaches NACTD for any pile type. -/
 theorem start_clause_correct_start (t : PileType) :

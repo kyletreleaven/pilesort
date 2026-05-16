@@ -1,4 +1,9 @@
-/-
+import PileSort.MatchingChain.Mono
+import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
+import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
+import PileSort.Reduction.SATToMatchingChain.TestConsume
+
+/-!
   TestChain: consumption-form lemmas for a sequence of testWords.
 
   ## The consumption form
@@ -98,10 +103,6 @@
   trivial combined one (`testChain_nactd_end_disq`).  Call sites use whichever
   form fits best; the two-line combined lemma costs nothing extra.
 -/
-import PileSort.MatchingChain.Mono
-import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
-import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
-import PileSort.Reduction.SATToMatchingChain.TestConsume
 
 open Classical
 

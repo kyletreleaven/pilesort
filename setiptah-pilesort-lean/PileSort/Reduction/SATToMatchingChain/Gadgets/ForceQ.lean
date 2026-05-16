@@ -1,4 +1,8 @@
-/-
+import PileSort.MatchingChain
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
+
+/-!
   Proof of FORCEQ gadget correctness.
 
   Mirrors test_forceq from test_words.py:
@@ -9,9 +13,6 @@
   Note: The Python test has the assertion outside the next_type loop,
   so it only checks next_type = S. We prove the stronger claim for all next_types.
 -/
-import PileSort.MatchingChain
-import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
-import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-- The FORCEQ property: only (Q, START_POS) gives the exact target position;
     all other configurations incur a penalty. -/

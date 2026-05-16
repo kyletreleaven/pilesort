@@ -1,4 +1,12 @@
-/-
+import PileSort.Reduction.SATToMatchingChain.VarEncoding
+import PileSort.MatchingChain.Mono
+import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
+import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
+import PileSort.Reduction.SATToMatchingChain.TestConsume
+import PileSort.Reduction.SATToMatchingChain.TestChain
+import PileSort.Reduction.SATToMatchingChain.Gadgets.Next
+
+/-!
   Correctness theorems for clauseWord and its composition with NEXT.
 
   ## Single-clause layer
@@ -17,13 +25,6 @@
   the remaining `m - 1` copies.  These are the inductive engine used
   by `FormulaWord.lean` to prove `formulaWord_correct`.
 -/
-import PileSort.Reduction.SATToMatchingChain.VarEncoding
-import PileSort.MatchingChain.Mono
-import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
-import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
-import PileSort.Reduction.SATToMatchingChain.TestConsume
-import PileSort.Reduction.SATToMatchingChain.TestChain
-import PileSort.Reduction.SATToMatchingChain.Gadgets.Next
 
 theorem list_drop_append_two {α : Type} (A1 A2 : List α) (k : Nat) (hA1 : A1.length = k + 2) :
     (A1 ++ A2).drop k = A1[k]'(by omega) :: A1[k + 1]'(by omega) :: A2 := by

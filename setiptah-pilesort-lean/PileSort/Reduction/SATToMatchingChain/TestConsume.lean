@@ -1,4 +1,10 @@
-/-
+import PileSort.Reduction.SATToMatchingChain.VarEncoding
+import PileSort.MatchingChain.Mono
+import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
+import PileSort.Reduction.SATToMatchingChain.Gadgets.Activation
+import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
+
+/-!
   Single-step consumption lemmas for the testWord and endTestWord gadgets.
 
   Defines `matchesLiteral` and proves that one testWord or endTestWord consumes
@@ -10,11 +16,6 @@
   and end-capped chain lemmas; see the TestChain.lean module docstring for the
   distinction between the two.
 -/
-import PileSort.Reduction.SATToMatchingChain.VarEncoding
-import PileSort.MatchingChain.Mono
-import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
-import PileSort.Reduction.SATToMatchingChain.Gadgets.Activation
-import PileSort.Reduction.SATToMatchingChain.Gadgets.StartClause
 
 /-- From ACTD: testWord stays activated, shifting by one block.
 

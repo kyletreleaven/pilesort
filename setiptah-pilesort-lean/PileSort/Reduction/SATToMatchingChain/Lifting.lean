@@ -1,4 +1,8 @@
-/-
+import PileSort.MatchingChain.Mono
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
+
+/-!
   Lifting lemmas: promote gadget results proved by `decide` on a small
   window machine to any larger machine that has the window as a prefix.
 
@@ -10,9 +14,6 @@
   form via `simp only [List.cons_append, List.nil_append]` or
   `simp only [List.singleton_append]`.
 -/
-import PileSort.MatchingChain.Mono
-import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
-import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 /-- If a word applied to a small window machine sends state s to state r
     (both strictly within the window), then on any larger machine with

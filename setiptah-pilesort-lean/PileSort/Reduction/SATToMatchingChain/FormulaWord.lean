@@ -1,13 +1,14 @@
-/-
+import PileSort.MatchingChain.Mono
+import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
+import PileSort.Reduction.SATToMatchingChain.ClauseWord
+
+/-!
   The top-level correctness theorem for the SAT-to-pile-sort reduction:
   `formulaWord_correct` states that the pile-sort machine compiled from
   `virtualPileTypes ALIGN xs` accepts `formulaWord n clauses` if and only if
   there exists an assignment satisfying the formula.  This is the main result
   of the reduction.
 -/
-import PileSort.MatchingChain.Mono
-import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs
-import PileSort.Reduction.SATToMatchingChain.ClauseWord
 
 /-- Chain form: formulaWord from any s ≥ CHAIN_DISQ reaches the out-of-bounds zone,
     regardless of clause content. Proved by induction on clauses_ using

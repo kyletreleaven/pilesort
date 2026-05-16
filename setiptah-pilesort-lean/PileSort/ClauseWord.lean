@@ -5,7 +5,7 @@
   index-based counterparts of `testChain_actd_cons` and `testChain_nactd_cons`
   in TestChain.lean.  They are not on the proof path of `formulaWord_correct`
   and are candidates for deletion once the index-vs-destructured question
-  (see plan.md) is resolved.
+  (see PLAN.md) is resolved.
 -/
 import PileSort.MatchingChain.Mono
 import PileSort.Reduction.SATToMatchingChain.Defs.FormulaDefs

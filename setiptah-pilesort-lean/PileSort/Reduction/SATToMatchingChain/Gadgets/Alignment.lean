@@ -1,11 +1,12 @@
-/-
+import PileSort.MatchingChain
+import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
+import PileSort.Reduction.SATToMatchingChain.Defs.Words
+
+/-!
   Proof of alignment gadget correctness.
 
   Mirrors test_align_aligned and test_align_unaligned from test_words.py.
 -/
-import PileSort.MatchingChain
-import PileSort.Reduction.ShuffleMultiRoundToSingle.VirtualPileTypes
-import PileSort.Reduction.SATToMatchingChain.Defs.Words
 
 set_option maxRecDepth 4096
 
