@@ -67,15 +67,11 @@ clause-satisfaction argument, not just the automaton behavior. A reader who has
 understood the top-level theorem should be able to follow the chain of gadgets
 as a narrative.
 
-- [ ] `Gadgets/Activation.lean` — explain what "activation" means: tracking whether
-      the current clause has been satisfied by a literal so far
-- [ ] `Gadgets/StartClause.lean` — explain what it sets up (non-activated state at
-      the start of each clause test)
-- [ ] `Gadgets/ForceQ.lean` — explain why it's needed (penalizes variable blocks not
-      produced by Q, enforcing the variable encoding)
-- [ ] `Gadgets/Alignment.lean` — explain the alignment check (the ALIGN block ensures
-      the variable encoding is consistent across rounds)
-- [ ] `Gadgets/Next.lean` — explain the transition role (advances from end of one
-      clause gadget to the start of the next)
+- [x] `Gadgets/Activation.lean` — role + ACTD/NACTD explanation + lemma table
+- [x] `Gadgets/StartClause.lean` — role + NACTD meaning + penalty propagation
+- [x] `Gadgets/ForceQ.lean` — role + foreshadowing third-round relaxation
+- [x] `Gadgets/Alignment.lean` — role + foreshadowing first-round relaxation
+- [x] `Gadgets/Next.lean` — role + mechanical explanation
+- [x] `ClauseWord.lean` — high-level narrative of clause-satisfaction composition
 - [ ] `Defs/Words.lean` — expand comments on `POS`, `NEG`, `DK`, `ENDPOS`, `ENDNEG`,
       `ENDDK` to say what each tests, not just what it "administers"
