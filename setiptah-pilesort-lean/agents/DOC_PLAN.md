@@ -25,7 +25,7 @@ Goal: a newcomer reading `formulaWord_correct_multiSortable` in
 | `deckOfWord` | `ShuffleMatchingChain/ChangeProfiles.lean` | ✓ |
 | `formulaWord` | `SATToMatchingChain/Defs/FormulaDefs.lean` | ✓ |
 | `ALIGN` | `SATToMatchingChain/Defs/Words.lean` | ✓ |
-| `HasMatchingAssignment` | `SATToMatchingChain/ClauseWord.lean` | ✓ |
+| `HasMatchingAssignment` | `SATToShuffle/VarEncoding.lean` | ✓ |
 | `satisfiesFormula` | `SAT/Defs.lean` | ✓ |
 | theorem itself | `SATToShuffle/SortableIff.lean` | ✓ |
 
@@ -54,13 +54,9 @@ Lower priority; address after the main result vocabulary is solid.
 
 ## Migration
 
-- [ ] Move `VarEncoding.lean` and `HasMatchingAssignment` out of `SATToMatchingChain/` to a
-      location accessible without understanding the chain reduction.
-      Goal: `SATToShuffle/SortableIff.lean` is self-contained except for `ALIGN`.
-      Constraint: `SATToMatchingChain` currently imports `VarEncoding` — moving it to
-      `SATToShuffle/` would invert the dependency. Likely needs a neutral shared location
-      (e.g. a new `SATToShuffle/VarEncoding.lean` with `SATToMatchingChain` importing from there,
-      or a top-level `PileSort/Reduction/VarEncoding.lean`).
+- [x] Moved `VarEncoding.lean`, `VarEncodingLemmas.lean`, and `HasMatchingAssignment` to
+      `SATToShuffle/`. `SATToMatchingChain` imports from there (no cycle since `VarEncoding`
+      has no chain dependencies). `list_split_last` moved to `Lists.lean`.
 
 ---
 
