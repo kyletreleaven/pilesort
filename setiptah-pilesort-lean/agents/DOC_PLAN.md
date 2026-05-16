@@ -20,22 +20,22 @@ Goal: a newcomer reading `formulaWord_correct_multiSortable` in
 
 | Term | File | Status |
 |------|------|--------|
-| `Sortable` | `Shuffle/Defs.lean` | ✗ no doc comment |
+| `Sortable` | `Shuffle/Defs.lean` | ✓ |
 | `MultiSortable` | `Shuffle/MultiRound/Defs.lean` | ✓ |
 | `deckOfWord` | `ShuffleMatchingChain/ChangeProfiles.lean` | ✓ |
-| `formulaWord` | `SATToMatchingChain/Defs/FormulaDefs.lean` | ✓ (terse) |
-| `ALIGN` | `SATToMatchingChain/Defs/Words.lean` | ✗ no doc comment |
+| `formulaWord` | `SATToMatchingChain/Defs/FormulaDefs.lean` | ✓ |
+| `ALIGN` | `SATToMatchingChain/Defs/Words.lean` | ✓ |
 | `HasMatchingAssignment` | `SATToMatchingChain/ClauseWord.lean` | ✓ |
 | `satisfiesFormula` | `SAT/Defs.lean` | ✓ |
-| theorem itself | `SATToShuffle/SortableIff.lean` | ✗ no module docstring |
+| theorem itself | `SATToShuffle/SortableIff.lean` | ✓ |
 
 ### Specific tasks
 
-- [ ] `Sortable` — add doc comment
-- [ ] `ALIGN` — add doc comment explaining its role in the reduction
-- [ ] `SortableIff.lean` — add module docstring tying the big picture together
-- [ ] `ChangeProfiles.lean` — fix stale comment ("will migrate here in a later step")
-- [ ] `SATToMatchingChain/Defs/FormulaDefs.lean` — fix `/-` header → `/-!`
+- [x] `Sortable` — add doc comment
+- [x] `ALIGN` — add doc comment explaining its role in the reduction
+- [x] `SortableIff.lean` — add module docstring tying the big picture together
+- [x] `ChangeProfiles.lean` — fix stale comment ("will migrate here in a later step")
+- [x] `SATToMatchingChain/Defs/FormulaDefs.lean` — fix `/-` header → `/-!`
 
 ---
 
