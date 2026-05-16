@@ -6,6 +6,7 @@
   neither appears in that clause.
 -/
 
+/-- Whether a literal (positive, negative, or absent) appears in a clause. -/
 inductive LitPresence where
   | pos : LitPresence
   | neg : LitPresence

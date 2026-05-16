@@ -8,10 +8,10 @@ import PileSort.MatchingChain
   SAT-to-matching-chain reduction gadgets.
 -/
 
+open PileType in
 /-- The base block for the variable encoding.  Each variable's block in the
     combined machine is either `ALIGN` (variable assigned Q/true) or its
     S-dual `applyPile .S ALIGN` (variable assigned S/false). -/
-open PileType in
 def ALIGN : List PileType := [Q, Q, Q, Q, S, S]
 
 -- Helper for writing long action words as strings over `a`/`d`.

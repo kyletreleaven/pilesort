@@ -11,6 +11,7 @@ import PileSort.PileTypes
   S reverses and inverts all types (Q↔S).
 -/
 
+/-- Swap Q and S. -/
 def invertType : PileType → PileType
   | .Q => .S
   | .S => .Q
@@ -26,14 +27,19 @@ def xorType : PileType → PileType → PileType
   | .Q, p => p
   | .S, p => invertType p
 
+/-- The action of S on a block: reverse the list and flip every type. -/
 def applyStack (pileTypes : List PileType) : List PileType :=
   (pileTypes.reverse).map invertType
 
+/-- Apply the action of a single pile type to a block: Q is the identity,
+    S reverses the block and flips every type. -/
 def applyPile (pileType : PileType) (pileTypes : List PileType) : List PileType :=
   match pileType with
   | .Q => pileTypes
   | .S => applyStack pileTypes
 
+/-- Compose two rounds of pile types into a single equivalent round.
+    Each pile type in `pt2` expands into the corresponding transformation of `pt1`. -/
 def virtualPileTypes (pt1 pt2 : List PileType) : List PileType :=
   pt2.flatMap (fun typ => applyPile typ pt1)
 

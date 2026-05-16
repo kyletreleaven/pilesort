@@ -15,8 +15,7 @@ import PileSort.CatOrder
        · `posOf  c`: the position of card `c`
        · `cardAt k`: the card at position `k`
 
-  3. `shuffleRound` lifts `shuffleSeq` from lists to decks via `Deck.toList`
-     and `Deck.fromDeckSeq`.
+  3. `shuffleRound` — one pile-shuffle pass at the `Deck` level.
 
   4. `Sortable` is the single-round feasibility predicate.
 -/
@@ -96,6 +95,7 @@ def Deck.sorted (n : Nat) : Deck n where
   left_inv  := fun _ => rfl
   right_inv := fun _ => rfl
 
+/-- Build a deck from a sequence of card values listed in position order. -/
 def Deck.fromDeckSeq {n : Nat} (l : List (Fin n))
     (hnd : l.Nodup) (hlen : l.length = n) : Deck n where
   cardAt    := l.get ∘ Fin.cast hlen.symm
@@ -108,6 +108,7 @@ def Deck.fromDeckSeq {n : Nat} (l : List (Fin n))
     exact getElem_indexOf hmem
   right_inv k := Fin.ext (indexOf_getElem hnd k.val (hlen.symm ▸ k.isLt))
 
+/-- Build a deck from an injective card-to-deck-position map. -/
 def Deck.fromCardPositions {n : Nat} (poses : Fin n → Fin n)
     (hinj : Injective poses) : Deck n where
   posOf     := poses
@@ -127,6 +128,9 @@ theorem Deck.toList_nodup {n : Nat} (d : Deck n) : d.toList.Nodup :=
 theorem Deck.toList_length {n : Nat} (d : Deck n) : d.toList.length = n := by
   simp [Deck.toList]
 
+/-- The deck resulting from one pile-shuffle pass: each card goes to its assigned pile,
+    piles are collected in order (Q preserving, S reversing) and concatenated.
+    Lifts `shuffleSeq` from lists to decks via `Deck.toList` and `Deck.fromDeckSeq`. -/
 def shuffleRound {n : Nat} (d : Deck n) (types : List PileType)
     (assign : Fin n → Fin types.length) : Deck n :=
   Deck.fromDeckSeq (shuffleSeq d.toList types assign)

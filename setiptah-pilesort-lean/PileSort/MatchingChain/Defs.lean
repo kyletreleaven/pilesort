@@ -15,6 +15,8 @@ import PileSort.PileTypes
   otherwise advance to k+1.
 -/
 
+/-- Ascent (.a) or descent (.d): whether the lower-ranked card appears before
+    the higher-ranked card in the deck (`posOf k < posOf (k+1)`). -/
 inductive Action where
   | a : Action
   | d : Action

@@ -20,12 +20,14 @@ theorem embedVars_injective : ∀ (a b : List Bool), embedVars a = embedVars b �
     subst hxy
     exact congrArg (x :: ·) (embedVars_injective xs ys h.2)
 
+/-- A literal presence matches a pile type if both agree on polarity (pos↔Q, neg↔S). -/
 def litMatches (lp : LitPresence) (x : PileType) : Prop :=
   (lp = .pos ∧ x = .Q) ∨ (lp = .neg ∧ x = .S)
 
 instance (lp : LitPresence) (x : PileType) : Decidable (litMatches lp x) := by
   unfold litMatches; infer_instance
 
+/-- The literal at position `i` in `clause` matches pile type `x`. -/
 def matchesLiteral (x : PileType) (i : Nat) (clause : Clause) : Prop :=
   litMatches (clause.getD i .absent) x
 
@@ -35,6 +37,7 @@ instance (x : PileType) (i : Nat) (clause : Clause) : Decidable (matchesLiteral 
 theorem matchesLiteral_eq_litMatches (x : PileType) (i : Nat) (clause : Clause) :
     matchesLiteral x i clause = litMatches (clause.getD i .absent) x := rfl
 
+/-- Every list of pile types is the image of some Boolean assignment: `embedVars` is surjective. -/
 theorem embedVars_surjective : ∀ (xs : List PileType),
     ∃ vars : List Bool, vars.length = xs.length ∧ embedVars vars = xs
   | [] => ⟨[], rfl, rfl⟩
